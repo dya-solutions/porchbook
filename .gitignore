@@ -1,0 +1,17 @@
+node_modules
+android/app/build
+android/build
+android/*.keystore
+android/keystore.properties
+android/local.properties
+attachments
+screenshots
+artifacts
+.grok
+
+.tanstack
+.project_id
+.node_modules.lock
+.env*
+.vercel/project.json
+.vercel/*.json

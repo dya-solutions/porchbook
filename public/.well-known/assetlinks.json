@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.porch.team",
+      "sha256_cert_fingerprints": [
+        "72:BA:73:29:A9:FA:1A:08:C7:12:D5:73:08:A8:6F:BF:7F:E8:76:CA:2D:32:CD:60:92:A4:CF:EC:CD:F1:1E:1A"
+      ]
+    }
+  }
+]

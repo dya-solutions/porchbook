@@ -1,0 +1,65 @@
+name: Build the Android app
+
+# Builds porch.apk whenever the app's code changes (or on demand from the Actions tab),
+# signs it with the Porchbook key kept in this repo's secrets, and puts it on the site.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - ".github/workflows/android-app.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-app
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # GitHub's machines already come with the Android tools (ANDROID_HOME).
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+
+      - name: Signing key
+        # The key is kept locked in android/signing.enc; its password is the repo secret ANDROID_SIGNING_PASS.
+        env:
+          P: ${{ secrets.ANDROID_SIGNING_PASS }}
+        run: |
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:P -in android/signing.enc | tar xzf - -C android
+          echo "sdk.dir=${ANDROID_HOME:-$ANDROID_SDK_ROOT}" > android/local.properties
+
+      - name: Build
+        working-directory: android
+        run: gradle --no-daemon assembleRelease
+
+      - name: Put the new app on the site
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk public/porch.apk
+          mkdir -p .vercel/output/static
+          cp android/app/build/outputs/apk/release/app-release.apk .vercel/output/static/porch.apk
+          # What Refresh compares against: the version just built.
+          CODE=$(grep -oP 'versionCode \K[0-9]+' android/app/build.gradle)
+          NAME=$(grep -oP 'versionName "\K[^"]+' android/app/build.gradle)
+          echo "{\"versionCode\":$CODE,\"versionName\":\"$NAME\"}" > public/app-version.json
+          cp public/app-version.json .vercel/output/static/app-version.json
+          rm -f android/porch-release.keystore android/keystore.properties
+          git config user.name "porchbook-builder"
+          git config user.email "porchbook-builder@users.noreply.github.com"
+          git add public/porch.apk .vercel/output/static/porch.apk public/app-version.json .vercel/output/static/app-version.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Android app: new build of porch.apk"
+          git pull --rebase --autostash origin main
+          git push origin HEAD:main

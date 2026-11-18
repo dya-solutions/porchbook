@@ -1,0 +1,17 @@
+{
+  "name": "porchbook-audio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Porchbook Radio's sound server: mastering, measuring and video sound",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.2",
+    "ffmpeg-static": "^5.2.0"
+  }
+}

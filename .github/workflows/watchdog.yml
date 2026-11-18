@@ -1,0 +1,67 @@
+name: Porchbook watchdog
+
+# Every hour: is porchbook.vercel.app up? If it's down or paused (for example a Vercel
+# payment problem), open an issue that notifies the founder by email and on the GitHub app.
+# When it's back, the issue is closed with a note.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: watchdog
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the site
+        id: site
+        run: |
+          ok=no
+          for attempt in 1 2 3; do
+            page=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 https://porchbook.vercel.app/app-version.json || echo 000)
+            home=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 https://porchbook.vercel.app/ || echo 000)
+            echo "attempt $attempt: app-version $page, home $home"
+            if [ "$page" = "200" ] && [ "$home" -lt 500 ] && [ "$home" != "000" ] && [ "$home" != "402" ]; then ok=yes; break; fi
+            sleep 60
+          done
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+          echo "detail=app-version.json answered $page, the home page answered $home" >> "$GITHUB_OUTPUT"
+
+      - name: Tell the founder
+        uses: actions/github-script@v7
+        env:
+          OK: ${{ steps.site.outputs.ok }}
+          DETAIL: ${{ steps.site.outputs.detail }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const open = await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: "porchbook-down", per_page: 5 });
+            const now = new Date().toLocaleString("en-GB", { timeZone: "Africa/Kampala", dateStyle: "medium", timeStyle: "short" });
+            if (process.env.OK === "yes") {
+              for (const issue of open.data) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: issue.number, body: `✅ Porchbook is back up (${now}, Kampala time).` });
+                await github.rest.issues.update({ owner, repo, issue_number: issue.number, state: "closed" });
+              }
+              return;
+            }
+            const body = [
+              `@PMMPORCH Porchbook isn't answering (${now}, Kampala time): ${process.env.DETAIL}.`,
+              "",
+              "Most likely Vercel paused it. Check now:",
+              "1. vercel.com → Settings → Billing: is an invoice unpaid, or did a payment fail? Load the card and pay it.",
+              "2. Settings → Billing → Spend Management: is \"Pause Production Deployments\" on? Turn it off, then resume the project.",
+              "3. The porchbook project: if it says Paused, tap Resume.",
+              "",
+              "This issue closes by itself when Porchbook is back.",
+            ].join("\n");
+            // One alert per outage (no hourly repeats); it closes itself when the site is back.
+            if (!open.data.length) {
+              await github.rest.issues.create({ owner, repo, title: "⚠️ Porchbook is down", body, labels: ["porchbook-down"], assignees: ["PMMPORCH"] });
+            }
+            core.setFailed("Porchbook is down");

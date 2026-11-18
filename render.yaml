@@ -1,0 +1,16 @@
+# Porchbook Audio: the radio's sound server on Render (free), apart from the calls server.
+services:
+  - type: web
+    name: porchbook-audio
+    runtime: node
+    plan: free
+    rootDir: audio-worker
+    # Only restart when the worker itself changes (not on every Porchbook update).
+    buildFilter:
+      paths:
+        - audio-worker/**
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORCHBOOK_URL
+        value: https://porchbook.vercel.app

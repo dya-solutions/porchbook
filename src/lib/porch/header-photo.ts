@@ -1,0 +1,94 @@
+import { createServerFn } from "@tanstack/react-start";
+import { getSql } from "@/lib/db";
+import { authMiddleware } from "@/lib/auth/middleware";
+import { noteAttempt } from "@/lib/porch/guard.server";
+import { touchProfile } from "@/lib/porch/api";
+import type { Seed } from "@/lib/porch/model";
+
+/** The photo behind the app's header (the founder's choice; the crowd when none is set). */
+
+const MAX_BYTES = 500_000;
+
+function asRecord(input: unknown): Record<string, unknown> {
+  if (!input || typeof input !== "object") return {};
+  return input as Record<string, unknown>;
+}
+function clip(value: string, max: number): string {
+  return value.trim().slice(0, max);
+}
+function parseSeed(input: unknown): Seed {
+  const raw = asRecord(input);
+  return {
+    displayName: typeof raw.displayName === "string" ? clip(raw.displayName, 80) : "",
+    email: typeof raw.email === "string" ? clip(raw.email, 200) : null,
+    imageUrl: typeof raw.imageUrl === "string" ? clip(raw.imageUrl, 500) : null,
+  };
+}
+function boolish(value: unknown): boolean {
+  return value === true || value === 1 || value === "1" || value === "t" || value === "true";
+}
+async function ensure(sql: Awaited<ReturnType<typeof getSql>>) {
+  await sql`
+    create table if not exists porch_header (
+      id integer primary key,
+      mime text not null,
+      image text not null,
+      updated_at timestamptz not null default now()
+    )
+  `;
+}
+async function founderFlag(sql: Awaited<ReturnType<typeof getSql>>, userId: string) {
+  const me = await sql.query<{ is_founder: boolean }>("select is_founder from profiles where user_id = $1", [userId]);
+  return boolish(me[0]?.is_founder);
+}
+
+export const getHeaderPhoto = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parseSeed(input))
+  .handler(async ({ context, data: seed }) => {
+    const sql = await getSql();
+    await touchProfile(sql, context.userId, seed);
+    await ensure(sql);
+    const founder = await founderFlag(sql, context.userId);
+    const rows = await sql.query<{ mime: string; image: string; updated_at: string }>(
+      `select mime, image, to_char(updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at from porch_header where id = 1`,
+    );
+    return { founder, mime: rows[0]?.mime ?? "", image: rows[0]?.image ?? "", updatedAt: rows[0]?.updated_at ?? "" };
+  });
+
+export const setHeaderPhoto = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => {
+    const raw = asRecord(input);
+    return {
+      mime: typeof raw.mime === "string" ? clip(raw.mime, 40) : "",
+      image: typeof raw.image === "string" ? raw.image.replace(/\s/g, "").slice(0, 900_000) : "",
+      seed: parseSeed(raw),
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await touchProfile(sql, context.userId, data.seed);
+    await ensure(sql);
+    if (!(await founderFlag(sql, context.userId))) {
+      noteAttempt(context.userId, "header", "Tried to change the header photo.");
+      return { ok: false as const, error: "Only the founder can change the header photo." };
+    }
+    if (!data.image) {
+      await sql`delete from porch_header where id = 1`;
+      return { ok: true as const };
+    }
+    if (data.mime !== "image/jpeg") return { ok: false as const, error: "Use a photo." };
+    let bytes = 0;
+    try {
+      bytes = atob(data.image).length;
+    } catch {
+      return { ok: false as const, error: "That photo could not be read." };
+    }
+    if (bytes > MAX_BYTES) return { ok: false as const, error: "That photo is too large. Choose another." };
+    await sql`
+      insert into porch_header (id, mime, image, updated_at) values (1, ${data.mime}, ${data.image}, now())
+      on conflict (id) do update set mime = ${data.mime}, image = ${data.image}, updated_at = now()
+    `;
+    return { ok: true as const };
+  });

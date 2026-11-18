@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Porchbook</string>
+    <string name="setup_body">The whole team, on your phone. Paste the published address of your Porchbook.</string>
+    <string name="address_hint">https://your-team.example</string>
+    <string name="address_error">Enter the https address of your published Porchbook.</string>
+    <string name="continue_label">Open Porchbook</string>
+    <string name="setup_note">Only you set this. It stays on this phone. Long-press the Porchbook icon and choose “Change Porchbook” to point somewhere else. Private notes still never appear on the feed.</string>
+    <string name="change_porch">Change Porchbook</string>
+    <string name="incoming_call">Incoming voice call</string>
+    <string name="decline">Decline</string>
+    <string name="answer">Answer</string>
+    <string name="call_watch">Calls can reach you</string>
+</resources>
