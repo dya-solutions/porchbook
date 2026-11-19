@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { shown } from "@/lib/porch/on-hold";
 import { getFm, pingFm } from "@/lib/porch/fm";
 import { attachBed, type Bed } from "@/lib/porch/devotion-bed";
 import { isNewsIntro, onAirAt, type FmBreak, type FmProgramme, type FmTrack, type OnAir } from "@/lib/porch/fm-schedule";
@@ -771,6 +772,8 @@ async function playLive() {
 
 /** Start listening (must be called from a tap). */
 export async function tuneIn() {
+  // While the radio is on hold, nothing can switch it on (alerts, Refresh, old links).
+  if (!shown("radio")) return;
   // Starting the radio yourself while something holds it: that thing keeps
   // its hold, but the radio no longer waits to come back.
   resumeAfterHold = false;

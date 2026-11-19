@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { shown } from "@/lib/porch/on-hold";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AppFrame } from "@/components/porch/frame";
 import { fmNow, loadStation, peekOnAir, refreshStation, useFm } from "@/lib/porch/fm-player";
@@ -10,6 +11,10 @@ import { cleanMix } from "@/lib/porch/fm-mix-settings";
 import { BeforeAfter, MixerPanel, MixProgress, PlanMeters, type MixerView } from "@/components/porch/cr-mixer";
 
 export const Route = createFileRoute("/control-room")({
+  // The radio's control room is on hold (BUILD-BRIEF.md section 4): the page is kept but old links go to the porch.
+  beforeLoad: () => {
+    if (!shown("radio")) throw redirect({ to: "/", search: { room: "all" } });
+  },
   component: ControlRoomPage,
 });
 

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { shown } from "@/lib/porch/on-hold";
 import { closeLayer, currentLayerTag, dropLayer, openLayer, retagLayer } from "@/lib/porch/back-stack";
 import { createPortal } from "react-dom";
 
@@ -30,7 +31,13 @@ const closedByBack = () => {
   emit();
 };
 
+/** Doors that are on hold (BUILD-BRIEF.md section 4) never open, even from old links or alerts. */
+function onHold(next: TourMode) {
+  return (next === "worship" && !shown("radio")) || (next === "clinic" && !shown("clinic")) || (next === "call" && !shown("groupCalls"));
+}
+
 export function toggleTourMode(next: TourMode) {
+  if (onHold(next) && mode !== next) return;
   const was = mode;
   mode = mode === next ? null : next;
   if (!was && mode) layerId = openLayer(`tour:${mode}`, closedByBack);

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Start a porch</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;family=Source+Sans+3:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.scr{width:390px;height:844px;box-sizing:border-box;background:#0E120F;color:#F4F1E8;font-family:'Source Sans 3',sans-serif;display:flex;flex-direction:column;overflow:hidden}
+.ttl{font-family:Fraunces,serif;font-weight:600;margin:0}
+.muted{color:#A3AC9F}
+.top{padding:18px 20px 12px;display:flex;align-items:center;gap:12px}
+.logo{width:42px;height:42px;border-radius:13px;background:#90C840;color:#10180A;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.iconbtn{width:44px;height:44px;border-radius:22px;border:1px solid rgba(244,241,232,.14);background:transparent;color:#F4F1E8;display:flex;align-items:center;justify-content:center;flex:none;padding:0;text-decoration:none}
+.card{background:#171D18;border:1px solid rgba(244,241,232,.08);border-radius:20px}
+.chip{height:36px;padding:0 15px;border-radius:18px;border:1px solid rgba(244,241,232,.16);background:transparent;color:#F4F1E8;font:600 14px 'Source Sans 3',sans-serif;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.chip.on{background:#F8A018;color:#1A1205;border-color:#F8A018}
+.body{flex:1;overflow:hidden;padding:4px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.nav{height:78px;flex:none;border-top:1px solid rgba(244,241,232,.08);background:#121713;display:flex;justify-content:space-around;align-items:flex-start;padding-top:8px;box-sizing:border-box}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:4px;color:#A3AC9F;text-decoration:none;font-size:12px;font-weight:600;min-width:60px;min-height:48px;justify-content:center}
+.nav a.on{color:#F8A018}
+.av{width:40px;height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex:none}
+.react{height:36px;padding:0 12px;border-radius:18px;background:#1F2620;border:none;color:#F4F1E8;font:600 13px 'Source Sans 3',sans-serif;display:flex;align-items:center;gap:6px}
+.seg{display:flex;background:#171D18;border-radius:14px;padding:4px;margin:0 16px 4px;flex:none}
+.seg a{flex:1;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:15px;color:#A3AC9F;text-decoration:none}
+.seg a.on{background:#2A332B;color:#F4F1E8}
+.row{display:flex;align-items:center;gap:12px}
+.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#A3AC9F;margin:6px 4px 0}
+.btn{height:52px;border-radius:16px;border:none;background:#F8A018;color:#1A1205;font:700 16px 'Source Sans 3',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn2{height:52px;border-radius:16px;border:1px solid rgba(244,241,232,.2);background:transparent;color:#F4F1E8;font:700 16px 'Source Sans 3',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.input{height:52px;box-sizing:border-box;width:100%;border-radius:14px;border:1px solid rgba(244,241,232,.18);background:#171D18;color:#F4F1E8;padding:0 16px;font:400 16px 'Source Sans 3',sans-serif}
+.lbl{font-size:14px;font-weight:600;color:#D8D5CC;margin:0 0 6px}
+.tag{font-size:12px;font-weight:700;padding:3px 9px;border-radius:10px}
+.listrow{display:flex;align-items:center;gap:14px;padding:14px 16px;text-decoration:none;color:#F4F1E8}
+a{color:#F8A018}a:hover{color:#FFC15A}
+</style>
+</helmet>
+<div class="scr">
+<header class="top"><a href="Main.dc.html" class="iconbtn" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a><p class="muted" style="margin:0;font-size:15px;flex:1">Step 1 of 3</p></header>
+<main class="body" style="gap:18px;padding:4px 20px 24px">
+<div><h1 class="ttl" style="font-size:30px">Start a porch</h1><p class="muted" style="margin:6px 0 0;font-size:15px;line-height:1.45">A private home for your people, and a public page others can follow.</p></div>
+<div><p class="lbl">What kind of porch?</p><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+<button class="chip on" style="height:48px;justify-content:center">Church</button><button class="chip" style="height:48px;justify-content:center">Ministry</button><button class="chip" style="height:48px;justify-content:center">Gospel artist</button><button class="chip" style="height:48px;justify-content:center">Organisation</button></div></div>
+<div><label class="lbl" for="n" style="display:block">Name</label><input id="n" class="input" placeholder="e.g. Grace Community Church"></div>
+<div><label class="lbl" for="t" style="display:block">Town and country</label><input id="t" class="input" placeholder="e.g. Mbarara, Uganda"></div>
+<div class="card" style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+<div class="row"><div style="flex:1"><p style="margin:0;font-weight:700;font-size:16px">This is a branch</p><p class="muted" style="margin:2px 0 0;font-size:13px">Link to your main church&#39;s porch</p></div>
+<div role="switch" aria-checked="true" aria-label="This is a branch" style="width:52px;height:30px;border-radius:15px;background:#90C840;position:relative;flex:none"><div style="position:absolute;right:3px;top:3px;width:24px;height:24px;border-radius:12px;background:#10180A"></div></div></div>
+<div style="position:relative"><label for="mp" style="position:absolute;left:14px;top:15px;color:#A3AC9F"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></label><input id="mp" class="input" placeholder="Find the main porch" style="padding-left:44px"></div></div>
+<div style="flex:1"></div>
+<a href="Porch.dc.html" class="btn">Continue <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+<p class="muted" style="margin:-6px 0 0;text-align:center;font-size:13px">Every porch is checked before it can post publicly.</p>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

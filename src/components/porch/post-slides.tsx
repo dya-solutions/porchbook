@@ -2,18 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { getTourMode, toggleTourMode } from "@/lib/porch/tour-mode";
 import { tuneIn, useFm } from "@/lib/porch/fm-player";
+import { shown } from "@/lib/porch/on-hold";
 
 /**
  * The idle post box: slides inviting people in. Each slide's orange button takes them there;
  * the bar under the slides ("What's on your heart?") always starts a post.
  */
 type Slide = { icon: string; title: string; line: string; go: string; from: string; to: string; action: "devotion" | "radio" | "chat" | "write" };
-const SLIDES: Slide[] = [
+const ALL_SLIDES: Slide[] = [
   { icon: "📖", title: "Read today's devotional", line: "Start your day in the Word.", go: "Read now ›", from: "#2f5e1a", to: "#0e1a08", action: "devotion" },
   { icon: "📻", title: "Enjoy Porchbook Radio", line: "Worship, Sermons and more.", go: "Listen ›", from: "#7a4a0c", to: "#1e1203", action: "radio" },
   { icon: "💬", title: "Chat with your friends", line: "Private messages, one to one.", go: "Chat ›", from: "#1d4a5e", to: "#07141a", action: "chat" },
   { icon: "✍️", title: "Edify the Porchbook community", line: "Share your meditation.", go: "Write a post ›", from: "#5c2f6e", to: "#150a1a", action: "write" },
 ];
+// The radio slide hides while the radio is on hold.
+const SLIDES = ALL_SLIDES.filter((slide) => slide.action !== "radio" || shown("radio"));
 
 export function PostSlides({ onWrite }: { onWrite: () => void }) {
   const navigate = useNavigate();

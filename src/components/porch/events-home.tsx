@@ -1,4 +1,5 @@
 import { useBackLayer } from "@/lib/porch/back-stack";
+import { shown } from "@/lib/porch/on-hold";
 import { W, WHint, useWord } from "@/components/porch/words";
 import { useEffect, useMemo, useState } from "react";
 import { fieldClass, primaryButtonClass, quietButtonClass } from "@/components/porch/bits";
@@ -141,7 +142,7 @@ export function EventsHome() {
   return (
     <section className="tour-sheet glass-edge w-full rounded-2xl bg-black p-4">
       <h2 className="font-display text-3xl text-ink"><W k="events.title">Events</W></h2>
-      <p className="mt-1 text-sm text-muted"><W k="events.intro">What's coming in our ministry. Event videos also play on the porch guy's screen.</W></p>
+      <p className="mt-1 text-sm text-muted">{shown("porchGuy") ? <W k="events.intro">What's coming in our ministry. Event videos also play on the porch guy's screen.</W> : <W k="events.intro-plain">What's coming in our ministry.</W>}</p>
       {founder ? (
         adding ? (
           <EventForm event={null} onDone={(changed) => (setAdding(false), changed ? reload() : undefined)} />
@@ -156,7 +157,7 @@ export function EventsHome() {
       {events?.map((event) => (
         <EventCard key={event.id} event={event} founder={founder} board={board} onChange={reload} />
       ))}
-      {founder ? (
+      {founder && shown("porchGuy") ? (
         <div className="ev-card">
           <button type="button" className={`${quietButtonClass} px-0`} onClick={() => setScreenVideos((v) => !v)}>
             {screenVideos ? "Hide" : "Videos on the porch guy's screen"}

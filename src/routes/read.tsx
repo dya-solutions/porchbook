@@ -1,4 +1,5 @@
 import { fromText, toMarks, type Incoming } from "@/lib/porch/notes-import";
+import { shown } from "@/lib/porch/on-hold";
 import { SharedNoteCard } from "@/components/porch/notes-import";
 import { plainOfMarks } from "@/lib/porch/note-markup";
 import { placePart, takePart } from "@/lib/porch/place";
@@ -1185,7 +1186,7 @@ function ReadPage() {
               </div>
               <StudyTrio current="devotion" onPick={(to) => void switchTo(to)} />
               <DevotionDays day={pastDay} onDay={setPastDay} />
-              {pastDay ? null : <DevotionListen />}
+              {pastDay || !shown("devotionVoice") ? null : <DevotionListen />}
               {founder && (!link || changeLink) ? (
                 <form
                   className="flex gap-2 px-3 py-2"

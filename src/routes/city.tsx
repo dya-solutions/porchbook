@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { shown } from "@/lib/porch/on-hold";
 import { useEffect, useRef } from "react";
 import { AppFrame } from "@/components/porch/frame";
 import { holdRadio, releaseRadio } from "@/lib/porch/fm-player";
@@ -6,6 +7,10 @@ import { useLine } from "@/lib/porch/line-call";
 import { LiteGate } from "@/components/porch/lite-bits";
 
 export const Route = createFileRoute("/city")({
+  // PorchWay is on hold (BUILD-BRIEF.md section 4): the page is kept but old links go to the porch.
+  beforeLoad: () => {
+    if (!shown("porchWay")) throw redirect({ to: "/", search: { room: "all" } });
+  },
   component: CityPage,
 });
 

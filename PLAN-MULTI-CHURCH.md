@@ -1,293 +1,288 @@
-# Plan: from one church to many church porches
+# Plan: Porchbook for many porches
 
-**Status:** plan only. No app code has been changed for this yet.
-**Written:** 2026-11-18, from reading the code as it is today.
+**Updated:** 19 November 2026, to match **BUILD-BRIEF.md** (stage 1 of 8).
+**Which file wins:** BUILD-BRIEF.md, then this plan, then `public/porchbook-state.md` (the creator's original rulebook, which now only describes how Phaneroo's porch looked before this work).
 
 ---
 
-## 1. The idea in plain words
+## 1. The idea
 
-Today Porchbook is one porch for one church, Phaneroo Ministries Mbarara. The goal is one Porchbook that holds many porches:
+Any **church, ministry, gospel artist or organisation** starts its own **porch**: a private home where its members fellowship, message and call each other, and reach its offices. There is also a **public porch**, where porches post publicly and members of any porch react. **Phaneroo Mbarara is porch number one**, and all its current content becomes its settings.
 
-- Every account belongs to **exactly one church porch**. A person can leave it and join another.
-- Each church has its **own admins** and its own **name, logo, colours, porch photo, offices, reading shelf, tour doors and wording**. The Bible stays the same for everyone.
-- **Phaneroo Mbarara becomes church number one.** Everything it has today becomes its settings, so its members notice no change.
-- **Later:** a public side, working name **the Porchway**, where verified church pages post and members follow, react and share. It is not built now, but this plan leaves room for it (section 8).
-
-### Words used in this plan
+### Words used here
 
 | Word | Meaning |
 |---|---|
-| **Church porch** (or **church**) | One church's private space in Porchbook |
-| **Platform owner** | You. Above all churches: you approve new churches and manage shared things like storage and keys |
-| **Church admin** | Runs one church porch. Replaces today's single "founder" |
-| **Member** | An ordinary account in one church porch |
-| **Church tag** | A label on a piece of saved data saying which church it belongs to (in the database, a column called `church_id`) |
+| **Porch** | One church's (or ministry's, artist's or organisation's) private space. Each porch is one of four types: Church, Ministry, Gospel artist, Organisation |
+| **Public porch** | The shared public side, where only porches post and members of any porch follow and react |
+| **Porch page** | A porch's public page: its public posts, its branches, and a Follow button |
+| **Branch** | A full porch of its own that is linked to a main porch (e.g. Phaneroo Kampala → Phaneroo Ministries) |
+| **Platform owner** | JT. Approves porches and branch links, manages shared settings. **Cannot read private messages** |
+| **Porch admin** | Runs one porch (several per porch). Replaces today's single "founder" |
+| **Office head, member** | As today |
+| **Porch tag** | A label on saved data saying which porch it belongs to (a `porch_id` column in the database) |
+
+### Ground rules (from the brief)
+- Work **only on this computer with test data**. Never connect to or change the creator's live Phaneroo database.
+- **Free only.** If something can't be done for free, stop and ask JT.
+- Small stages. After each one: undo point (git), CHANGES.md, "after" pictures, the two-church test, then **stop and wait**.
+- On-hold features are **hidden, never deleted** (section 9).
 
 ---
 
-## 2. The big choice: one database, with every row tagged
+## 2. Where things stand
 
-**Recommendation:** keep **one app and one database**, and add a church tag to every piece of church data. Every time the app reads data, it only looks at the viewer's own church. Every time it saves data, it stamps the viewer's church on it.
-
-Why this one:
-- One website, one Android app and one database to look after. That is the simplest thing to run.
-- Phaneroo's existing data just gets tagged "church 1". Nothing has to be moved anywhere.
-
-The other option, a separate database per church, keeps churches apart more strongly. But every new church would need its own setup, and every fix would have to be applied many times. It isn't worth it at this size.
-
-**The price of this choice:** the app reads and writes the database in about **600 places, spread over 86 files**. *Every* one of those must respect the church tag. Miss one and a church could see another church's data. That is why section 6 does it in small steps, and section 7 describes an automatic test that tries to break into another church after every step.
+| Item | Status |
+|---|---|
+| App running on this computer, test account, git undo points, Windows start-up fix | ✅ Done |
+| "Before" pictures of every screen (`../before/`) | ✅ Done |
+| **Stage 1:** this plan rewritten; on-hold features hidden | ✅ Done (19 Nov) |
+| Old plan **Step 0**: local database keeps its data, two-church test | ❌ Not started. Part of Stage 2 |
+| Old plan **Step 1**: porch tables, Phaneroo as porch 1 | ❌ Not started. Part of Stage 2 |
+| Old plan **Step 2**: admins instead of the founder | ❌ Not started. Part of Stage 2 |
+| Stages 3–8 | ❌ Not started |
 
 ---
 
-## 3. From one founder to church admins and a platform owner
+## 3. The big technical choice: one database, every row tagged
 
-### How it works today
+**One app and one database.** Every piece of porch data carries a porch tag. Every read only looks at the viewer's own porch, and every save stamps it.
 
-- The **first account ever created** is automatically marked as the founder (`is_founder` on the `profiles` table). The database allows only one founder.
-- The app checks "is this person the founder?" in about **140 places across 49 files**. Many files have their own copy of that check.
-- The founder can do everything: change how the porch looks, edit wording, run the radio, manage the devotional and translations, appoint office heads, remove members, see complaints, set storage keys, and more.
+- Simplest to run: one website and one database. Phaneroo's data is simply tagged "porch 1".
+- **The price:** the app reads and writes the database in about **600 places across 86 files**. Every one must respect the porch tag, or one porch could see another's posts or messages. That's why Stage 3 goes one area at a time, with the two-church test after each (section 8).
+- **Public porch content lives in separate tables** (section 6). It is never a "public" switch on a private table, so a mistake can't leak a private post.
 
-### How it will work
+---
 
-| Who | How they are recorded | What they can do |
+## 4. People and roles
+
+### Today
+- The **first account ever created** automatically becomes the founder (this happened to our local test account too). Only one founder is allowed.
+- The app checks "is this the founder?" in about **140 places in 49 files**.
+
+### New
+| Who | Recorded as | Can |
 |---|---|---|
-| **Platform owner** (you) | A short list of owner accounts, kept separately from all churches | Approve or suspend churches. Manage shared keys and storage (radio storage, AI keys, translation keys), shared Bible content and usage limits. Make someone a church admin. **Cannot read private messages** (recommended, see section 9) |
-| **Church admin** | A role on that person's church membership. A church can have several | Everything the founder does today, **for their own church only** |
-| **Office head** | As today (offices already have heads) | As today |
-| **Member** | Membership in one church | As today |
+| **Platform owner** (JT) | A short list of owner accounts, outside any porch | Approve porches (verification) and branch links. Suspend porches. Manage shared settings (Bible versions, storage, keys). **Never read private messages** |
+| **Porch admin** | A role on their membership (several per porch) | Everything the founder does today, **for their own porch only**: offices, doors, theme, wording, events, transport, serve, My 20, groups, roll and removals, announcements, and posting on the porch's public page |
+| **Office head** | Chosen by porch admins per office | Answer that office's conversations and requests |
+| **Member** | Membership in exactly **one** porch | As today |
 
 ### Steps
+1. Phaneroo's current founder becomes Phaneroo's first admin. JT becomes platform owner.
+2. Replace the ~140 founder checks with two shared checks: "admin of *this* porch?" and "platform owner?"
+3. **Remove "the first account becomes founder."** A new porch's first admin is whoever started it, once the platform owner approves it.
+4. "Founder notes" (message everyone) become **porch announcements**, shown on the feed like the design's "From the Office of the Pastor · Pinned".
 
-1. **Today's founder** of Phaneroo becomes **Phaneroo's first admin**. Nothing changes for them.
-2. The ~140 founder checks are replaced by **two shared checks**: "is this person an admin of *this* church?" and "is this person the platform owner?" Each power goes to one or the other:
-   - **Church admin:** looks (porch photo, header, covers, door, wall, carpet, ceiling, cloth, sounds), wording, manual, events, transport, serve forms, My 20, clinic, groups, offices, roll and removing members, prayer music, worship songs, devotional voice and translation checks, radio programme for that church, the PorchGuy for that church.
-   - **Platform owner:** storage settings (the radio storage keys are saved in the database today), AI and translation keys and credit, shared Bible audio and versions, approving churches.
-3. **Remove the "first account becomes founder" rule.** In a many-church world, whoever signs up first would get power over everything. New churches get their first admin when the platform owner approves the church.
-4. The "founder notes" (messages from the founder to the whole porch) become **church announcements**, from that church's admins to that church only.
+### Moving to another porch (decided in the brief)
+- **Stays with the old porch:** their posts, comments and messages (shown as a former member).
+- **Goes with them:** their personal notebook and Bible reading progress.
+- **Ends:** their roles (admin, office head, group leader).
 
 ---
 
-## 4. Which database tables need to know their church
+## 5. Which database tables need a porch tag
 
-The app has about **150 tables**. About 75 are created by the files in `migrations/`. The rest are created by the app code itself the first time they are needed, which makes them easy to miss. Every one must be decided on.
+The app has about **150 tables**. About 75 are made by `migrations/` (which we don't touch until asked); the rest are created by the app code when first needed, so they're easy to miss. **Rule: anything members create or see gets a porch tag. When in doubt, tag it.**
 
-**Simple rule: if a table holds anything a church's members create or see, it gets a church tag. When in doubt, tag it.**
-
-### A. Shared by all churches (no church tag)
-
+### A. Shared by everyone (no porch tag)
 | Tables | Why |
 |---|---|
-| `user`, `session`, `account`, `verification` | Sign-in itself. One account, one login, whichever church |
-| `push_keys`, `push_subscriptions`, `push_alert_log` | Belong to a phone, not a church. *Who* gets a notification must still be limited to the church |
+| `user`, `session`, `account`, `verification` | Sign-in: one login, whichever porch |
+| `push_keys`, `push_subscriptions`, `push_alert_log` | Belong to a phone. *Who* gets an alert must still be limited to the porch |
 | `guard_attempts` | Protection against password guessing |
-| `bible_audio_books`, `bible_audio_chapters`, `bible_settings`, `demo_bibles`, `christian_glossary`, `translation_memory` | The Bible and translation helpers are the same for everyone |
-| `storage_settings` | Platform storage keys: platform owner only |
-| `_migrations` | Bookkeeping |
+| `bible_audio_books`, `bible_audio_chapters`, `bible_settings`, `demo_bibles`, `christian_glossary`, `translation_memory` | The Bible and its helpers are the same for everyone |
+| `storage_settings` | Platform owner only |
 
-### B. Personal (follow the person, not the church)
+### B. Personal (follow the person when they move)
+`notebook_notes`, `read_notes`, `note_fonts`, `note_pictures`, personal `read_docs`, `bible_sittings` and reading progress.
 
-A person's own notebook should go with them if they move church.
-
-| Tables | Note |
+### C. New tables for porches, roles and the public side
+| Table | Holds |
 |---|---|
-| `notebook_notes`, `read_notes`, `note_fonts`, `note_pictures`, `read_docs` (personal books) | Owned by the person. Only shared notes need a church check |
-| `bible_sittings` and personal reading progress | Owned by the person |
+| `porches` | Name, type (Church / Ministry / Gospel artist / Organisation), town and country, status (waiting / approved / suspended), **verified**, invite code, created date. Phaneroo = 1 |
+| `porch_settings` | Theme, time zone, country code, helplines, devotional source, wording, doors on/off, and the other items in section 7 |
+| `porch_members` | Who belongs where, role (member / admin), joined and left dates. One current porch per person |
+| `platform_owners` | JT's account(s) |
+| `porch_links` | Branch → main porch link requests: asked, approved, unlinked |
+| `office_actions` | Which actions each office offers (Thank God with me, Contact the pastor, Appointments, Weekly programme, Accountability, Official) |
+| `office_requests` | A member's request to an office and its **status** (Sent, Confirmed, Answered) |
+| `public_posts`, `public_reactions`, `follows` | The public porch: posts by porches, reactions by members of any porch, who follows which porch (Stage 6) |
 
-### C. Membership (the heart of the change)
-
-| Table | Change |
-|---|---|
-| **New `churches`** | One row per church: name, short name, status (waiting / active / suspended), verified (for the later Porchway), created date. Phaneroo is number 1 |
-| **New `church_settings`** | Everything in section 5: logo, colours, photo, time zone, country code, helplines, devotional source, and so on |
-| **New `church_members`** | Who belongs where: person, church, role (member / admin), date joined, date left. Only one current church per person |
-| **New `platform_owners`** | Your account(s) |
-| `profiles` | Gets the person's current church. Name, team and bio stay as they are |
-| `removed_members`, `legacy_members`, `roll` data | Removal is per church: removed from Phaneroo does not mean banned everywhere |
-
-### D. Church content (every one gets a church tag)
-
+### D. Porch content (each gets a porch tag)
 | Area | Tables |
 |---|---|
-| **Feed** | `posts`, `comments`, `reactions`, `comment_reactions`, `comment_keeps`, `comment_actions`-related, `keeps`, `rhema_clip`, `previous_clip`, `item_sizes` |
-| **Chat** | `conversations`, `conversation_pins`, `conversation_reads`, `conversation_signals`, `messages`, `message_hides`, `message_reactions`, `message_stars`, `message_sound`, `chat` tables |
-| **Calls** | `call_peers`, `call_permissions`, `call_rings`, `call_signals`, `call_log`, `call_voice`, `line_rings` (only people in the same church may call each other) |
+| **Membership** | `profiles` (current porch), `removed_members`, `legacy_members` (removal is per porch) |
+| **Feed** | `posts`, `comments`, `reactions`, `comment_reactions`, `comment_keeps`, `keeps`, `item_sizes`, `rhema_clip`, `previous_clip` |
+| **Chat** | `conversations`, `conversation_pins`, `conversation_reads`, `conversation_signals`, `messages`, `message_hides`, `message_reactions`, `message_stars`, `message_sound` |
+| **One-to-one calls** | `call_peers`, `call_permissions`, `call_rings`, `call_signals`, `call_log`, `call_voice`, `line_rings` (calls only within one porch) |
+| **On the porch now** | `presence` |
 | **Groups** | `groups`, `group_members`, `group_notes`, `group_accounts`, `group_follows`, `group_marks`, `group_reports`, `group_studies`, `group_study_done` |
 | **Offices** | `offices`, `office_threads`, `office_messages`, `office_files`, `office_pdfs`, `office_books`, `office_doors`, `office_removed`, `office_calendar`, `hoo_reports`, `hoo_decisions`, `hoo_writers`, `hoo_pages` |
-| **Tour doors** | `my_twenty`, `mission_sms`-related (`mission_sends`, `mission_send_to`, `mission_reports`), `serve_forms`, `transport_events`, `transport_locations`, `transport_stages`, `transport_buses`, `transport_rides`, `transport_stops`, `pb_events`, `pb_event_rsvp`, `pb_event_travel`, `pb_hotels`, `pb_rooms`, `clinic_groups`, `clinic_questions`, `clinic_rounds`, `clinic_state`, `clinic_tags`, `clinic_videos`, `clinic_votes`, `prayer_track`, `trouble_reports` (complaints) |
-| **Read shelf** | `porch_shelf`, `office_books`, shared reading documents, `bible_sites`, `bible_readings`/`bible_pieces` if they are church plans |
-| **Devotional** | `devotion_voices`, `devotion_voice_settings`, `devotion_translations`, `devotional_translation` (each church may use a different devotional source) |
-| **Radio** | `fm_tracks`, `fm_files`, `fm_programmes`, `fm_breaks`, `fm_break_heard`, `fm_live`, `fm_live_video`, `fm_mixer`, `fm_previews`, `fm_trash`, `fm_listen_hours`, `fm_requests`, `fm_request_pings`, `radio_usage`, `jingle_drafts`, `worship_songs` (see the radio question in section 9) |
-| **Nuggets / PorchGuy** | `nuggets`, `nugget_settings`, `nugget_sources`, `nugget_speakers`, `nugget_favourites`, `porch_guy_usage`, `porch_guy_credit`, `porch_guy_asks`, `city_board`, `city_board_part` |
-| **Looks and wording** | `porch_words`, `porch_ground`, `porch_header`, `porch_hide`, `porch_door`, `porch_wall`, `porch_carpet`, `porch_ceiling`, `porch_cloth`, `porch_cover`, `porch_cover_fly`, `porch_room_layout`, `button_sound`, `profile_faces` (shared face pictures), `porch_once`, `porch_flags`, `app_flags` (e.g. the manual card) |
-| **Everything else** | `notifications`, `founder_notes` (becomes announcements), `manual_reads`, `presence` (who's on the porch), `previously` |
+| **Tour doors** | Pray: `prayer_track`. My 20: `my_twenty`, `mission_sends`, `mission_send_to`, `mission_reports`. Events: `pb_events`, `pb_event_rsvp`, `pb_event_travel`, `pb_hotels`, `pb_rooms`. Serve: `serve_forms`. Transport: `transport_events`, `transport_locations`, `transport_stages`, `transport_buses`, `transport_rides`, `transport_stops`. Feedback: `trouble_reports` |
+| **Read** | `porch_shelf`, shared reading docs, `bible_sites`, porch reading plans, `devotion_translations`, `devotional_translation` |
+| **Looks and wording** | `porch_words`, `button_sound`, `profile_faces`, `porch_once`, `porch_flags`, `app_flags`, plus the old photo and texture tables (`porch_ground`, `porch_header`, `porch_hide`, `porch_door`, `porch_wall`, `porch_carpet`, `porch_ceiling`, `porch_cloth`, `porch_cover`, `porch_cover_fly`, `porch_room_layout`); see question Q3 |
+| **Other** | `notifications`, `founder_notes` (→ announcements), `manual_reads`, `previously` |
+| **On hold (tag before switching back on)** | Radio: all `fm_*`, `radio_usage`, `jingle_drafts`, `worship_songs`. Nuggets: `nugget*`. PorchGuy: `porch_guy_*`, `city_board*`. Clinic: `clinic_*`. Devotional voice: `devotion_voice*`, `devotion_voices`. **These hidden features must get their porch tag before anyone switches them back on.** |
 
-**Special care:** several tables have a "only one of these" rule built in. Examples: `porch_words` holds one wording per word, and `porch_ground` holds one porch photo. These become "one per church", otherwise church 2 would overwrite Phaneroo's photo.
+**Special care:** several tables allow "only one", like one wording per word (`porch_words`) or one ringtone. These become "one per porch". Otherwise porch 2 would overwrite Phaneroo's.
 
 ---
 
-## 5. Every Phaneroo-specific thing, and the church setting it becomes
+## 6. New parts the brief adds
+
+### Offices (own tab)
+- Each porch creates its own offices, picks each office's head, and chooses which **actions** each office offers. Phaneroo starts with its current 8 offices and actions.
+- A member's requests show a **status** (Sent → Confirmed → Answered), as in `Office.dc.html` and `OfficeThread.dc.html`.
+- Office conversations also show in **Chat**, marked "Office" (`Chat.dc.html`).
+- Offices leaves the tour and gets its own tab in the bottom bar. **Until that tab exists (Stage 4), the Offices door stays on the tour**, so members can still reach their offices.
+
+### Tour doors
+- Pray, My 20, Events, Groups, Serve, Transport, Feedback. **Each porch switches doors on or off.**
+- Radio, Clinic and Call are hidden (on hold). Feedback is back on the tour in the Clinic's place.
+
+### Public porch (Stage 6)
+- **Only porches post** (an admin posts on behalf of the porch), and only once the porch is **approved (verified)** by the platform owner.
+- Members of any porch can **follow** porches and **react** (Love, Like, Touching, Deep). **No comments or replies.**
+- To post publicly you must start a porch first.
+- Sharing a public post into a private porch shares a **link**. Private content never goes public automatically.
+
+### Branches (Stage 7)
+- Every branch is a **full porch** with its own members, admins, offices and private feed.
+- When starting a porch, "This is a branch" asks to link to a main porch. **The main porch approves.**
+- The main porch's page lists its branches, and its public posts reach everyone who follows it.
+- The main porch **cannot** see inside a branch's private porch, messages, offices or members. A branch can unlink at any time.
+
+### Joining and starting (Stage 5)
+- Welcome screen (`Main.dc.html`): **Join your church's porch** with an **invite code**, **Start a porch**, or **Sign in**.
+- Start a porch (`StartPorch.dc.html`), in 3 steps: type, name, town and country, and "This is a branch". It waits for platform-owner approval before it can post publicly.
+
+### One-to-one calls (Stage 8)
+- Voice and video, **only between members of the same porch**, phone to phone.
+- Today's calls use the creator's own servers (porchbook-calls.onrender.com, Firebase and a relay). JT's version needs **its own free setup**. Before building, find the free option, explain it in plain words and wait for JT's OK (section 10 explains the catch).
+
+### Look and design (Stage 4)
+- Follow `design-reference/`, one screen at a time.
+- **Bottom bar:** Porch, Tour, Offices, Read, Chat. **Top of the Porch screen:** a "My porch / Public porch" switch. **Your own picture** in the top bar opens your profile.
+- **Keep:** Fraunces and Source Sans 3, rounded cards, tap areas of 44 px or more, clear labels.
+- **Drop:** heavy textures, 3D buttons, the crowded header.
+- **Six themes**, chosen by each porch admin. Only colours change. Built as **one set of colour settings that every screen reads from**, so a new theme is one more row. Phaneroo uses **Porch Evening**. Dawn, Dusk and Night still work on top. All six themes were checked: every text and button colour pair passes the 4.5:1 contrast rule (the lowest is 4.9:1, Crimson Grace's red on its cards).
+
+---
+
+## 7. Phaneroo-specific things and the porch setting each becomes
 
 Phaneroo's current values become its settings, so nothing changes for Phaneroo.
 
-| What | Where it is today | Becomes |
+| What | Where today | Becomes |
 |---|---|---|
-| "Property of Phaneroo Ministries Mbarara" | Under every page, the welcome phone, the manual, account book and report book | **Church full name** |
-| "Phaneroo" / "MBARARA" lettering | The reading sheet header, the manual's opening, the serve form | **Church name** and **branch / town** |
-| Logo and butterfly mark (`mark.png`, the butterfly on books) | Header, book covers, icons | **Church logo**. The app icon stays Porchbook (see section 9) |
-| Orange #f8a018 and green #90c840 | The rulebook and styles | **Church colours** ⚠️ This changes porchbook-state.md, see section 9 |
-| The porch photograph, header photo, covers, door, wall and more | Already editable by the founder, but one per app | **Per church** (section 4, "looks") |
-| Welcome wording, door names, room names and other words | Already editable through "Edit words", one set per app | **Per church wording**, with today's words as Phaneroo's |
-| **The 8 offices** (Pastor, H.O.O, Administrator, H.O.F, Communications, Missions and outreach, Centre Coordination, Pastoral Support) and their sub-parts | Written into the code (`src/lib/porch/offices.ts`) | **Church office list**, which each church edits. Phaneroo starts with these 8 |
-| Office phone line "0200998801" (+256 200 998801) | Offices page | **Church contact / help numbers** |
-| **Daily devotional from phaneroo.org** (their website's devotional category, with its daily picture) | `devotion-page.server.ts` reads only phaneroo.org | **Devotional source**: none, a WordPress site and category, or typed in by admins. Phaneroo keeps phaneroo.org |
-| Runyankore and Luganda translations (Phaneroo's own copy, else Sunbird machine translation) | Devotional reader and voice box | **Church languages**. Phaneroo: English, Runyankore, Luganda |
-| "Apostle Grace Lubega" and "A Phaneroo pastor" | Clinic answers and Clinic PDFs, devotional voice sample | **Church leader's name** and **"our pastors" wording** |
-| "Phaneroo is live now", Thursday and Sunday service labels | Radio / live YouTube announcement | **Church live label**, **service days** and **YouTube channel** |
-| Notebook stamp "PHANEROO 123" (service numbers; older notes say "MasterClass") | Notebook | **Service-number label** (e.g. "Service", "Phaneroo") |
-| **Kampala time** (fixed at UTC+3 in **17 files**, plus "Africa/Kampala" in others) | Devotional day, clinic months, radio schedule, events, transport, presence, clocks | **Church time zone**. This is the riskiest swap, see section 9 |
-| "Uganda time" clock on the radio | Radio face | **Church time-zone name** |
-| **Uganda +256** as the default phone code | My 20, serve form, transport | **Church default country code** |
-| "From Uganda" / "abroad", "Coming from, e.g. Mbarara" | Event travel form | **Home country** and **example town** |
-| "31st Night of Prayer" | My 20 heading and PDF, transport board | **Current My 20 event name** (admins change it each time) |
-| **Manifest centres** | My 20 and the complaints helper | **Church centres list** (or turned off) |
-| Transport divisions, pickup points, transport phone | Transport | Already data; becomes **per church** |
-| "Global High School Grounds, Mbarara" induction venue | Serve form confirmation | **Serve induction venue** |
-| "Payment to Phaneroo Ministries' account…" | Events | **Church payment note** |
-| "e.g. Phaneroo Anniversary 2026" | Transport team form | Neutral example, e.g. "e.g. Church anniversary" |
-| The user manual (5 short chapters) | Manual book | Platform manual plus a **church welcome chapter** |
-| Privacy page | `/privacy` | Platform privacy page, plus **each church's contact** |
-| PorchGuy and PorchWay (videos, events, voice) | `/porchguy`, `/city` | Content **per church**, or a platform feature (your call) |
-| Radio station (programmes, jingles, storage bucket "porchbook-radio") | Radio | **Per church**, or shared (your call, section 9) |
-| Site address `porchbook.vercel.app` used for links | Several server files | Platform setting (one address for all) |
-| Android app `app.porch.team`, name "Porchbook" | Android folder (not touched) | Stays one app for all churches. Each church's logo shows inside it |
-| "Phaneroo" in the AI helper's instructions | PorchGuy, clinic, nuggets (to check in each step) | **Church name** |
+| "Property of Phaneroo Ministries Mbarara" | Under every page, the welcome phone, the manual, account and report books | **Porch full name** |
+| "Phaneroo" / "MBARARA" lettering | Reading sheet, manual opening, serve form | **Porch name** and **town** |
+| Logo and butterfly mark | Header, book covers | **Porch logo** (initials in a circle until a logo is added, as in the designs) |
+| Orange #f8a018, green #90c840 | Rulebook and styles | **Theme**: Phaneroo = Porch Evening (same orange and green) |
+| The 8 offices and their parts | `src/lib/porch/offices.ts` | **Porch offices**, which each porch edits |
+| The office actions | Office pages | **Office actions** per office (`office_actions`) |
+| Office phone "0200998801" (+256) | Offices page | **Porch help and contact numbers** |
+| Daily devotional from **phaneroo.org** (with its picture) | `devotion-page.server.ts` | **Devotional source**: none, a website (WordPress), or typed by admins. Phaneroo keeps phaneroo.org |
+| Phaneroo's own Runyankore and Luganda devotional | Devotional reader | **Porch languages** (machine translation on hold) |
+| "Apostle Grace Lubega", "A Phaneroo pastor" | Clinic (on hold), voice sample (on hold) | **Leader's name**, needed when those return |
+| "Phaneroo is live now", Thursday and Sunday | Radio (on hold) | **Live label, service days, YouTube channel**, needed when the radio returns |
+| Notebook stamp "PHANEROO 123" | Notebook | **Service-number label** |
+| **Kampala time**, added by hand as "+3 hours" in **17 files**, plus "Africa/Kampala" elsewhere | Devotional day, events, transport, presence, clocks | **Porch time zone** (risky, see section 10) |
+| **Uganda +256** default phone code | My 20, serve form, transport | **Porch country code** |
+| "From Uganda", "e.g. Mbarara" | Event travel form | **Home country**, **example town** |
+| "31st Night of Prayer" | My 20 and its PDF, transport board | **Current My 20 event name** |
+| Manifest centres | My 20, complaints helper | **Porch centres list** (or off) |
+| "Global High School Grounds, Mbarara" | Serve form | **Serve induction venue** |
+| "Payment to Phaneroo Ministries' account…" | Events | **Payment note** |
+| "e.g. Phaneroo Anniversary 2026" | Transport team form | Neutral example |
+| User manual (5 chapters) | Manual book | Platform manual + **porch welcome chapter** |
+| Privacy page | `/privacy` | Platform privacy page + **porch contact** |
+| Wording ("Edit words") | One set for the whole app | **Per porch** |
+| Tour doors | Fixed in code | **Doors on/off per porch** |
+| `porchbook.vercel.app` in links | Server files | Platform setting |
 
 ---
 
-## 6. The steps, in a safe order
+## 8. The stages, in order (stop after each)
 
-Each step is small, ends with something you can see or test, and is saved as its own undo point. **Phaneroo must look and behave exactly the same after every step.** We prove that by retaking the pictures (`node take-screens.mjs after`) and comparing them with `before/`.
+After every stage: git undo point, CHANGES.md, "after" pictures where screens changed, the **two-church test** (from Stage 2 on), then stop for JT.
 
-### Step 0: Groundwork (no app changes for users)
-- **Make the local database keep its data.** On your computer, everything is held in memory and wiped every time the app restarts. You can't test churches if they disappear. Easiest fix: let the local database save into a folder. This is a one-line, local-only change.
-- **Write the two-church test** (section 7) so it's ready from the first real step.
-- **Back up the live database** before *any* step goes live. Every step is first tried on a copy of the real data.
+1. **Update the plan and hide on-hold features.** ✅ Done.
+2. **Foundation**
+   - The local database **keeps its data** between restarts. Today it's held in memory and wiped every time; the fix is to save it in a folder on this computer.
+   - Write the **two-church test**.
+   - Add `porches`, `porch_settings`, `porch_members` and `platform_owners`. Phaneroo becomes porch 1, and every existing account joins it.
+   - **Admins instead of the founder**, and remove "first account becomes founder".
+   - Test: Phaneroo looks identical (pictures), the admin keeps every tool, a member gets none, and a second admin can be added.
+3. **Porch tags, one area at a time**: feed → chat → people and "on the porch now" → offices → tour doors → read shelf → notifications. Two-church test after each area.
+4. **Themes and the new design**, one screen at a time, following `design-reference/`. The colour settings come first, then Porch, Tour, Offices (with its new tab and office actions), Chat, Read, Presence, Conversation and profile. Phaneroo uses Porch Evening.
+5. **Joining, leaving and starting a porch**, with invite codes, the 3-step Start a porch screen, and platform-owner approval.
+6. **Public porch**: porch pages, following, public posts and reactions (separate tables).
+7. **Branches**: link requests, approval by the main porch, the branch list on the porch page, unlinking.
+8. **One-to-one calls** on a free setup. JT approves the setup first.
 
-### Step 1: Add churches, put everyone in Phaneroo
-- Add the `churches`, `church_settings`, `church_members` and `platform_owners` tables.
-- Create Phaneroo as church 1, with today's values as its settings. Every existing account becomes a member of church 1.
-- **Test:** the app looks identical (compare pictures), and every existing account shows up as a Phaneroo member.
+### The two-church test (from Stage 2)
+A script sets up **Porch A** (Ann the admin, and Abe) and **Porch B** (Ben). In Porch A it creates a post, comment, reaction, chat message, group, office request and message, event, transport request, My 20 list, complaint, shelf book and notification. Then, as **Ben**, it checks that:
+1. Ben's feed, chat list, groups, offices, people list, "on the porch now", events and notifications show **nothing** from A.
+2. Opening A's post, group, conversation, person or office directly by its number or address is **refused**.
+3. Ben **cannot** react to, reply to, message, call or invite anyone in A.
+4. Admin powers in B do **nothing** to A, and A's admin can't change B's settings or theme.
+5. *(From Stage 6)* A's **private** posts never appear on the public porch, and Ben can react to A's **public** posts but not comment.
+6. *(From Stage 7)* A main porch can't see into its branch.
 
-### Step 2: Admins instead of the founder
-- Phaneroo's founder becomes its first admin, and you become platform owner.
-- Replace the founder checks, a few files at a time, with the two shared checks (section 3).
-- Remove "first account becomes founder".
-- **Test:** the admin sees every tool they saw before; a normal member sees none; a second admin can be added and gets the tools; the platform owner sees the platform tools.
-
-### Step 3: Church tags, one area at a time
-Do **one area per step**, in this order (simplest and most important first):
-1. Feed (posts, comments, reactions)
-2. Chat and calls
-3. Groups
-4. Offices
-5. Tour doors (Events, Serve, Transport, My 20, Clinic, Pray, complaints)
-6. Read shelf and shared reading
-7. Devotional and translations
-8. Radio, nuggets, PorchGuy
-9. Looks and wording
-10. Notifications, presence, announcements
-
-For each area: add the tag, set every existing row to Phaneroo, make every read filter by the viewer's church and every save stamp it, then run the two-church test.
-
-### Step 4: Move the hard-coded Phaneroo items into church settings
-- Swap each item in section 5 for the church setting, a few at a time.
-- **Test:** Phaneroo's pictures are identical, and a test church shows its own name, offices, time zone and phone code.
-
-### Step 5: Joining, leaving and moving
-- Each church gets **its own invite link or code** (the existing Invite page grows into this).
-- Sign-up asks for a church invite code, or offers "start a new church".
-- **Leave and join another** from the name menu. What moves and what stays is in section 9.
-- **Test:** a person moves from church A to church B. Afterwards they see only B, and A's members no longer see them as a current member.
-
-### Step 6: Creating a new church
-- "Start a church porch" form: name, town, country, time zone and contact person. It goes to the platform owner to approve.
-- Once approved, the person who asked becomes its first admin and gets a short setup guide (logo, photo, colours, offices, doors, devotional source).
-- **Test:** create, approve and set up a church from start to finish.
-
-### Step 7: Per-church looks on the phone
-- The phone remembers looks (porch photo, covers, shelf) so they appear instantly. Those saved looks must be labelled per church, or a person who changes church would briefly see the old church's photo.
-- The rulebook says the offline shell cache is `porch-shell-v1` and not to change it unless broken. Check that it holds no church-specific content. If it does, ask before touching it.
-
-### Step 8: Platform owner page
-- A simple page for you: churches waiting for approval, active churches, member counts, usage and costs, and suspending a church.
-
-### Later: the Porchway (section 8)
+**Pass = zero leaks.** A small code check also lists every database read or write on a porch table that is missing the porch tag. That list must be empty.
 
 ---
 
-## 7. How we test that one church can never see another church's data
+## 9. On hold (hidden in Stage 1, code kept)
 
-### The two-church test (automatic, run after every step)
-A script will set up:
-- **Church A** with members Ann (admin) and Abe.
-- **Church B** with member Ben.
+All switches live in one file: **`src/lib/porch/on-hold.ts`**. Changing a `true` to `false` brings a feature back.
 
-In Church A it creates a post, a comment, a reaction, a chat message between Ann and Abe, a group, an office message, an event, a transport request, a My 20 list, a clinic question, a complaint, a shelf book and a notification.
-
-Then, signed in as **Ben**, it checks that:
-1. Ben's feed, chat list, groups, offices, people list, events, notifications and "who's on the porch" contain **nothing** from Church A.
-2. **Guessing** doesn't work: opening Church A's post, group, conversation, person or office directly by its number or address is **refused**, not just hidden.
-3. Ben **cannot** react to, reply to, message, call or invite anyone in Church A.
-4. Ben's admin powers (once he is made admin of B) do **nothing** to Church A.
-5. Church A's admin cannot see or change Church B's settings, looks or wording.
-
-**Pass = zero leaks.** Any leak stops the step until it's fixed.
-
-### A code check (automatic)
-A small script that lists every database read or write touching a church table **without** a church filter. That list must be empty before a step is finished.
-
-### Optional stronger lock, for later
-The live database (Neon, which is Postgres) can enforce "only this church's rows" itself, even if the app has a mistake ("row-level security"). It's more complex to set up, so I'd add it once the steps above are done, as a second lock.
+| Feature | What was hidden |
+|---|---|
+| **Radio** (studio, control room, jingles, nuggets, listening) | Radio door on the tour, the radio slide in the post box, the radio card on computers, the on-air bar, radio news, the nugget link, the `/control-room` page (old links go to the porch). The radio can't be switched on from anywhere |
+| **PorchGuy** (AI helper) | The PorchGuy button in the header, the `/porchguy` page (old links go to the porch), "Videos on the porch guy's screen" in Events and its mention in the Events intro |
+| **PorchWay** (driving game) | The `/city` page (old links go to the porch) |
+| **Group calls** (incl. open porch calls) | The Call door on the tour. One-to-one calls (from a person's page or chat) stay |
+| **Clinic** | The Clinic door. Feedback takes its place again |
+| **Devotional voice** (ElevenLabs, Azure, Google) | The "Listen" button on the devotional, and the founder's AI-credit warning strip |
+| **Machine translation** (Sunbird) | The devotional no longer asks Sunbird. Phaneroo's own Runyankore and Luganda, or a copy typed in by an admin, still show |
 
 ---
 
-## 8. Leaving room for the Porchway (not built now)
+## 10. Risks and open questions
 
-So that adding a public side later is safe and easy:
-- **Keep it in separate tables.** Public church-page posts go into their own tables (e.g. church pages, public posts, follows, public reactions and shares), **never** into today's private `posts` table with a "public" switch. That way a mistake in a switch can never make a private post public.
-- **Following is not belonging.** A person belongs to one church porch but can follow many church pages. `church_members` and a future `follows` table stay separate.
-- **Verification.** The `churches` table gets a "verified" mark from day one, set only by the platform owner.
-- **Sharing.** A share from a public page into a private porch copies a link. It never moves private content out.
-- **Moderation.** Public content needs reporting and take-down tools from the platform owner. Plan for this before launch.
+### Questions for JT
+- **Q1. Admins of artist or ministry porches.** "One account belongs to exactly one porch" plus "only porches post publicly" means a gospel artist who attends a church must choose: be a member of their church's porch, *or* run their artist porch. *Suggestion:* a person **belongs** to one porch but can also be an **admin of the public page** of up to a few others.
+- **Q2. Things the brief doesn't mention.** Rhemaclip (YouTube clips in the post box), "Edit words", the old Themes menu (glass top bar, leather bars and so on), button sounds, and "Keep Porchbook running". *Suggestion:* keep Rhemaclip, Edit words and sounds; replace the old Themes menu with the six new themes in Stage 4.
+- **Q3. The porch photograph and textures.** The designs use plain theme colours with no porch photo, and the brief says to drop heavy textures. Do the porch photo, header photo, covers, carpet, ceiling and other picture settings go (hidden like on-hold features), or stay as an option?
+- **Q4. Night on the light theme.** Night "blacks the porch to about 96 percent". On Morning Light (a light theme) that would turn it nearly black. Should Night on a light theme just dim slightly instead?
+- **Q5. Bible versions.** The app includes the **Amplified (AMPC)** and **The Message (MSG)** Bibles (`bibles-private/`). Both are copyrighted. The brief limits new churches to free versions. Was Phaneroo given permission to use them? If not, it may be safer to hide them for Phaneroo too and keep KJV and other free versions.
 
----
-
-## 9. Risks, open questions, and things you may have missed
-
-### Questions for you or the creator
-1. **The rulebook (porchbook-state.md) says the whole porch is fixed**: orange #f8a018, green #90c840, Fraunces and Source Sans 3, *the* porch photograph, a fixed set of doors. Per-church colours, photos and doors **break those rules**. ⚠️ My suggestion: the rulebook becomes "Phaneroo's look, and the default for new churches". Fonts, glass cards and layout stay the same everywhere, so Porchbook still feels like Porchbook, and only colours, logo, photo, doors and wording change per church. This needs your OK, and probably the creator's.
-2. **Ownership.** Every page says "Property of Phaneroo Ministries Mbarara", and the code was written by your friend for them. Before Porchbook becomes a platform you run for other churches, agree in writing with the creator and with Phaneroo who owns what, and whether Phaneroo is happy to be church number one.
-3. **The doors on the tour don't match the rulebook.** The rulebook lists a Feedback door. The app shows **Pray, My 20, Events, Radio, Serve, Transport, Groups, Offices, Clinic, Call** (see the `before/` pictures). The rulebook may be out of date. Worth checking with the creator before doors become per church.
-4. **The radio:** one Porchbook radio for everyone, or a station per church? A station per church costs storage and setup for each. You could start shared and add per-church later.
-5. **PorchGuy and PorchWay:** platform features (same for everyone) or per church?
-6. **When someone moves church:** I suggest their posts, comments and messages **stay with the old church** (shown under their name as a former member), their personal notebook and Bible progress **go with them**, and their roles (admin, office head, group leader) **end**. Is that right?
-7. **Can the platform owner read private messages?** I recommend **no**, even for you. It protects you and the churches. Complaints and reports would go to church admins first.
+### Things that may not be free
+- **Putting JT's version online** isn't one of the 8 stages. Free options exist, but each has limits:
+  - **Vercel's free plan** is for non-commercial personal use only.
+  - The **Neon free database** has small storage (around 0.5 GB).
+  - **Free photo and file storage** is small, and some providers (for example Cloudflare R2) ask for a payment card even on the free tier.
+  
+  This needs a decision before real churches use it.
+- **Photos and files** (post photos, profile pictures, office files, PDFs) need storage. Today they use the creator's paid-tier services, so they don't work locally. They need a free home in Stage 3 or 4: the database or the computer's disk while testing, then a free online store.
+- **Calls (Stage 8).** Phone-to-phone calls are free when both phones can reach each other directly. On many mobile networks they can't, and the call then needs a "relay" (TURN) server. Good relays usually cost money, and free ones have small limits. Expect some calls on mobile data to fail on a free-only setup.
+- **Alerts** (push notifications) are free.
+- **The Android app** belongs to the creator (`app.porch.team`), and we don't touch the `android/` folder. JT's version would start as an installable web app (Add to Home Screen).
 
 ### Risks
-- **Leaks between churches.** This is the biggest risk, because of the ~600 database places. Handled by small steps, the two-church test and the code check (section 7).
-- **The live data.** Every step changes the real Phaneroo database. Always back up first, try it on a copy, and keep the undo points.
-- **Time zones.** 17 files assume Uganda time (UTC+3) by adding 3 hours by hand. A church in another time zone would get the wrong devotional day, radio schedule and event times. This is fiddly and needs careful testing.
-- **"Send to everyone" features.** Notifications, the radio, announcements and SMS (mission SMS) often go to *all* members. Each must become "all members **of this church**".
-- **Background jobs.** The radio worker, nugget worker, Bible worker and the watchdog (`.github/workflows`) currently work for "the" porch. They'll need to loop over churches.
-- **Costs grow per church.** AI (PorchGuy, translations), radio storage, file uploads, calls (porchbook-calls.onrender.com, which is outside this code) and texts. You'll need limits per church and a decision on who pays.
-- **Calls run on outside services.** The calls relay and Firebase live outside this code. They must also only connect people in the same church. That may need the creator's help.
-- **One Android app for all.** The installed app's name and icon will say Porchbook, not each church's name. Separate apps per church would be a big extra job.
-- **Secrets in the database.** The radio storage keys are saved in the database today. They should be platform-owner only, ideally moved out of the database.
-- **The calls script line** is in the rulebook but not in the code (already noted for the creator).
-- **Spam churches.** Without approval, anyone could create fake churches. That's why the platform owner approves new ones (Step 6).
-- **The law.** Uganda's Data Protection and Privacy Act (2019) applies to personal data. Once you host several churches' members, you are likely responsible for that data as the platform. Get advice before opening to other churches, and update the privacy page.
-- **Children and safeguarding.** If young people use church porches, admins need reporting and blocking tools that work within their church.
+- **Leaks between porches.** This is the biggest risk (~600 database places). Handled by doing one area at a time, the two-church test and the missing-tag check.
+- **Time zones.** 17 files add "+3 hours" by hand for Kampala. A porch elsewhere would get the wrong devotional day, event times and clocks. It needs careful testing.
+- **"Send to everyone"** (announcements, alerts, My 20 SMS) must become "everyone **in this porch**".
+- **Background jobs** (`.github/workflows`, workers) assume one porch. Most belong to on-hold features, but check each before switching anything back on.
+- **On-hold features still have untagged tables.** They must be tagged before being switched back on (section 5).
+- **Offices door.** It leaves the tour only when the Offices tab exists (Stage 4).
+- **The two-church test doesn't exist yet**, so Stage 1 couldn't run it. It's built in Stage 2.
+- **Ownership.** The code was written by the creator for Phaneroo, and every page says "Property of Phaneroo Ministries Mbarara". Agree in writing with the creator and Phaneroo before offering JT's version to other churches.
+- **The law and safety.** Uganda's Data Protection and Privacy Act (2019) applies once JT hosts several porches' members. Porches need reporting and blocking tools, especially where young people are members.
+- **The calls script line** in the rulebook isn't in the code (already noted for the creator). It's not needed for JT's version, which will have its own calls setup.
 
 ### Size
-This is a big change: probably **several weeks of careful work** in small steps, not days. The good news is that Phaneroo keeps working the whole time, because every step keeps it looking and behaving the same.
+This is several weeks of careful work in small stages. Phaneroo keeps working the same way after every stage.

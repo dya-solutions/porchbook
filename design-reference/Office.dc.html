@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Office of the Pastor</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;family=Source+Sans+3:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.scr{width:390px;height:844px;box-sizing:border-box;background:#0E120F;color:#F4F1E8;font-family:'Source Sans 3',sans-serif;display:flex;flex-direction:column;overflow:hidden}
+.ttl{font-family:Fraunces,serif;font-weight:600;margin:0}
+.muted{color:#A3AC9F}
+.top{padding:18px 20px 12px;display:flex;align-items:center;gap:12px}
+.logo{width:42px;height:42px;border-radius:13px;background:#90C840;color:#10180A;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.iconbtn{width:44px;height:44px;border-radius:22px;border:1px solid rgba(244,241,232,.14);background:transparent;color:#F4F1E8;display:flex;align-items:center;justify-content:center;flex:none;padding:0;text-decoration:none}
+.card{background:#171D18;border:1px solid rgba(244,241,232,.08);border-radius:20px}
+.chip{height:36px;padding:0 15px;border-radius:18px;border:1px solid rgba(244,241,232,.16);background:transparent;color:#F4F1E8;font:600 14px 'Source Sans 3',sans-serif;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.chip.on{background:#F8A018;color:#1A1205;border-color:#F8A018}
+.body{flex:1;overflow:hidden;padding:4px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.nav{height:78px;flex:none;border-top:1px solid rgba(244,241,232,.08);background:#121713;display:flex;justify-content:space-around;align-items:flex-start;padding-top:8px;box-sizing:border-box}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:4px;color:#A3AC9F;text-decoration:none;font-size:12px;font-weight:600;min-width:60px;min-height:48px;justify-content:center}
+.nav a.on{color:#F8A018}
+.av{width:40px;height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex:none}
+.react{height:36px;padding:0 12px;border-radius:18px;background:#1F2620;border:none;color:#F4F1E8;font:600 13px 'Source Sans 3',sans-serif;display:flex;align-items:center;gap:6px}
+.seg{display:flex;background:#171D18;border-radius:14px;padding:4px;margin:0 16px 4px;flex:none}
+.seg a{flex:1;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:15px;color:#A3AC9F;text-decoration:none}
+.seg a.on{background:#2A332B;color:#F4F1E8}
+.row{display:flex;align-items:center;gap:12px}
+.sec{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#A3AC9F;margin:6px 4px 0}
+.btn{height:52px;border-radius:16px;border:none;background:#F8A018;color:#1A1205;font:700 16px 'Source Sans 3',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn2{height:52px;border-radius:16px;border:1px solid rgba(244,241,232,.2);background:transparent;color:#F4F1E8;font:700 16px 'Source Sans 3',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.input{height:52px;box-sizing:border-box;width:100%;border-radius:14px;border:1px solid rgba(244,241,232,.18);background:#171D18;color:#F4F1E8;padding:0 16px;font:400 16px 'Source Sans 3',sans-serif}
+.lbl{font-size:14px;font-weight:600;color:#D8D5CC;margin:0 0 6px}
+.tag{font-size:12px;font-weight:700;padding:3px 9px;border-radius:10px}
+.listrow{display:flex;align-items:center;gap:14px;padding:14px 16px;text-decoration:none;color:#F4F1E8}
+a{color:#F8A018}a:hover{color:#FFC15A}
+</style>
+</helmet>
+<div class="scr">
+<header class="top"><a href="Offices.dc.html" class="iconbtn" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a><p class="muted" style="margin:0;font-size:15px;flex:1">Offices</p></header>
+<main class="body" style="gap:14px">
+<div class="row" style="gap:14px">
+<div style="width:60px;height:60px;border-radius:18px;background:rgba(144,200,64,.14);color:#90C840;display:flex;align-items:center;justify-content:center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M10 21v-4h4v4"/></svg></div>
+<div><h1 class="ttl" style="font-size:26px;line-height:1.1">Office of the Pastor</h1><p class="muted" style="margin:4px 0 0;font-size:14px">Replies usually within a day</p></div></div>
+<div class="card" style="overflow:hidden">
+<a href="OfficeThread.dc.html" class="listrow" style="border-bottom:1px solid rgba(244,241,232,.06)">
+<div style="width:42px;height:42px;border-radius:13px;background:#F8A01822;color:#F8A018;display:flex;align-items:center;justify-content:center;flex:none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c2 2 2 4 0 5-2-1-2-3 0-5z"/><path d="M9 10h6v11H9z"/></svg></div>
+<div style="flex:1"><p style="margin:0;font-weight:700;font-size:16px">Thank God with me</p><p class="muted" style="margin:2px 0 0;font-size:13px">Share a testimony or prayer request</p></div><div style="color:#A3AC9F"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></a>
+<a href="OfficeThread.dc.html" class="listrow" style="border-bottom:1px solid rgba(244,241,232,.06)">
+<div style="width:42px;height:42px;border-radius:13px;background:#90C84022;color:#90C840;display:flex;align-items:center;justify-content:center;flex:none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/></svg></div>
+<div style="flex:1"><p style="margin:0;font-weight:700;font-size:16px">Contact the pastor</p><p class="muted" style="margin:2px 0 0;font-size:13px">Send a private message</p></div><div style="color:#A3AC9F"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></a>
+<a href="OfficeThread.dc.html" class="listrow" style="border-bottom:1px solid rgba(244,241,232,.06)">
+<div style="width:42px;height:42px;border-radius:13px;background:#E8C25A22;color:#E8C25A;display:flex;align-items:center;justify-content:center;flex:none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div>
+<div style="flex:1"><p style="margin:0;font-weight:700;font-size:16px">Book an appointment</p><p class="muted" style="margin:2px 0 0;font-size:13px">Ask for a time to meet</p></div><div style="color:#A3AC9F"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></a>
+<a href="OfficeThread.dc.html" class="listrow" style="border-bottom:1px solid rgba(244,241,232,.06)">
+<div style="width:42px;height:42px;border-radius:13px;background:#90C84022;color:#90C840;display:flex;align-items:center;justify-content:center;flex:none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg></div>
+<div style="flex:1"><p style="margin:0;font-weight:700;font-size:16px">Weekly programme</p><p class="muted" style="margin:2px 0 0;font-size:13px">Services and meetings this week</p></div><div style="color:#A3AC9F"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></a>
+<a href="OfficeThread.dc.html" class="listrow"><div style="width:42px;height:42px;border-radius:13px;background:#C9A27A22;color:#C9A27A;display:flex;align-items:center;justify-content:center;flex:none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div><div style="flex:1"><p style="margin:0;font-weight:700;font-size:16px">Accountability</p><p class="muted" style="margin:2px 0 0;font-size:13px">Report back on an assignment</p></div><div style="color:#A3AC9F"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></a>
+</div>
+<p class="sec">Your requests</p>
+<a href="OfficeThread.dc.html" class="card listrow"><div style="flex:1"><p style="margin:0;font-weight:700;font-size:15px">Appointment request</p><p class="muted" style="margin:2px 0 0;font-size:13px">Sent Tuesday</p></div><span class="tag" style="background:rgba(144,200,64,.16);color:#90C840">Confirmed</span></a>
+</main>
+<nav class="nav" aria-label="Main"><a href="Porch.dc.html" class=""><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Porch</span></a><a href="Tour.dc.html" class=""><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><circle cx="15" cy="12" r="1"/></svg><span>Tour</span></a><a href="Offices.dc.html" class="on"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M10 21v-4h4v4"/></svg><span>Offices</span></a><a href="Read.dc.html" class=""><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/></svg><span>Read</span></a><a href="Chat.dc.html" class=""><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/></svg><span>Chat</span></a></nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

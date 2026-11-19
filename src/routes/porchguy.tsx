@@ -1,5 +1,6 @@
 import { EditWordsButton } from "@/components/porch/words";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { shown } from "@/lib/porch/on-hold";
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { useCovers } from "@/components/porch/covers";
 import { AppFrame } from "@/components/porch/frame";
@@ -19,6 +20,10 @@ const GUY_BG = "porchguy-bg";
 const GUY_BG_COLOURS = ["#000000", "#0f1a14", "#101827", "#1f1410", "#1a1024", "#2a2a2a"];
 
 export const Route = createFileRoute("/porchguy")({
+  // The PorchGuy is on hold (BUILD-BRIEF.md section 4): the page is kept but old links go to the porch.
+  beforeLoad: () => {
+    if (!shown("porchGuy")) throw redirect({ to: "/", search: { room: "all" } });
+  },
   validateSearch: (search: Record<string, unknown>) =>
     ({
       film: typeof search.film === "string" ? search.film : "",

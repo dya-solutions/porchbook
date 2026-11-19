@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { shown } from "@/lib/porch/on-hold";
 import { getSql, type Sql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 
@@ -113,7 +114,8 @@ export const devotionRunyankore = createServerFn({ method: "POST" })
     let source: Source = "phaneroo";
     if (!html) {
       const settings = await sql.query<{ sunbird_key: string }>("select sunbird_key from devotion_voice_settings where id = 1").catch(() => []);
-      const token = settings[0]?.sunbird_key ?? "";
+      // While machine translation is on hold, only Phaneroo's own (or a typed-in) copy is offered.
+      const token = shown("machineTranslation") ? (settings[0]?.sunbird_key ?? "") : "";
       if (!token) return { ok: false as const, error: `Phaneroo hasn't published today's devotional in ${TONGUE_NAME[data.lang]} yet.` };
       try {
         html = await machineTranslate(token, englishOf(sheet), data.lang);

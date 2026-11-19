@@ -2,6 +2,7 @@ import { AskNews, RideNews } from "@/components/porch/transport-team";
 import { ThemesSheet } from "@/components/porch/themes";
 import { playButtonSound } from "@/lib/porch/button-sound-play";
 import { RadioNews } from "@/components/porch/radio-news";
+import { shown as featureShown } from "@/lib/porch/on-hold";
 import { W, WordsEditor } from "@/components/porch/words";
 import { capturePlace, finishRestore, keepForReload, keepInMemory, onCall, placeToRestore, restoreDrafts, scroller } from "@/lib/porch/place";
 import { guardStart, toast, useBackLayer } from "@/lib/porch/back-stack";
@@ -571,7 +572,7 @@ function FounderDesk({ user, home }: { user: AppUser; home: boolean }) {
   }, []);
 
   // The founder also gets a warning strip when the AI or the devotional voice runs low.
-  const strip = isFounder ? <CreditWarningStrip /> : null;
+  const strip = isFounder && featureShown("devotionVoice") ? <CreditWarningStrip /> : null;
   if (!(home && isFounder && shown)) return strip;
 
   async function send(event: FormEvent) {
@@ -943,7 +944,7 @@ export function AppFrame({
       className={`porch-shell flex h-dvh flex-col overflow-hidden${pathname === "/calls" ? " call-pass" : ""}`}
       style={{ ["--book-dock" as string]: pathname === "/" || pathname === "/next" || pathname === "/read" ? "calc(6.5rem + env(safe-area-inset-bottom))" : "0px" }}
     >
-      <OnAirBar />
+      {featureShown("radio") ? <OnAirBar /> : null}
       <CallCard />
       <HeadMeasure>
       <header className={`crowd-head fixed inset-x-0 top-0 z-30 max-w-full ${pathname === "/next" ? "bg-black" : "border-b border-line bg-paper"}`}>
@@ -961,6 +962,7 @@ export function AppFrame({
           </div>
           <div className="porch-nav mt-2">
             <HomeTourSwitch side={pathname === "/next" ? "tour" : pathname === "/read" ? "read" : pathname === "/" ? "home" : "away"} />
+            {featureShown("porchGuy") ? (
             <Link
               to="/porchguy"
               search={{ film: "", worship: "" }}
@@ -970,6 +972,7 @@ export function AppFrame({
             >
               PorchGuy
             </Link>
+            ) : null}
           </div>
         </div>
       </header>
@@ -1033,8 +1036,8 @@ export function AppFrame({
           {pathname === "/calls" ? null : <TroubleBar />}
           {pathname === "/calls" ? null : <RideNews />}
           {pathname === "/calls" ? null : <AskNews />}
-          {pathname === "/calls" ? null : <RadioNews />}
-          <NuggetLink />
+          {pathname === "/calls" || !featureShown("radio") ? null : <RadioNews />}
+          {featureShown("radio") ? <NuggetLink /> : null}
           <p className="porch-property">Property of Phaneroo Ministries Mbarara</p>
           <WordsEditor />
           <KeepRunning />

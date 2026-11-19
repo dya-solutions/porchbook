@@ -13,6 +13,7 @@ import { downloadMyTwenty, downloadOwnTwenty, loadMyTwenty, resetMyTwenty, saveM
 import { playButtonSound } from "@/lib/porch/button-sound-play";
 import { ServeButton } from "@/components/porch/serve-form";
 import { FmButton } from "@/components/porch/fm";
+import { shown } from "@/lib/porch/on-hold";
 import { EventsHome } from "@/components/porch/events-home";
 import { Fault } from "@/components/porch/trouble";
 import { downloadTransport, loadTransport, saveTransport, saveTransportStage } from "@/lib/porch/transport";
@@ -599,7 +600,8 @@ function FeedbackButton() {
 /** The Clinic takes Feedback's place on the tour (only the founder sees it until it's launched). Feedback lives in the name menu and with the porch guy. */
 function ClinicOrFeedback() {
   // The Clinic is open to everyone: it always has Feedback's place (no flash of the old key).
-  return <ClinicButton />;
+  // While the Clinic is on hold, Feedback has its place back.
+  return shown("clinic") ? <ClinicButton /> : <FeedbackButton />;
 }
 
 function ClinicButton() {
@@ -943,13 +945,13 @@ function MyTwenty() {
             <W k="tour.my20">My 20</W>
           </button>
           <EventsDoor />
-          <FmButton />
+          {shown("radio") ? <FmButton /> : null}
           <ServeButton />
           <TransportButton />
           <DoorButton mode="groups" label="Groups" />
           <DoorButton mode="offices" label="Offices" />
           <ClinicOrFeedback />
-          <CallButton />
+          {shown("groupCalls") ? <CallButton /> : null}
         </div>
       {/* On phones, brightness is the ☀ by "on the porch"; computers keep the roller here. */}
       <div className="hidden lg:block">
@@ -968,7 +970,7 @@ function MyTwenty() {
           </div>
         </TourSlot>
       ) : null}
-      {mode === "clinic" ? (
+      {mode === "clinic" && shown("clinic") ? (
         <TourSlot>
           <ClinicHome />
         </TourSlot>

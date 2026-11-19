@@ -3,13 +3,14 @@ import { PorchPanel } from "@/components/porch/porch-online";
 import { RhemaChip } from "@/components/porch/rhema";
 import { tuneIn, useFm } from "@/lib/porch/fm-player";
 import { toggleTourMode } from "@/lib/porch/tour-mode";
+import { shown } from "@/lib/porch/on-hold";
 
 /** The right-hand column on computers: who's on the porch, the radio, and today's Rhemaclip. */
 export function PcSide() {
   return (
     <div className="pc-side">
       <PorchPanel />
-      <RadioCard />
+      {shown("radio") ? <RadioCard /> : null}
       <section className="pc-card" aria-label="Rhemaclip">
         <p className="pc-lab">Rhemaclip</p>
         <RhemaChip className="pc-rhema" />
