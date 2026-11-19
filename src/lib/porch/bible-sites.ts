@@ -22,7 +22,7 @@ export const getBibleSites = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const sql = await getSql();
     const rows = await sql
-      .query<{ id: number; label: string; url: string; start_text: string | null }>("select id, label, url, start_text from bible_sites order by sort asc, id asc")
+      .query<{ id: number; label: string; url: string; start_text: string | null }>("select id, label, url, start_text from bible_sites where porch_id = my_porch($1) order by sort asc, id asc", [context.userId])
       .catch(() => []);
     return { ok: true as const, sites: rows.map((r) => ({ id: Number(r.id), label: r.label, url: r.url, startText: r.start_text ?? "" })), canEdit: await founder(sql, context.userId) };
   });
@@ -41,9 +41,10 @@ export const saveBibleSites = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only the founder can choose the versions." };
-    await sql.query("delete from bible_sites");
+    // Only this church's list is replaced.
+    await sql.query("delete from bible_sites where porch_id = my_porch($1)", [context.userId]);
     let sort = 0;
-    for (const s of data.sites) await sql.query("insert into bible_sites (label, url, sort, start_text) values ($1, $2, $3, $4)", [s.label, s.url, sort++, s.startText || null]);
+    for (const s of data.sites) await sql.query("insert into bible_sites (porch_id, label, url, sort, start_text) values (my_porch($5), $1, $2, $3, $4)", [s.label, s.url, sort++, s.startText || null, context.userId]);
     return { ok: true as const, count: data.sites.length };
   });
 
@@ -57,7 +58,7 @@ export const setBibleSiteStart = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only the founder can set where a version starts." };
-    await sql.query("update bible_sites set start_text = $2, updated_at = now() where id = $1", [data.id, data.text || null]);
+    await sql.query("update bible_sites set start_text = $2, updated_at = now() where id = $1 and porch_id = my_porch($3)", [data.id, data.text || null, context.userId]);
     return { ok: true as const };
   });
 

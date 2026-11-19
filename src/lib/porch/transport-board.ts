@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { porchTables } from "@/lib/porch/porch-foundation";
 import { getSql, type Sql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { TRANSPORT_PHONE } from "@/lib/porch/transport-points";
@@ -112,14 +113,26 @@ export async function ensureBoard(sql: Sql) {
     );
     await sql.query("update transport_locations set event_id = $1 where event_id = 0", [Number(made[0].id)]);
   }
+  await porchTables(sql, { own: ["transport_events"] });
   ready = true;
 }
 
-export async function currentEvent(sql: Sql): Promise<TransportEvent> {
+/**
+ * The current transport event of the viewer's own church porch (Stage 3b). A church without one
+ * gets an empty one to fill in. (The PorchGuy, on hold, passes no viewer and reads Phaneroo's.)
+ */
+export async function currentEvent(sql: Sql, viewer: string): Promise<TransportEvent> {
   await ensureBoard(sql);
-  const rows = await sql.query<{ id: number; name: string; event_date: string; pickup: string; gates: string; phone: string }>(
-    "select id, name, event_date, pickup, gates, phone from transport_events order by id desc limit 1",
-  );
+  const read = () =>
+    sql.query<{ id: number; name: string; event_date: string; pickup: string; gates: string; phone: string }>(
+      "select id, name, event_date, pickup, gates, phone from transport_events where porch_id = coalesce(my_porch($1), 1) order by id desc limit 1",
+      [viewer],
+    );
+  let rows = await read();
+  if (!rows.length) {
+    await sql.query("insert into transport_events (porch_id, name, event_date, pickup, gates, phone) values (coalesce(my_porch($1), 1), 'Our next event', '', '07:00', '08:00', '')", [viewer]);
+    rows = await read();
+  }
   const r = rows[0];
   return { id: Number(r.id), name: r.name, date: r.event_date, pickup: r.pickup, gates: r.gates, phone: r.phone };
 }
@@ -179,15 +192,16 @@ export const saveTransportEvent = createServerFn({ method: "POST" })
     if (!data.date) return { ok: false as const, error: "Choose the event's date." };
     if (data.date <= kampalaToday()) return { ok: false as const, error: "The date must be after today, so people can register a day before." };
     if (data.fresh) {
-      await sql.query("insert into transport_events (name, event_date, pickup, gates, phone) values ($1, $2, $3, $4, $5)", [
+      await sql.query("insert into transport_events (porch_id, name, event_date, pickup, gates, phone) values (my_porch($6), $1, $2, $3, $4, $5)", [
         data.name,
         data.date,
         data.pickup,
         data.gates,
         data.phone,
+        context.userId,
       ]);
     } else {
-      const event = await currentEvent(sql);
+      const event = await currentEvent(sql, context.userId);
       await sql.query("update transport_events set name = $2, event_date = $3, pickup = $4, gates = $5, phone = $6 where id = $1", [
         event.id,
         data.name,
@@ -197,7 +211,7 @@ export const saveTransportEvent = createServerFn({ method: "POST" })
         data.phone,
       ]);
     }
-    return { ok: true as const, event: await currentEvent(sql) };
+    return { ok: true as const, event: await currentEvent(sql, context.userId) };
   });
 
 export const listTransportTeam = createServerFn({ method: "POST" })
@@ -206,7 +220,7 @@ export const listTransportTeam = createServerFn({ method: "POST" })
     const sql = await getSql();
     const who = await canArrange(sql, context.userId);
     if (!who.founder) return { ok: false as const, ids: [] as string[] };
-    const rows = await sql.query<{ user_id: string }>("select user_id from profiles where is_transport");
+    const rows = await sql.query<{ user_id: string }>("select user_id from profiles where is_transport and porch_id = my_porch($1)", [context.userId]);
     return { ok: true as const, ids: rows.map((r) => r.user_id) };
   });
 
@@ -217,7 +231,7 @@ export const setTransportTeam = createServerFn({ method: "POST" })
     const sql = await getSql();
     const who = await canArrange(sql, context.userId);
     if (!who.founder) return { ok: false as const, error: "Only the founder chooses the Transport team." };
-    await sql.query("update profiles set is_transport = $2 where user_id = $1", [data.userId, data.on]);
+    await sql.query("update profiles set is_transport = $2 where user_id = $1 and same_porch(user_id, $3)", [data.userId, data.on, context.userId]);
     return { ok: true as const };
   });
 
@@ -292,7 +306,7 @@ async function readBoard(sql: Sql, eventId: number) {
 async function guard(userId: string) {
   const sql = await getSql();
   const who = await canArrange(sql, userId);
-  const event = await currentEvent(sql);
+  const event = await currentEvent(sql, userId);
   return { sql, who, event };
 }
 
@@ -435,7 +449,7 @@ export const rideNews = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    const event = await currentEvent(sql);
+    const event = await currentEvent(sql, context.userId);
     const rows = await sql.query<{ seen: unknown }>("select seen from transport_rides where event_id = $1 and user_id = $2", [event.id, context.userId]);
     if (!rows[0] || boolish(rows[0].seen)) return { ride: null };
     return { ride: await myRide(sql, context.userId, event.id), event: event.name };
@@ -445,7 +459,7 @@ export const seenRideNews = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    const event = await currentEvent(sql);
+    const event = await currentEvent(sql, context.userId);
     await sql.query("update transport_rides set seen = true where event_id = $1 and user_id = $2", [event.id, context.userId]);
     return { ok: true as const };
   });

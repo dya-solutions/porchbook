@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { porchTables } from "@/lib/porch/porch-foundation";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { touchProfile } from "@/lib/porch/api";
@@ -43,6 +44,7 @@ async function ready(sql: Awaited<ReturnType<typeof getSql>>) {
   await sql`alter table trouble_reports add column if not exists handled_at timestamptz`;
   await sql`alter table trouble_reports add column if not exists reply text not null default ''`;
   await sql`alter table trouble_reports add column if not exists reply_seen boolean not null default false`;
+  await porchTables(sql, { tag: [["trouble_reports", "user_id"]] });
 }
 async function founder(userId: string) {
   const sql = await getSql();
@@ -178,9 +180,10 @@ export const loadTrouble = createServerFn({ method: "POST" })
          or ($1 = 'local' and r.kind in ('local', 'missed'))
          or ($1 = 'praise' and r.kind = 'praise')
        )
+         and r.porch_id = my_porch($2)
        order by (r.handled_at is not null), r.created_at desc
        limit 80`,
-      [data.kind],
+      [data.kind, context.userId],
     );
     return {
       ok: true as const,
@@ -213,8 +216,8 @@ export const handleTrouble = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ready(sql);
     const rows = await sql.query<{ id: number }>(
-      "update trouble_reports set handled_at = now(), reply = $2, reply_seen = false where id = $1 and handled_at is null returning id",
-      [data.id, data.line],
+      "update trouble_reports set handled_at = now(), reply = $2, reply_seen = false where id = $1 and handled_at is null and porch_id = my_porch($3) returning id",
+      [data.id, data.line, context.userId],
     );
     if (!rows.length) return { ok: false as const, error: "That one is already handled." };
     return { ok: true as const };

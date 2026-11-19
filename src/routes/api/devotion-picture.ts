@@ -11,7 +11,7 @@ export const Route = createFileRoute("/api/devotion-picture")({
         // ?check=1 shows what today's devotional page offers as its picture (to find out why none shows).
         if (new URL(request.url).searchParams.get("check")) {
           const sql = await getSql();
-          const rows = await sql.query<{ link: string }>("select link from read_docs where key = 'devotion'").catch(() => []);
+          const rows = await sql.query<{ link: string }>("select link from read_docs where key = 'devotion' and porch_id = 1").catch(() => []);
           const report = await devotionPictureReport(rows[0]?.link ?? "");
           return new Response(JSON.stringify(report, null, 2), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
         }

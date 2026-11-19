@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { porchTables } from "@/lib/porch/porch-foundation";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { touchProfile } from "@/lib/porch/api";
@@ -52,6 +53,7 @@ async function ready(sql: Awaited<ReturnType<typeof getSql>>) {
     )
   `;
   await ensureBoard(sql);
+  await porchTables(sql, { own: ["transport_stages"] });
 }
 
 function noticeFor(place: string, stages: { place: string; stage: string }[]): string {
@@ -113,6 +115,7 @@ async function tellInbox(sql: Awaited<ReturnType<typeof getSql>>, fromId: string
 }
 
 async function founderId(sql: Awaited<ReturnType<typeof getSql>>) {
+  // (Not used at the moment.) The first admin found anywhere: never use this across churches.
   const rows = await sql.query<{ user_id: string; is_founder: unknown }>("select user_id, is_porch_admin(user_id) as is_founder from profiles");
   return rows.find((row) => boolish(row.is_founder))?.user_id ?? "";
 }
@@ -135,13 +138,13 @@ export const loadTransport = createServerFn({ method: "POST" })
     await touchProfile(sql, context.userId, seed);
     await ready(sql);
     const who = await canArrange(sql, context.userId);
-    const event = await currentEvent(sql);
+    const event = await currentEvent(sql, context.userId);
     const saved = await sql.query<{ place: string; notice: string; phone: string; venue: string; venue_note: string; ride_back: unknown }>(
       "select place, notice, phone, venue, venue_note, ride_back from transport_locations where user_id = $1 and event_id = $2",
       [context.userId, event.id],
     );
     const founder = who.founder;
-    const stageRows = await sql.query<{ id: number; place: string; stage: string }>("select id, place, stage from transport_stages order by id");
+    const stageRows = await sql.query<{ id: number; place: string; stage: string }>("select id, place, stage from transport_stages where porch_id = my_porch($1) order by id", [context.userId]);
     const live = saved[0]?.place ? noticeFor(saved[0].place, stageRows) : "";
     const groups = who.arrange ? await locationReport(sql, event) : [];
     return {
@@ -183,9 +186,9 @@ export const saveTransport = createServerFn({ method: "POST" })
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
     await ready(sql);
-    const event = await currentEvent(sql);
+    const event = await currentEvent(sql, context.userId);
     if (isClosed(event)) return { ok: false as const, error: `Registration for ${event.name} has closed. Call ${event.phone || "the Transport team"}.` };
-    const stages = await sql.query<{ place: string; stage: string }>("select place, stage from transport_stages");
+    const stages = await sql.query<{ place: string; stage: string }>("select place, stage from transport_stages where porch_id = my_porch($1)", [context.userId]);
     const notice = noticeFor(data.place, stages);
     const note = data.venue === "other" || data.venue === "manifest" ? data.venueNote.replace(/^manifest\s+/i, "") : "";
     await sql`
@@ -214,14 +217,16 @@ export const saveTransportStage = createServerFn({ method: "POST" })
     if (!boolish(me[0]?.is_founder)) return { ok: false as const, error: "Only the founder can name a stage." };
     if (!data.place || !data.stage) return { ok: false as const, error: "Name the place and the stage." };
     await ready(sql);
-    await sql`insert into transport_stages (place, stage) values (${data.place}, ${data.stage})`;
+    await sql`insert into transport_stages (porch_id, place, stage) values (my_porch(${context.userId}), ${data.place}, ${data.stage})`;
+    // Only this church's travellers hear about this church's stage.
     const people = await sql.query<{ user_id: string; place: string; phone: string; ride_back: unknown }>(
-      "select user_id, place, phone, ride_back from transport_locations",
+      "select user_id, place, phone, ride_back from transport_locations where same_porch(user_id, $1)",
+      [context.userId],
     );
     const key = data.place.trim().toLowerCase();
     const matched = people.filter((person) => person.place.trim().toLowerCase() === key);
     for (const person of matched) {
-      await sql`update transport_locations set notice = ${data.stage.trim()} where user_id = ${person.user_id}`;
+      await sql`update transport_locations set notice = ${data.stage.trim()} where user_id = ${person.user_id} and same_porch(user_id, ${context.userId})`;
     }
     const quiet = matched.filter((person) => !person.phone.trim());
     const called = matched.filter((person) => person.phone.trim()).map((person) => person.user_id);
@@ -346,7 +351,7 @@ export const downloadTransport = createServerFn({ method: "POST" })
     await ready(sql);
     const who = await canArrange(sql, context.userId);
     if (!who.arrange) return { ok: false as const, error: "Only the Transport team can take this list." };
-    const event = await currentEvent(sql);
+    const event = await currentEvent(sql, context.userId);
     const groups = await locationReport(sql, event);
     const sheets = await driverSheets(sql, event.id);
     const name = event.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "transport";

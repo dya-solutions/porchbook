@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { myPorchId, porchTables } from "@/lib/porch/porch-foundation";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
@@ -48,6 +49,7 @@ async function ensure(sql: Awaited<ReturnType<typeof getSql>>) {
       updated_at timestamptz not null default now()
     )
   `;
+  await porchTables(sql, { key: [["porch_cloth", "id"]] });
 }
 
 async function founderFlag(sql: Awaited<ReturnType<typeof getSql>>, userId: string) {
@@ -60,10 +62,11 @@ export const getCloth = createServerFn({ method: "POST" })
   .validator((input: unknown) => parseSeed(input))
   .handler(async ({ context, data: seed }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, seed);
     await ensure(sql);
     const founder = await founderFlag(sql, context.userId);
-    const rows = await sql.query<{ id: number; color: string }>("select id, color from porch_cloth where id in (1, 2)");
+    const rows = await sql.query<{ id: number; color: string }>(`select id, color from porch_cloth where porch_id = ${porch} and id in (1, 2)`);
     const colors = { shirt: "", trousers: "" };
     for (const row of rows) {
       const part = (Object.keys(CLOTH_ID) as ClothPart[]).find((key) => CLOTH_ID[key] === Number(row.id));
@@ -85,6 +88,7 @@ export const setCloth = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
@@ -93,13 +97,13 @@ export const setCloth = createServerFn({ method: "POST" })
     }
     const id = CLOTH_ID[data.part];
     if (!data.color) {
-      await sql`delete from porch_cloth where id = ${id}`;
+      await sql`delete from porch_cloth where porch_id = ${porch} and id = ${id}`;
       return { ok: true as const };
     }
     await sql`
-      insert into porch_cloth (id, color, updated_at)
-      values (${id}, ${data.color}, now())
-      on conflict (id) do update set color = ${data.color}, updated_at = now()
+      insert into porch_cloth (porch_id, id, color, updated_at)
+      values (${porch}, ${id}, ${data.color}, now())
+      on conflict (porch_id, id) do update set color = ${data.color}, updated_at = now()
     `;
     return { ok: true as const };
   });

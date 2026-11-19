@@ -85,13 +85,13 @@ export const devotionRunyankore = createServerFn({ method: "POST" })
           : { ok: false as const, error: `Today's ${TONGUE_NAME[data.lang]} isn't ready yet. Please read it in English for now.` }
         : { ok: true as const, html, source, review: false };
     // Only the devotional Porchbook is showing (today's, or a day kept on file).
-    const docs = await sql.query<{ link: string }>("select link from read_docs where key = 'devotion'");
+    const docs = await sql.query<{ link: string }>("select link from read_docs where key = 'devotion' and porch_id = my_porch($1)", [context.userId]);
     const link = data.link || docs[0]?.link || "";
     const { publicPage } = await import("@/lib/porch/devotion-page.server");
     if (!link || !publicPage(link)) return { ok: false as const, error: "No devotional to translate." };
     const kept = await sql.query<{ html: string; source: string; approved: boolean; stale: unknown }>(
-      "select html, source, approved, (made_at < now() - interval '30 minutes') as stale from devotion_translations where link = $1 and lang = $2",
-      [link, data.lang],
+      "select html, source, approved, (made_at < now() - interval '30 minutes') as stale from devotion_translations where link = $1 and lang = $2 and porch_id = my_porch($3)",
+      [link, data.lang, context.userId],
     );
     const { devotionSheet } = await import("@/lib/porch/devotion-page.server");
     if (kept[0]?.html) {
@@ -100,10 +100,10 @@ export const devotionRunyankore = createServerFn({ method: "POST" })
       if (kept[0].source !== "phaneroo" && staleRow) {
         const theirs = phanerooCopyOf(await devotionSheet(link).catch(() => ""), data.lang);
         if (theirs) {
-          await sql.query("update devotion_translations set html = $3, source = 'phaneroo', approved = true, made_at = now() where link = $1 and lang = $2", [link, data.lang, theirs]);
+          await sql.query("update devotion_translations set html = $3, source = 'phaneroo', approved = true, made_at = now() where link = $1 and lang = $2 and porch_id = my_porch($4)", [link, data.lang, theirs, context.userId]);
           return shownTo(theirs, "phaneroo", true);
         }
-        await sql.query("update devotion_translations set made_at = now() where link = $1 and lang = $2", [link, data.lang]);
+        await sql.query("update devotion_translations set made_at = now() where link = $1 and lang = $2 and porch_id = my_porch($3)", [link, data.lang, context.userId]);
       }
       return shownTo(kept[0].html, kept[0].source as Source, Boolean(kept[0].approved));
     }
@@ -126,9 +126,9 @@ export const devotionRunyankore = createServerFn({ method: "POST" })
     }
     if (!html) return { ok: false as const, error: `No ${TONGUE_NAME[data.lang]} copy today.` };
     await sql.query(
-      `insert into devotion_translations (link, lang, html, source, approved) values ($1, $5, $2, $3, $4)
-       on conflict (link, lang) do update set html = excluded.html, source = excluded.source, approved = excluded.approved, made_at = now()`,
-      [link, html, source, source === "phaneroo", data.lang],
+      `insert into devotion_translations (porch_id, link, lang, html, source, approved) values (my_porch($6), $1, $5, $2, $3, $4)
+       on conflict (porch_id, link, lang) do update set html = excluded.html, source = excluded.source, approved = excluded.approved, made_at = now()`,
+      [link, html, source, source === "phaneroo", data.lang, context.userId],
     );
     return shownTo(html, source, source === "phaneroo");
   });
@@ -183,8 +183,8 @@ export const approveRunyankore = createServerFn({ method: "POST" })
       .join("");
     if (!html) return { ok: false as const, error: "Nothing to approve." };
     const done = await sql.query<{ link: string }>(
-      "update devotion_translations set html = $2, approved = true, made_at = now() where link = $1 and lang = $3 returning link",
-      [data.link, html, data.lang],
+      "update devotion_translations set html = $2, approved = true, made_at = now() where link = $1 and lang = $3 and porch_id = my_porch($4) returning link",
+      [data.link, html, data.lang, context.userId],
     );
     return done.length ? { ok: true as const, html } : { ok: false as const, error: "That translation wasn't found." };
   });
@@ -196,7 +196,7 @@ export const addOwnDevotion = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can add it." };
-    const docs = await sql.query<{ link: string }>("select link from read_docs where key = 'devotion'");
+    const docs = await sql.query<{ link: string }>("select link from read_docs where key = 'devotion' and porch_id = my_porch($1)", [context.userId]);
     const link = data.link || docs[0]?.link || "";
     const { publicPage } = await import("@/lib/porch/devotion-page.server");
     if (!link || !publicPage(link)) return { ok: false as const, error: "No devotional today to add it to." };
@@ -212,9 +212,9 @@ export const addOwnDevotion = createServerFn({ method: "POST" })
       })
       .join("");
     await sql.query(
-      `insert into devotion_translations (link, lang, html, source, approved) values ($1, $2, $3, 'founder', true)
-       on conflict (link, lang) do update set html = excluded.html, source = 'founder', approved = true, made_at = now()`,
-      [link, data.lang, html],
+      `insert into devotion_translations (porch_id, link, lang, html, source, approved) values (my_porch($4), $1, $2, $3, 'founder', true)
+       on conflict (porch_id, link, lang) do update set html = excluded.html, source = 'founder', approved = true, made_at = now()`,
+      [link, data.lang, html, context.userId],
     );
     return { ok: true as const, html };
   });

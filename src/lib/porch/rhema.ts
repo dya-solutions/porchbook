@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { myPorchId, porchTables } from "@/lib/porch/porch-foundation";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
@@ -156,6 +157,7 @@ async function ensureRhema(sql: Awaited<ReturnType<typeof getSql>>) {
       updated_at timestamptz not null default now()
     )
   `;
+  await porchTables(sql, { key: [["rhema_clip", "id"]] });
   await sql`alter table rhema_clip add column if not exists start_at integer`;
   await sql`alter table rhema_clip add column if not exists end_at integer`;
   await sql`alter table rhema_clip add column if not exists kind text`;
@@ -171,6 +173,7 @@ export const getRhema = createServerFn({ method: "POST" })
   .validator((input: unknown) => parseSeed(input))
   .handler(async ({ context, data: seed }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, seed);
     await ensureRhema(sql);
     const rows = await sql.query<{
@@ -179,10 +182,9 @@ export const getRhema = createServerFn({ method: "POST" })
       end_at: number | null;
       kind: string | null;
       updated_at: string | null;
-    }>(
-      `select video_id, start_at, end_at, kind,
+    }>(`select video_id, start_at, end_at, kind,
               to_char(updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as updated_at
-       from rhema_clip where id = 1`,
+       from rhema_clip where porch_id = ${porch} and id = 1`,
     );
     const founder = await founderFlag(sql, context.userId);
     const row = rows[0];
@@ -204,6 +206,7 @@ export const setRhema = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await ensureRhema(sql);
     if (!(await founderFlag(sql, context.userId))) {
@@ -211,15 +214,15 @@ export const setRhema = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Only the founder can set the Rhemaclip." };
     }
     if (!data.url) {
-      await sql`delete from rhema_clip where id = 1`;
+      await sql`delete from rhema_clip where porch_id = ${porch} and id = 1`;
       return { ok: true as const, videoId: null };
     }
     const found = await readClip(data.url);
     if ("error" in found) return { ok: false as const, error: found.error };
     await sql`
-      insert into rhema_clip (id, video_id, start_at, end_at, kind, updated_at)
-      values (1, ${found.videoId}, ${found.start}, ${found.end}, ${found.kind}, now())
-      on conflict (id) do update
+      insert into rhema_clip (porch_id, id, video_id, start_at, end_at, kind, updated_at)
+      values (${porch}, 1, ${found.videoId}, ${found.start}, ${found.end}, ${found.kind}, now())
+      on conflict (porch_id, id) do update
         set video_id = excluded.video_id,
             start_at = excluded.start_at,
             end_at = excluded.end_at,
@@ -238,6 +241,7 @@ async function ensurePrayer(sql: Awaited<ReturnType<typeof getSql>>) {
       updated_at timestamptz not null default now()
     )
   `;
+  await porchTables(sql, { key: [["prayer_track", "id"]] });
 }
 
 export const getPrayer = createServerFn({ method: "POST" })
@@ -245,10 +249,12 @@ export const getPrayer = createServerFn({ method: "POST" })
   .validator((input: unknown) => parseSeed(input))
   .handler(async ({ context, data: seed }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, seed);
     await ensurePrayer(sql);
     const rows = await sql.query<{ video_id: string | null; start_at: number | null }>(
-      "select video_id, start_at from prayer_track where id = 1",
+      "select video_id, start_at from prayer_track where id = 1 and porch_id = my_porch($1)",
+      [context.userId],
     );
     const founder = await founderFlag(sql, context.userId);
     const row = rows[0];
@@ -270,6 +276,7 @@ export const setPrayer = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await ensurePrayer(sql);
     if (!(await founderFlag(sql, context.userId))) {
@@ -277,15 +284,15 @@ export const setPrayer = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Only the founder can set the prayer music." };
     }
     if (!data.url) {
-      await sql`delete from prayer_track where id = 1`;
+      await sql`delete from prayer_track where id = 1 and porch_id = my_porch(${context.userId})`;
       return { ok: true as const, videoId: null };
     }
     const track = youtubeClip(data.url);
     if (!track) return { ok: false as const, error: "Paste a YouTube link." };
     await sql`
-      insert into prayer_track (id, video_id, start_at, updated_at)
-      values (1, ${track.videoId}, ${track.start}, now())
-      on conflict (id) do update
+      insert into prayer_track (porch_id, id, video_id, start_at, updated_at)
+      values (my_porch(${context.userId}), 1, ${track.videoId}, ${track.start}, now())
+      on conflict (porch_id, id) do update
         set video_id = excluded.video_id,
             start_at = excluded.start_at,
             updated_at = now()

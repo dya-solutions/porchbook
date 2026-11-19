@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { myPorchId, porchTables } from "@/lib/porch/porch-foundation";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
@@ -47,6 +48,7 @@ async function ensure(sql: Awaited<ReturnType<typeof getSql>>) {
       updated_at timestamptz not null default now()
     )
   `;
+  await porchTables(sql, { key: [["porch_wall", "id"]] });
 }
 
 async function founderFlag(sql: Awaited<ReturnType<typeof getSql>>, userId: string) {
@@ -59,11 +61,11 @@ export const getWall = createServerFn({ method: "POST" })
   .validator((input: unknown) => parseSeed(input))
   .handler(async ({ context, data: seed }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, seed);
     await ensure(sql);
     const founder = await founderFlag(sql, context.userId);
-    const rows = await sql.query<{ id: number; mime: string; image: string }>(
-      "select id, mime, image from porch_wall where id in (1, 2, 3, 4)",
+    const rows = await sql.query<{ id: number; mime: string; image: string }>(`select id, mime, image from porch_wall where porch_id = ${porch} and id in (1, 2, 3, 4)`,
     );
     const walls = { back: "", left: "", right: "", ahead: "" };
     const mimes = { back: "", left: "", right: "", ahead: "" };
@@ -89,6 +91,7 @@ export const setWall = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
@@ -97,7 +100,7 @@ export const setWall = createServerFn({ method: "POST" })
     }
     const id = WALL_ID[data.wall];
     if (!data.image) {
-      await sql`delete from porch_wall where id = ${id}`;
+      await sql`delete from porch_wall where porch_id = ${porch} and id = ${id}`;
       return { ok: true as const };
     }
     if (data.mime !== "image/jpeg") return { ok: false as const, error: "Use a photo." };
@@ -109,9 +112,9 @@ export const setWall = createServerFn({ method: "POST" })
     }
     if (bytes > MAX_BYTES) return { ok: false as const, error: "That photo is too large. Choose another." };
     await sql`
-      insert into porch_wall (id, mime, image, updated_at)
-      values (${id}, ${data.mime}, ${data.image}, now())
-      on conflict (id) do update set mime = ${data.mime}, image = ${data.image}, updated_at = now()
+      insert into porch_wall (porch_id, id, mime, image, updated_at)
+      values (${porch}, ${id}, ${data.mime}, ${data.image}, now())
+      on conflict (porch_id, id) do update set mime = ${data.mime}, image = ${data.image}, updated_at = now()
     `;
     return { ok: true as const };
   });

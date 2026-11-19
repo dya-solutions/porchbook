@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { myPorchId, porchTables } from "@/lib/porch/porch-foundation";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
@@ -38,6 +39,7 @@ async function ensure(sql: Awaited<ReturnType<typeof getSql>>) {
       updated_at timestamptz not null default now()
     )
   `;
+  await porchTables(sql, { key: [["porch_ceiling", "id"]] });
 }
 
 async function founderFlag(sql: Awaited<ReturnType<typeof getSql>>, userId: string) {
@@ -50,10 +52,11 @@ export const getCeiling = createServerFn({ method: "POST" })
   .validator((input: unknown) => parseSeed(input))
   .handler(async ({ context, data: seed }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, seed);
     await ensure(sql);
     const founder = await founderFlag(sql, context.userId);
-    const rows = await sql.query<{ mime: string; image: string }>("select mime, image from porch_ceiling where id = 1");
+    const rows = await sql.query<{ mime: string; image: string }>(`select mime, image from porch_ceiling where porch_id = ${porch} and id = 1`);
     return { founder, mime: rows[0]?.mime ?? "", image: rows[0]?.image ?? "" };
   });
 
@@ -69,6 +72,7 @@ export const setCeiling = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
@@ -76,7 +80,7 @@ export const setCeiling = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Only the founder can change the ceiling." };
     }
     if (!data.image) {
-      await sql`delete from porch_ceiling where id = 1`;
+      await sql`delete from porch_ceiling where porch_id = ${porch} and id = 1`;
       return { ok: true as const };
     }
     if (data.mime !== "image/jpeg") return { ok: false as const, error: "Use a photo." };
@@ -88,9 +92,9 @@ export const setCeiling = createServerFn({ method: "POST" })
     }
     if (bytes > MAX_BYTES) return { ok: false as const, error: "That photo is too large. Choose another." };
     await sql`
-      insert into porch_ceiling (id, mime, image, updated_at)
-      values (1, ${data.mime}, ${data.image}, now())
-      on conflict (id) do update set mime = ${data.mime}, image = ${data.image}, updated_at = now()
+      insert into porch_ceiling (porch_id, id, mime, image, updated_at)
+      values (${porch}, 1, ${data.mime}, ${data.image}, now())
+      on conflict (porch_id, id) do update set mime = ${data.mime}, image = ${data.image}, updated_at = now()
     `;
     return { ok: true as const };
   });

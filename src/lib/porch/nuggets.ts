@@ -92,7 +92,7 @@ export const nuggetDesk = createServerFn({ method: "POST" })
     );
     const nuggets = await sql.query<NuggetRow>(`${NUGGET_SELECT} where n.status <> 'dropped' order by n.status desc, n.created_at desc limit 200`);
     const set = await sql.query<{ breaks_on: unknown; every_items: number }>("select breaks_on, every_items from nugget_settings where id = 1");
-    const flag = await sql.query<{ enabled: unknown }>("select enabled from app_flags where key = 'nuggets'");
+    const flag = await sql.query<{ enabled: unknown }>(/* On hold: Phaneroo's switch only. Must become per church before switching on (decision 8). */ "select enabled from app_flags where key = 'nuggets' and porch_id = 1");
     const keyRow = await sql.query<{ groq_key: string }>("select groq_key from nugget_settings where id = 1").catch(() => []);
     return {
       ok: true as const,
@@ -258,7 +258,7 @@ export const saveNuggetSettings = createServerFn({ method: "POST" })
     const { keepOnAir } = await import("@/lib/porch/fm");
     await keepOnAir(sql, async () => {
       await sql.query("update nugget_settings set breaks_on = $1, every_items = $2 where id = 1", [data.breaksOn, data.every]);
-      await sql.query("insert into app_flags (key, enabled) values ('nuggets', $1) on conflict (key) do update set enabled = excluded.enabled", [data.live]);
+      await sql.query(/* On hold: Phaneroo's switch only. Must become per church before switching on (decision 8). */ "insert into app_flags (porch_id, key, enabled) values (1, 'nuggets', $1) on conflict (porch_id, key) do update set enabled = excluded.enabled", [data.live]);
     });
     return { ok: true as const };
   });

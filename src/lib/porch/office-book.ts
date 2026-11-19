@@ -5,6 +5,7 @@ import { touchProfile } from "@/lib/porch/api";
 import { noteAttempt } from "@/lib/porch/guard.server";
 import type { Seed } from "@/lib/porch/model";
 import { OFFICE_PARTS, OFFICES, type OfficeKey } from "@/lib/porch/offices";
+import { myPorchId, porchTables } from "@/lib/porch/porch-foundation";
 import { readBookMeta, readLibrary, type BookMeta, type LibraryPages } from "@/lib/porch/pdf-book";
 
 const KEYS = new Set<string>(OFFICES.map((office) => office.key));
@@ -58,13 +59,14 @@ async function ready(sql: Awaited<ReturnType<typeof getSql>>) {
       updated_at timestamptz not null default now()
     )
   `;
+  await porchTables(sql, { key: [["office_books", "office_key"]] });
 }
 
 async function place(sql: Awaited<ReturnType<typeof getSql>>, userId: string, key: OfficeKey) {
   const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [userId]);
-  const office = await sql.query<{ head_user_id: string | null }>("select head_user_id from offices where key = $1", [key]);
-  const held = await sql.query<{ head_user_id: string }>("select head_user_id from offices where head_user_id = $1 limit 1", [userId]);
-  const hooHead = await sql.query<{ head_user_id: string | null }>("select head_user_id from offices where key = 'hoo'");
+  const office = await sql.query<{ head_user_id: string | null }>("select head_user_id from offices where key = $1 and porch_id = my_porch($2)", [key, userId]);
+  const held = await sql.query<{ head_user_id: string }>("select head_user_id from offices where head_user_id = $1 and porch_id = my_porch($1) limit 1", [userId]);
+  const hooHead = await sql.query<{ head_user_id: string | null }>("select head_user_id from offices where key = 'hoo' and porch_id = my_porch($1)", [userId]);
   const founder = boolish(me[0]?.is_founder);
   const head = office[0]?.head_user_id === userId;
   // Offices are locked: only the office's own head, the founder, and the H.O.O (who receives every office's reports) may read inside.
@@ -81,11 +83,12 @@ export const loadOfficeBook = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if (!data.key) return { ok: false as const, error: "That office is not here." };
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await ready(sql);
     const who = await place(sql, context.userId, data.key);
     if (!who.allowed) return { ok: false as const, error: "That office is locked." };
-    const rows = await sql.query<{ title: string; body: string }>("select title, body from office_books where office_key = $1", [data.key]);
+    const rows = await sql.query<{ title: string; body: string }>("select title, body from office_books where office_key = $1 and porch_id = $2", [data.key, porch]);
     return { ok: true as const, title: rows[0]?.title ?? "", body: rows[0]?.body ?? "", canEdit: who.head };
   });
 
@@ -104,14 +107,15 @@ export const saveOfficeBook = createServerFn({ method: "POST" })
     if (!data.key) return { ok: false as const, error: "That office is not here." };
     if (!data.title) return { ok: false as const, error: "Write the title on the cover." };
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await ready(sql);
     const who = await place(sql, context.userId, data.key);
     if (!who.head) return { ok: false as const, error: "Only the office holder can write in this book." };
     await sql`
-      insert into office_books (office_key, title, body, updated_at)
-      values (${data.key}, ${data.title}, ${data.body}, now())
-      on conflict (office_key) do update set title = ${data.title}, body = ${data.body}, updated_at = now()
+      insert into office_books (porch_id, office_key, title, body, updated_at)
+      values (${porch}, ${data.key}, ${data.title}, ${data.body}, now())
+      on conflict (porch_id, office_key) do update set title = ${data.title}, body = ${data.body}, updated_at = now()
     `;
     return { ok: true as const };
   });
@@ -148,26 +152,27 @@ async function filesReady(sql: Awaited<ReturnType<typeof getSql>>) {
   await sql`alter table office_pdfs add column if not exists hoo_edited boolean not null default false`;
   await sql`alter table office_pdfs add column if not exists book text not null default ''`;
   await sql`alter table office_pdfs add column if not exists hoo_book text not null default ''`;
+  await porchTables(sql, { key: [["office_files", "office_key, part"], ["office_removed", "office_key, part"], ["office_pdfs", "office_key, part"]] });
 }
 
-async function shareWrite(sql: Awaited<ReturnType<typeof getSql>>, key: string, part: string, title: string, body: string) {
+async function shareWrite(sql: Awaited<ReturnType<typeof getSql>>, porch: number, key: string, part: string, title: string, body: string) {
   const rows = await sql.query<{ body: string; hoo_body: string | null }>(
-    "select body, hoo_body from office_files where office_key = $1 and part = $2",
-    [key, part],
+    "select body, hoo_body from office_files where office_key = $1 and porch_id = $3 and part = $2",
+    [key, part, porch],
   );
   const current = rows[0];
   if (!current) {
-    await sql`delete from office_removed where office_key = ${key} and part = ${part}`;
+    await sql`delete from office_removed where office_key = ${key} and porch_id = ${porch} and part = ${part}`;
     await sql`
-      insert into office_files (office_key, part, title, body, hoo_body, hoo_edited, updated_at)
-      values (${key}, ${part}, ${title}, ${body}, ${body}, false, now())
+      insert into office_files (porch_id, office_key, part, title, body, hoo_body, hoo_edited, updated_at)
+      values (${porch}, ${key}, ${part}, ${title}, ${body}, ${body}, false, now())
     `;
     return;
   }
   if (current.body === body) {
     await sql`
       update office_files set title = ${title}, updated_at = now()
-      where office_key = ${key} and part = ${part}
+      where office_key = ${key} and porch_id = ${porch} and part = ${part}
     `;
     return;
   }
@@ -175,7 +180,7 @@ async function shareWrite(sql: Awaited<ReturnType<typeof getSql>>, key: string, 
   await sql`
     update office_files
     set title = ${title}, body = ${body}, hoo_body = ${snapshot}, hoo_edited = true, updated_at = now()
-    where office_key = ${key} and part = ${part}
+    where office_key = ${key} and porch_id = ${porch} and part = ${part}
   `;
 }
 
@@ -188,6 +193,7 @@ export const loadOfficeFile = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if (!data.key || !data.part) return { ok: false as const, error: "That file is not here." };
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await filesReady(sql);
     const who = await place(sql, context.userId, data.key);
@@ -196,14 +202,14 @@ export const loadOfficeFile = createServerFn({ method: "POST" })
       return { ok: false as const, error: "That office is locked." };
     }
     const rows = await sql.query<{ title: string; body: string }>(
-      "select title, body from office_files where office_key = $1 and part = $2",
-      [data.key, data.part],
+      "select title, body from office_files where office_key = $1 and porch_id = $3 and part = $2",
+      [data.key, data.part, porch],
     );
     const pdf = await sql.query<{ pdf: string; book: string | null; from_hoo: boolean | null }>(
       data.snapshot
-        ? "select case when coalesce(hoo_pdf, '') <> '' then hoo_pdf else pdf end as pdf, case when coalesce(hoo_pdf, '') <> '' then hoo_book else book end as book, (coalesce(hoo_pdf, '') <> '') as from_hoo from office_pdfs where office_key = $1 and part = $2 and (pdf <> '' or coalesce(hoo_pdf, '') <> '' or coalesce(book, '') <> '' or coalesce(hoo_book, '') <> '')"
-        : "select pdf, book, false as from_hoo from office_pdfs where office_key = $1 and part = $2 and (pdf <> '' or coalesce(book, '') <> '')",
-      [data.key, data.part],
+        ? "select case when coalesce(hoo_pdf, '') <> '' then hoo_pdf else pdf end as pdf, case when coalesce(hoo_pdf, '') <> '' then hoo_book else book end as book, (coalesce(hoo_pdf, '') <> '') as from_hoo from office_pdfs where office_key = $1 and porch_id = $3 and part = $2 and (pdf <> '' or coalesce(hoo_pdf, '') <> '' or coalesce(book, '') <> '' or coalesce(hoo_book, '') <> '')"
+        : "select pdf, book, false as from_hoo from office_pdfs where office_key = $1 and porch_id = $3 and part = $2 and (pdf <> '' or coalesce(book, '') <> '')",
+      [data.key, data.part, porch],
     );
     const stored = pdf[0];
     let library: LibraryPages | null = null;
@@ -227,8 +233,8 @@ export const loadOfficeFile = createServerFn({ method: "POST" })
         const { bookFromPdf } = await import("@/lib/porch/pdf-book.server");
         const result = await bookFromPdf(Buffer.from(stored.pdf, "base64"));
         const save = async (body: string) => {
-          if (keepHoo) await sql`update office_pdfs set hoo_book = ${body} where office_key = ${data.key} and part = ${data.part}`;
-          else await sql`update office_pdfs set book = ${body} where office_key = ${data.key} and part = ${data.part}`;
+          if (keepHoo) await sql`update office_pdfs set hoo_book = ${body} where office_key = ${data.key} and porch_id = ${porch} and part = ${data.part}`;
+          else await sql`update office_pdfs set book = ${body} where office_key = ${data.key} and porch_id = ${porch} and part = ${data.part}`;
         };
         if ("error" in result) {
           scan = result.error;
@@ -259,11 +265,12 @@ export const saveOfficeFile = createServerFn({ method: "POST" })
     if (!data.key || !data.part) return { ok: false as const, error: "That file is not here." };
     if (!data.title) return { ok: false as const, error: "Write the title." };
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await filesReady(sql);
     const who = await place(sql, context.userId, data.key);
     if (!who.head) return { ok: false as const, error: "Only the office holder can write in this file." };
-    await shareWrite(sql, data.key, data.part, data.title, data.body);
+    await shareWrite(sql, porch, data.key, data.part, data.title, data.body);
     return { ok: true as const };
   });
 
@@ -280,21 +287,22 @@ export const clearOfficeFile = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if (!data.key || !data.part) return { ok: false as const, error: "That file is not here." };
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await filesReady(sql);
     const who = await place(sql, context.userId, data.key);
     if (!who.head) return { ok: false as const, error: "Only the office holder can empty this book." };
-    await shareWrite(sql, data.key, data.part, data.part, "");
+    await shareWrite(sql, porch, data.key, data.part, data.part, "");
     const held = await sql.query<{ pdf: string; hoo_pdf: string | null }>(
-      "select pdf, hoo_pdf from office_pdfs where office_key = $1 and part = $2",
-      [data.key, data.part],
+      "select pdf, hoo_pdf from office_pdfs where office_key = $1 and porch_id = $3 and part = $2",
+      [data.key, data.part, porch],
     );
     const current = held[0];
     if (current?.pdf) {
       const snapshot = current.hoo_pdf || current.pdf;
       await sql`
         update office_pdfs set pdf = '', book = '', hoo_pdf = ${snapshot}, hoo_edited = true
-        where office_key = ${data.key} and part = ${data.part}
+        where office_key = ${data.key} and porch_id = ${porch} and part = ${data.part}
       `;
     }
     return { ok: true as const };
@@ -310,16 +318,17 @@ export const dropOfficeFiles = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if (!data.key || !data.parts.length) return { ok: false as const, error: "Choose a file." };
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await filesReady(sql);
     const who = await place(sql, context.userId, data.key);
     if (!who.head && !(who.founder && data.key === "pastor")) return { ok: false as const, error: "Only the office holder can delete a file." };
     for (const part of data.parts) {
-      await sql`delete from office_files where office_key = ${data.key} and part = ${part}`;
-      await sql`delete from office_pdfs where office_key = ${data.key} and part = ${part}`;
+      await sql`delete from office_files where office_key = ${data.key} and porch_id = ${porch} and part = ${part}`;
+      await sql`delete from office_pdfs where office_key = ${data.key} and porch_id = ${porch} and part = ${part}`;
       await sql`
-        insert into office_removed (office_key, part) values (${data.key}, ${part})
-        on conflict (office_key, part) do nothing
+        insert into office_removed (porch_id, office_key, part) values (${porch}, ${data.key}, ${part})
+        on conflict (porch_id, office_key, part) do nothing
       `;
     }
     return { ok: true as const };
@@ -357,20 +366,21 @@ export const saveReportPdf = createServerFn({ method: "POST" })
       storedBook = made.body;
     } else if (!data.file.startsWith("JVBERi")) return { ok: false as const, error: "That file is not a PDF." };
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await filesReady(sql);
     const who = await place(sql, context.userId, data.key);
     if (!who.head) return { ok: false as const, error: "Only the office holder can put a PDF in this book." };
     const held = await sql.query<{ pdf: string; book: string | null; hoo_pdf: string | null }>(
-      "select pdf, book, hoo_pdf from office_pdfs where office_key = $1 and part = $2",
-      [data.key, data.part],
+      "select pdf, book, hoo_pdf from office_pdfs where office_key = $1 and porch_id = $3 and part = $2",
+      [data.key, data.part, porch],
     );
     const current = held[0];
     if (!current) {
-      await sql`delete from office_removed where office_key = ${data.key} and part = ${data.part}`;
+      await sql`delete from office_removed where office_key = ${data.key} and porch_id = ${porch} and part = ${data.part}`;
       await sql`
-        insert into office_pdfs (office_key, part, pdf, hoo_pdf, hoo_edited, book)
-        values (${data.key}, ${data.part}, ${storedPdf}, ${storedPdf}, false, ${storedBook})
+        insert into office_pdfs (porch_id, office_key, part, pdf, hoo_pdf, hoo_edited, book)
+        values (${porch}, ${data.key}, ${data.part}, ${storedPdf}, ${storedPdf}, false, ${storedBook})
       `;
       return { ok: true as const };
     }
@@ -381,7 +391,7 @@ export const saveReportPdf = createServerFn({ method: "POST" })
       update office_pdfs
       set pdf = ${storedPdf}, book = ${storedBook}, hoo_pdf = ${snapshot}, hoo_edited = true,
           hoo_book = case when hoo_pdf is not distinct from ${snapshot} then hoo_book else '' end
-      where office_key = ${data.key} and part = ${data.part}
+      where office_key = ${data.key} and porch_id = ${porch} and part = ${data.part}
     `;
     return { ok: true as const };
   });
@@ -395,17 +405,18 @@ export const addOfficeBook = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if (!data.key || !data.name) return { ok: false as const, error: "Name the cover." };
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await filesReady(sql);
     const who = await place(sql, context.userId, data.key);
     if (!who.head) return { ok: false as const, error: "Only the office holder can add a book." };
-    const taken = await coverTaken(sql, data.key, data.name, "");
+    const taken = await coverTaken(sql, porch, data.key, data.name, "");
     if (taken) return { ok: false as const, error: "That cover is already on the shelf." };
-    await sql`delete from office_removed where office_key = ${data.key} and part = ${data.name}`;
+    await sql`delete from office_removed where office_key = ${data.key} and porch_id = ${porch} and part = ${data.name}`;
     await sql`
-      insert into office_files (office_key, part, title, body, hoo_body, hoo_edited, updated_at)
-      values (${data.key}, ${data.name}, ${data.name}, '', '', false, now())
-      on conflict (office_key, part) do nothing
+      insert into office_files (porch_id, office_key, part, title, body, hoo_body, hoo_edited, updated_at)
+      values (${porch}, ${data.key}, ${data.name}, ${data.name}, '', '', false, now())
+      on conflict (porch_id, office_key, part) do nothing
     `;
     return { ok: true as const };
   });
@@ -425,42 +436,43 @@ export const renameOfficeFile = createServerFn({ method: "POST" })
     if (!data.key || !data.from || !data.to) return { ok: false as const, error: "Name the cover." };
     if (data.from === data.to) return { ok: true as const };
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await filesReady(sql);
     const who = await place(sql, context.userId, data.key);
     if (!who.head) return { ok: false as const, error: "Only the office holder can rename a file." };
-    const taken = await coverTaken(sql, data.key, data.to, data.from);
+    const taken = await coverTaken(sql, porch, data.key, data.to, data.from);
     if (taken) return { ok: false as const, error: "That cover is already on the shelf." };
     const moved = await sql`
       update office_files set part = ${data.to}, title = ${data.to}
-      where office_key = ${data.key} and part = ${data.from}
+      where office_key = ${data.key} and porch_id = ${porch} and part = ${data.from}
       returning part
     `;
     if (!moved.length) {
       await sql`
-        insert into office_files (office_key, part, title, body, hoo_body, hoo_edited, updated_at)
-        values (${data.key}, ${data.to}, ${data.to}, '', '', false, now())
+        insert into office_files (porch_id, office_key, part, title, body, hoo_body, hoo_edited, updated_at)
+        values (${porch}, ${data.key}, ${data.to}, ${data.to}, '', '', false, now())
       `;
     }
-    await sql`update office_pdfs set part = ${data.to} where office_key = ${data.key} and part = ${data.from}`;
+    await sql`update office_pdfs set part = ${data.to} where office_key = ${data.key} and porch_id = ${porch} and part = ${data.from}`;
     if ((OFFICE_PARTS[data.key] ?? []).includes(data.from)) {
       await sql`
-        insert into office_removed (office_key, part) values (${data.key}, ${data.from})
-        on conflict (office_key, part) do nothing
+        insert into office_removed (porch_id, office_key, part) values (${porch}, ${data.key}, ${data.from})
+        on conflict (porch_id, office_key, part) do nothing
       `;
     }
-    await sql`delete from office_removed where office_key = ${data.key} and part = ${data.to}`;
+    await sql`delete from office_removed where office_key = ${data.key} and porch_id = ${porch} and part = ${data.to}`;
     return { ok: true as const };
   });
 
-async function coverTaken(sql: Awaited<ReturnType<typeof getSql>>, key: string, name: string, except: string) {
+async function coverTaken(sql: Awaited<ReturnType<typeof getSql>>, porch: number, key: string, name: string, except: string) {
   const fixed = (OFFICE_PARTS[key] ?? []).filter((part) => part !== except);
-  const gone = await sql.query<{ part: string }>("select part from office_removed where office_key = $1", [key]);
+  const gone = await sql.query<{ part: string }>("select part from office_removed where office_key = $1 and porch_id = $2", [key, porch]);
   const removed = new Set(gone.map((row) => row.part));
   if (fixed.some((part) => part === name && !removed.has(part))) return true;
-  const files = await sql.query<{ part: string }>("select part from office_files where office_key = $1 and part = $2", [key, name]);
+  const files = await sql.query<{ part: string }>("select part from office_files where office_key = $1 and porch_id = $3 and part = $2", [key, name, porch]);
   if (files.length && name !== except) return true;
-  const pdfs = await sql.query<{ part: string }>("select part from office_pdfs where office_key = $1 and part = $2", [key, name]);
+  const pdfs = await sql.query<{ part: string }>("select part from office_pdfs where office_key = $1 and porch_id = $3 and part = $2", [key, name, porch]);
   return pdfs.length > 0 && name !== except;
 }
 
@@ -482,16 +494,17 @@ export const listOfficeBooks = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if (!data.key) return { ok: false as const, error: "That office is not here.", books: [] as string[], removed: [] as string[] };
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await filesReady(sql);
     const who = await place(sql, context.userId, data.key);
     if (!who.allowed) return { ok: false as const, error: "That office is locked.", books: [] as string[], removed: [] as string[] };
     const fixed = new Set(OFFICE_PARTS[data.key] ?? []);
     const rows = await sql.query<{ part: string }>(
-      "select part from office_files where office_key = $1 order by updated_at",
-      [data.key],
+      "select part from office_files where office_key = $1 and porch_id = $2 order by updated_at",
+      [data.key, porch],
     );
-    const gone = await sql.query<{ part: string }>("select part from office_removed where office_key = $1", [data.key]);
+    const gone = await sql.query<{ part: string }>("select part from office_removed where office_key = $1 and porch_id = $2", [data.key, porch]);
     return {
       ok: true as const,
       books: rows.map((row) => row.part).filter((part) => part && !fixed.has(part)),
@@ -511,27 +524,28 @@ export const loadDeskReading = createServerFn({ method: "POST" })
     const key = DESK_OFFICE[data.desk];
     if (!key) return { ok: true as const, books: [] as { title: string; body: string; edited: boolean; hasPdf: boolean }[] };
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await filesReady(sql);
     const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [context.userId]);
     const heads = await sql.query<{ key: string; head_user_id: string | null }>(
-      "select key, head_user_id from offices where key in ('hoo', $1)",
-      [key],
+      "select key, head_user_id from offices where key in ('hoo', $1) and porch_id = my_porch($2)",
+      [key, context.userId],
     );
     const founder = boolish(me[0]?.is_founder);
     const hoo = heads.some((row) => row.key === "hoo" && row.head_user_id === context.userId);
     const mine = heads.some((row) => row.key === key && row.head_user_id === context.userId);
     if (!founder && !hoo && !mine) return { ok: false as const, error: "That report is not yours.", books: [] as { title: string; body: string; edited: boolean; hasPdf: boolean }[] };
     const fixed = new Set(OFFICE_PARTS[key] ?? []);
-    const gone = await sql.query<{ part: string }>("select part from office_removed where office_key = $1", [key]);
+    const gone = await sql.query<{ part: string }>("select part from office_removed where office_key = $1 and porch_id = $2", [key, porch]);
     const removed = new Set(gone.map((row) => row.part));
     const rows = await sql.query<{ part: string; body: string; hoo_body: string | null; hoo_edited: boolean }>(
-      "select part, body, hoo_body, hoo_edited from office_files where office_key = $1 order by updated_at",
-      [key],
+      "select part, body, hoo_body, hoo_edited from office_files where office_key = $1 and porch_id = $2 order by updated_at",
+      [key, porch],
     );
     const pdfs = await sql.query<{ part: string; pdf: string | null; hoo_pdf: string | null; hoo_edited: boolean }>(
-      "select part, pdf, hoo_pdf, hoo_edited from office_pdfs where office_key = $1",
-      [key],
+      "select part, pdf, hoo_pdf, hoo_edited from office_pdfs where office_key = $1 and porch_id = $2",
+      [key, porch],
     );
     const byPart = new Map<string, { title: string; body: string; edited: boolean; hasPdf: boolean }>();
     for (const row of rows) {

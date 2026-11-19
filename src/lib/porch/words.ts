@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { myPorchId, porchTables } from "@/lib/porch/porch-foundation";
 import { getSql, type Sql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 
@@ -17,15 +18,17 @@ async function ensure(sql: Sql) {
     text text not null,
     updated_at timestamptz not null default now()
   )`);
+  await porchTables(sql, { key: [["porch_words", "key"]] });
   ready = true;
 }
 
 export const getWords = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .handler(async () => {
+  .handler(async ({ context }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await ensure(sql);
-    const rows = await sql.query<{ key: string; text: string }>("select key, text from porch_words");
+    const rows = await sql.query<{ key: string; text: string }>(`select key, text from porch_words where porch_id = ${porch}`);
     return { words: Object.fromEntries(rows.map((r) => [r.key, r.text])) as Record<string, string> };
   });
 
@@ -40,14 +43,14 @@ export const setWord = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if (!data.key) return { ok: false as const, error: "That words can't be changed." };
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await ensure(sql);
     const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
     const founder = me[0]?.is_founder === true || me[0]?.is_founder === "t" || me[0]?.is_founder === "true";
     if (!founder) return { ok: false as const, error: "Only the founder rewords Porchbook." };
-    if (!data.text) await sql.query("delete from porch_words where key = $1", [data.key]);
+    if (!data.text) await sql.query(`delete from porch_words where porch_id = ${porch} and key = $1`, [data.key]);
     else
-      await sql.query(
-        "insert into porch_words (key, text) values ($1, $2) on conflict (key) do update set text = excluded.text, updated_at = now()",
+      await sql.query(`insert into porch_words (porch_id, key, text) values (${porch}, $1, $2) on conflict (porch_id, key) do update set text = excluded.text, updated_at = now()`,
         [data.key, data.text],
       );
     return { ok: true as const };

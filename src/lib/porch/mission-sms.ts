@@ -76,16 +76,16 @@ async function ensureTables(sql: Sql) {
 
 async function missionsHead(sql: Sql, userId: string): Promise<boolean> {
   const rows = await sql.query<{ head_user_id: string | null }>(
-    "select head_user_id from offices where key = 'missions'",
-    [],
+    "select head_user_id from offices where key = 'missions' and porch_id = my_porch($1)",
+    [userId],
   );
   return rows[0]?.head_user_id === userId;
 }
 
-async function contacts(sql: Sql): Promise<Contact[]> {
+async function contacts(sql: Sql, userId: string): Promise<Contact[]> {
   const rows = await sql.query<{ person_name: string; phone: string }>(
-    "select person_name, phone from my_twenty where phone <> ''",
-    [],
+    "select person_name, phone from my_twenty where phone <> '' and porch_id = my_porch($1)",
+    [userId],
   );
   const byPhone = new Map<string, Contact>();
   for (const row of rows) {
@@ -117,7 +117,7 @@ export const loadMissionSms = createServerFn({ method: "POST" })
     if (!(await missionsHead(sql, context.userId))) {
       return { ok: true as const, isHead: false, count: 0, sends: [], report: "" };
     }
-    const list = await contacts(sql);
+    const list = await contacts(sql, context.userId);
     const sends = await sql.query<{ id: number; created_at: string; parts: number; n: number }>(
       `select s.id, to_char(s.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
               s.parts, count(t.phone)::int as n
@@ -161,7 +161,7 @@ export const prepareMissionSms = createServerFn({ method: "POST" })
       noteAttempt(context.userId, "mission-sms", "Tried to message every My 20 contact.");
       return { ok: false as const, error: "Only the Head of Missions can send this." };
     }
-    const list = await contacts(sql);
+    const list = await contacts(sql, context.userId);
     if (!list.length) return { ok: false as const, error: "No finished My 20 numbers yet." };
     const parts = smsParts(data.body);
     const inserted = await sql<{ id: number }>`

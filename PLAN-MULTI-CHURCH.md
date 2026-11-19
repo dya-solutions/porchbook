@@ -42,7 +42,7 @@ Any **church, ministry, gospel artist or organisation** starts its own **porch**
 | Old plan **Step 2**: admins instead of the founder | ✅ Done in Stage 2 |
 | **Stage 2:** the foundation | ✅ Done (19 Nov). Two-church test: 14 passed, 0 failed, 5 not private yet (feed, people, chat) |
 | **Stage 3a:** MSG/AMPC hidden; feed, chat, group chats, people, "on the porch now" and one-to-one calls private per porch | ✅ Done (19 Nov). Two-church test: 46 passed, 0 failed, 0 not private yet |
-| **Stage 3b:** offices, tour doors, read shelf, notifications | ❌ Not started |
+| **Stage 3b:** offices, tour doors, read shelf and devotional, notifications, wording, sounds and settings | ✅ Done (19 Nov). Two-church test: 112 passed, 0 failed, 0 not private yet |
 | Stages 3–8 | ❌ Not started |
 
 ---
@@ -147,6 +147,14 @@ The app has about **150 tables**. About 75 are made by `migrations/` (which we d
 - Radio, Clinic and Call are hidden (on hold). Feedback is back on the tour in the Clinic's place.
 
 ### Public porch (Stage 6)
+*Decisions 9–13 (BUILD-BRIEF.md) are in force for this stage:*
+- **Anyone can build a porch** of any type. A person is a **member of only one porch, their church**, and can be an **admin of other non-church porches** they build.
+- The public porch shows **only posts from porches you follow**. Members follow, unfollow and react; they never post or comment there.
+- **Automatic following:** every member follows their own church's porch, and its main church if it's a branch. **Their own church can't be unfollowed.**
+- **Find porches:** search by name, town or type. Finding a porch never adds its posts by itself; only following does.
+- **Design:** follow the updated `design-reference/Public.dc.html`: "From the X porches you follow" plus a **Find porches** button, instead of filter chips.
+- **Tests to add then:** you only see followed porches' posts; you can't post or comment; you can't unfollow your own church; search finds porches but adds nothing to the feed.
+
 - **Only porches post** (an admin posts on behalf of the porch), and only once the porch is **approved (verified)** by the platform owner.
 - Members of any porch can **follow** porches and **react** (Love, Like, Touching, Deep). **No comments or replies.**
 - To post publicly you must start a porch first.
@@ -222,10 +230,12 @@ After every stage: git undo point, CHANGES.md, "after" pictures where screens ch
    - Test: Phaneroo looks identical (pictures), the admin keeps every tool, a member gets none, and a second admin can be added.
 3. **Porch tags, one area at a time**, in two halves.
    - **3a** ✅ Done (19 Nov): MSG and AMPC hidden; feed, chat (with group chats), people and profiles, "on the porch now", and one-to-one calls only within a porch.
-   - **3b**: offices (and the office-head and report pickers), tour doors (Events, Serve, Transport, My 20 and its SMS, Pray, Feedback), read shelf and devotional, notifications and alerts ("send to everyone" becomes "everyone in this porch"), and per-porch wording and sounds. Two-church test after each area.
+   - **3b** ✅ Done (19 Nov): offices (and the office-head and report pickers), tour doors (Events, Serve, Transport, My 20 and its SMS, Pray, Feedback), read shelf and devotional, notifications and alerts ("send to everyone" is now "everyone in this porch"), and per-porch wording, sounds and every "only one" setting.
+   - **Still not separated, by decision:** the on-hold features (radio, nuggets, PorchGuy, Clinic, devotional voice, machine translation, group calls). They must be tagged and pass the two-church test before being switched on (decision 8).
+   - **Left for later stages:** moving between churches (Stage 5: old conversations, office threads, roles, and old Porchbook "legacy" posts claimed by email); the devotional source and the 8 office names as church settings (Stage 4); calls through outside services (Stage 8).
 4. **Themes and the new design**, one screen at a time, following `design-reference/`. Hide the old photo and texture settings and the old Themes menu (decisions 2 and 3), and make Dawn / Dusk / Night a gentle dimmer (decision 4). The colour settings come first, then Porch, Tour, Offices (with its new tab and office actions), Chat, Read, Presence, Conversation and profile. Phaneroo uses Porch Evening.
 5. **Joining, leaving and starting a porch**, with invite codes, the 3-step Start a porch screen, and platform-owner approval.
-6. **Public porch**: porch pages, following, public posts and reactions (separate tables).
+6. **Public porch**: porch pages, following (automatic for your own church and its main church), public posts and reactions (separate tables), and Find porches. Members react only; no posting or comments.
 7. **Branches**: link requests, approval by the main porch, the branch list on the porch page, unlinking.
 8. **One-to-one calls** on a free setup. JT approves the setup first.
 

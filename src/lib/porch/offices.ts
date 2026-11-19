@@ -3,6 +3,7 @@ import { getSql, type Sql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
 import { touchProfile } from "@/lib/porch/api";
+import { porchTables } from "@/lib/porch/porch-foundation";
 import type { Seed } from "@/lib/porch/model";
 
 export const OFFICES = [
@@ -138,12 +139,17 @@ function threadRoom(key: OfficeKey, room: PastorRoom | ""): string {
   return "";
 }
 
-async function ensureOffices(sql: Sql) {
+async function ensureOffices(sql: Sql, userId: string) {
+  // Each church porch has its own offices (Stage 3b). The office's short key ("pastor") is only
+  // unique within a church, so the old links that assumed one set of offices are removed.
+  await sql`alter table office_threads drop constraint if exists office_threads_office_key_fkey`;
+  await sql`alter table office_calendar drop constraint if exists office_calendar_office_key_fkey`;
+  await porchTables(sql, { key: [["offices", "key"]] });
   for (const [index, office] of OFFICES.entries()) {
     await sql`
-      insert into offices (key, name, sort)
-      values (${office.key}, ${office.name}, ${index + 1})
-      on conflict (key) do update set name = excluded.name, sort = excluded.sort
+      insert into offices (porch_id, key, name, sort)
+      values (my_porch(${userId}), ${office.key}, ${office.name}, ${index + 1})
+      on conflict (porch_id, key) do update set name = excluded.name, sort = excluded.sort
     `;
   }
   await sql`alter table office_threads add column if not exists status text not null default 'open'`;
@@ -173,9 +179,11 @@ async function ensureOffices(sql: Sql) {
     `;
     await sql`insert into porch_flags (key) values ('appoint_to_chat') on conflict (key) do nothing`;
   }
+  await porchTables(sql, { tag: [["office_threads", "member_id"]], child: [["office_messages", "thread_id", "office_threads"]] });
+  await sql`drop index if exists office_threads_member_room`;
   await sql`
-    create unique index if not exists office_threads_member_room
-    on office_threads (office_key, member_id, room)
+    create unique index if not exists office_threads_porch_member_room
+    on office_threads (porch_id, office_key, member_id, room)
   `;
   await sql`alter table office_messages add column if not exists official boolean not null default false`;
   // A closed door: the person's messages are held (they see "Not sent") until the head opens it.
@@ -195,11 +203,12 @@ async function ensureOffices(sql: Sql) {
       updated_at timestamptz not null default now()
     )
   `;
+  await porchTables(sql, { key: [["office_doors", "office_key, member_id"], ["office_calendar", "office_key"]] });
 }
 
 async function holdsOffice(sql: Sql, userId: string): Promise<boolean> {
   const rows = await sql.query<{ head_user_id: string }>(
-    "select head_user_id from offices where head_user_id = $1 limit 1",
+    "select head_user_id from offices where head_user_id = $1 and porch_id = my_porch($1) limit 1",
     [userId],
   );
   return rows.length > 0;
@@ -219,7 +228,7 @@ export const listOffices = createServerFn({ method: "POST" })
   .handler(async ({ context, data: seed }) => {
     const sql = await getSql();
     await touchProfile(sql, context.userId, seed);
-    await ensureOffices(sql);
+    await ensureOffices(sql, context.userId);
     const isFounder = await founderFlag(sql, context.userId);
     const rows = await sql.query<{
       key: string;
@@ -231,7 +240,9 @@ export const listOffices = createServerFn({ method: "POST" })
       `select o.key, o.name, o.head_user_id, p.display_name as head_name, p.image_url as head_image
        from offices o
        left join profiles p on p.user_id = o.head_user_id
+       where o.porch_id = my_porch($1)
        order by o.sort asc`,
+      [context.userId],
     );
     const offices: OfficeCard[] = rows
       .filter((row) => KEYS.has(row.key))
@@ -244,7 +255,8 @@ export const listOffices = createServerFn({ method: "POST" })
       }));
     const people = isFounder
       ? await sql.query<{ user_id: string; display_name: string }>(
-          "select user_id, display_name from profiles order by lower(display_name) asc",
+          "select user_id, display_name from profiles where porch_id = my_porch($1) order by lower(display_name) asc",
+          [context.userId],
         )
       : [];
     return {
@@ -264,14 +276,14 @@ export const setOfficeHead = createServerFn({ method: "POST" })
     if (!data.key || !data.userId) return { ok: false as const, error: "Choose a head." };
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
-    await ensureOffices(sql);
+    await ensureOffices(sql, context.userId);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "office-head", "Tried to choose an office head.");
       return { ok: false as const, error: "Only the founder can choose a head." };
     }
-    const found = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${data.userId}`;
-    if (!found.length) return { ok: false as const, error: "That person is not on Porchbook." };
-    await sql`update offices set head_user_id = ${data.userId} where key = ${data.key}`;
+    const found = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${data.userId} and same_porch(user_id, ${context.userId})`;
+    if (!found.length) return { ok: false as const, error: "That person is not in your porch." };
+    await sql`update offices set head_user_id = ${data.userId} where key = ${data.key} and porch_id = my_porch(${context.userId})`;
     return { ok: true as const };
   });
 
@@ -290,13 +302,13 @@ export const openOffice = createServerFn({ method: "POST" })
     if (!data.key) return { ok: false as const, error: "That office is not here." };
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
-    await ensureOffices(sql);
+    await ensureOffices(sql, context.userId);
     const offices = await sql.query<{ name: string; head_user_id: string | null; head_name: string | null }>(
       `select o.name, o.head_user_id, p.display_name as head_name
        from offices o
        left join profiles p on p.user_id = o.head_user_id
-       where o.key = $1`,
-      [data.key],
+       where o.key = $1 and o.porch_id = my_porch($2)`,
+      [data.key, context.userId],
     );
     const office = offices[0];
     if (!office) return { ok: false as const, error: "That office is not here." };
@@ -335,7 +347,7 @@ export const openOffice = createServerFn({ method: "POST" })
     }
     if (data.key === "pastor" && room === "calendar") {
       const saved = await sql<{ body: string }>`
-        select body from office_calendar where office_key = 'pastor'
+        select body from office_calendar where office_key = 'pastor' and porch_id = my_porch(${context.userId})
       `;
       return {
         ok: true as const,
@@ -379,7 +391,7 @@ export const openOffice = createServerFn({ method: "POST" })
         }>(
           `select t.member_id, p.display_name as member_name, p.image_url as member_image,
                   t.status,
-                  exists (select 1 from office_doors d where d.office_key = t.office_key and d.member_id = t.member_id) as door,
+                  exists (select 1 from office_doors d where d.office_key = t.office_key and d.member_id = t.member_id and d.porch_id = t.porch_id) as door,
                   last.body as last_body,
                   to_char(last.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at
            from office_threads t
@@ -390,11 +402,11 @@ export const openOffice = createServerFn({ method: "POST" })
              order by created_at desc
              limit 1
            ) last on true
-           where t.office_key = $1 and t.room = $2
+           where t.office_key = $1 and t.room = $2 and t.porch_id = my_porch($3)
              and exists (select 1 from office_messages m where m.thread_id = t.id and not m.held)
            order by case t.status when 'open' then 0 when 'received' then 1 else 2 end,
                     last.created_at desc nulls last, t.created_at desc`,
-          [data.key, noteRoom],
+          [data.key, noteRoom, context.userId],
         )
       : [];
 
@@ -409,8 +421,8 @@ export const openOffice = createServerFn({ method: "POST" })
       const who = await sql<{ display_name: string; status: string | null }>`
         select p.display_name, t.status
         from profiles p
-        left join office_threads t on t.member_id = p.user_id and t.office_key = ${data.key} and t.room = ${noteRoom}
-        where p.user_id = ${memberId}
+        left join office_threads t on t.member_id = p.user_id and t.office_key = ${data.key} and t.room = ${noteRoom} and t.porch_id = my_porch(${context.userId})
+        where p.user_id = ${memberId} and same_porch(p.user_id, ${context.userId})
       `;
       memberName = who[0]?.display_name ?? "";
       requestStatus = parseStatus(who[0]?.status);
@@ -428,7 +440,7 @@ export const openOffice = createServerFn({ method: "POST" })
          from office_messages m
          join office_threads t on t.id = m.thread_id
          join profiles p on p.user_id = m.author_id
-         where t.office_key = $1 and t.member_id = $2 and t.room = $3
+         where t.office_key = $1 and t.member_id = $2 and t.room = $3 and t.porch_id = my_porch($4)
            and (not m.held or m.author_id = $4)
          order by m.created_at asc`,
         [data.key, memberId, noteRoom, context.userId],
@@ -448,7 +460,7 @@ export const openOffice = createServerFn({ method: "POST" })
     const waiting = !isHead && memberId === context.userId && notes.length > 0 && notes[notes.length - 1].mine;
     let doorClosed = false;
     if (oversee && memberId && memberId !== context.userId) {
-      const door = await sql.query<{ member_id: string }>("select member_id from office_doors where office_key = $1 and member_id = $2", [data.key, memberId]);
+      const door = await sql.query<{ member_id: string }>("select member_id from office_doors where office_key = $1 and member_id = $2 and porch_id = my_porch($3)", [data.key, memberId, context.userId]);
       doorClosed = door.length > 0;
     }
 
@@ -502,9 +514,9 @@ export const sendOfficeNote = createServerFn({ method: "POST" })
     if (!data.key || !data.body) return { ok: false as const, error: "Write a note first." };
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
-    await ensureOffices(sql);
+    await ensureOffices(sql, context.userId);
     const offices = await sql<{ head_user_id: string | null }>`
-      select head_user_id from offices where key = ${data.key}
+      select head_user_id from offices where key = ${data.key} and porch_id = my_porch(${context.userId})
     `;
     const headId = offices[0]?.head_user_id ?? null;
     if (!headId) return { ok: false as const, error: "This office has no head yet." };
@@ -516,7 +528,7 @@ export const sendOfficeNote = createServerFn({ method: "POST" })
     }
     if (noteRoom === "official" && headId !== context.userId) {
       const existing = await sql<{ id: number }>`
-        select id from office_threads where office_key = 'pastor' and member_id = ${context.userId} and room = 'official'
+        select id from office_threads where office_key = 'pastor' and member_id = ${context.userId} and room = 'official' and porch_id = my_porch(${context.userId})
       `;
       if (!existing.length) return { ok: false as const, error: "Wait for an official message." };
     }
@@ -540,29 +552,29 @@ export const sendOfficeNote = createServerFn({ method: "POST" })
     }
     if (isHead && memberId !== context.userId) {
       const existing = await sql<{ id: number }>`
-        select id from office_threads where office_key = ${data.key} and member_id = ${memberId} and room = ${noteRoom}
+        select id from office_threads where office_key = ${data.key} and member_id = ${memberId} and room = ${noteRoom} and porch_id = my_porch(${context.userId})
       `;
       if (!existing.length) {
         return { ok: false as const, error: "Wait for someone to write to your office." };
       }
     }
-    const member = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${memberId}`;
+    const member = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${memberId} and same_porch(user_id, ${context.userId})`;
     if (!member.length) return { ok: false as const, error: "That person is not on Porchbook." };
     let held = false;
     if (!isHead) {
       const last = await sql.query<{ author_id: string }>(
         `select m.author_id from office_messages m join office_threads t on t.id = m.thread_id
-          where t.office_key = $1 and t.member_id = $2 and t.room = $3 order by m.created_at desc, m.id desc limit 1`,
-        [data.key, memberId, noteRoom],
+          where t.office_key = $1 and t.member_id = $2 and t.room = $3 and t.porch_id = my_porch($4) order by m.created_at desc, m.id desc limit 1`,
+        [data.key, memberId, noteRoom, context.userId],
       );
       if (last[0]?.author_id === context.userId) return { ok: false as const, error: "Your message is with the office. You can write again when they reply." };
-      const door = await sql.query<{ member_id: string }>("select member_id from office_doors where office_key = $1 and member_id = $2", [data.key, context.userId]);
+      const door = await sql.query<{ member_id: string }>("select member_id from office_doors where office_key = $1 and member_id = $2 and porch_id = my_porch($2)", [data.key, context.userId]);
       held = door.length > 0;
     }
     const inserted = await sql<{ id: number }>`
-      insert into office_threads (office_key, member_id, room)
-      values (${data.key}, ${memberId}, ${noteRoom})
-      on conflict (office_key, member_id, room) do update set room = excluded.room
+      insert into office_threads (porch_id, office_key, member_id, room)
+      values (my_porch(${context.userId}), ${data.key}, ${memberId}, ${noteRoom})
+      on conflict (porch_id, office_key, member_id, room) do update set room = excluded.room
       returning id
     `;
     const threadId = inserted[0]?.id;
@@ -610,9 +622,9 @@ export const setPrayerStatus = createServerFn({ method: "POST" })
     if (!data.memberId || !data.status) return { ok: false as const, error: "Choose a mark." };
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
-    await ensureOffices(sql);
+    await ensureOffices(sql, context.userId);
     const offices = await sql<{ head_user_id: string | null }>`
-      select head_user_id from offices where key = 'pastor'
+      select head_user_id from offices where key = 'pastor' and porch_id = my_porch(${context.userId})
     `;
     const headId = offices[0]?.head_user_id ?? null;
     if (data.status === "answered") {
@@ -625,7 +637,7 @@ export const setPrayerStatus = createServerFn({ method: "POST" })
     }
     const updated = await sql<{ member_id: string }>`
       update office_threads set status = ${data.status}
-      where office_key = 'pastor' and room = 'thanks' and member_id = ${data.memberId}
+      where office_key = 'pastor' and room = 'thanks' and member_id = ${data.memberId} and porch_id = my_porch(${context.userId})
       returning member_id
     `;
     if (!updated.length) return { ok: false as const, error: "That request is not here." };
@@ -644,9 +656,9 @@ export const saveCalendar = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
-    await ensureOffices(sql);
+    await ensureOffices(sql, context.userId);
     const offices = await sql<{ head_user_id: string | null }>`
-      select head_user_id from offices where key = 'pastor'
+      select head_user_id from offices where key = 'pastor' and porch_id = my_porch(${context.userId})
     `;
     const headId = offices[0]?.head_user_id ?? null;
     if (context.userId !== headId) {
@@ -654,9 +666,9 @@ export const saveCalendar = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Only the pastor's office can write the calendar." };
     }
     await sql`
-      insert into office_calendar (office_key, body, updated_at)
-      values ('pastor', ${data.body}, now())
-      on conflict (office_key) do update set body = excluded.body, updated_at = now()
+      insert into office_calendar (porch_id, office_key, body, updated_at)
+      values (my_porch(${context.userId}), 'pastor', ${data.body}, now())
+      on conflict (porch_id, office_key) do update set body = excluded.body, updated_at = now()
     `;
     return { ok: true as const };
   });
@@ -667,14 +679,14 @@ export const listOfficeHolders = createServerFn({ method: "POST" })
   .handler(async ({ context, data: seed }) => {
     const sql = await getSql();
     await touchProfile(sql, context.userId, seed);
-    await ensureOffices(sql);
-    const pastor = await sql<{ head_user_id: string | null }>`select head_user_id from offices where key = 'pastor'`;
+    await ensureOffices(sql, context.userId);
+    const pastor = await sql<{ head_user_id: string | null }>`select head_user_id from offices where key = 'pastor' and porch_id = my_porch(${context.userId})`;
     if (pastor[0]?.head_user_id !== context.userId) return { ok: false as const, error: "Only the pastor can write an official message.", people: [] as { userId: string; displayName: string; offices: string[] }[] };
     const rows = await sql<{ user_id: string; display_name: string; name: string }>`
       select p.user_id, p.display_name, o.name
       from offices o
       join profiles p on p.user_id = o.head_user_id
-      where o.head_user_id is not null and o.head_user_id <> ${context.userId}
+      where o.head_user_id is not null and o.head_user_id <> ${context.userId} and o.porch_id = my_porch(${context.userId})
       order by o.sort
     `;
     const people = new Map<string, { userId: string; displayName: string; offices: string[] }>();
@@ -700,23 +712,23 @@ export const sendOfficial = createServerFn({ method: "POST" })
     if (!data.body) return { ok: false as const, error: "Write the message first." };
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
-    await ensureOffices(sql);
-    const pastor = await sql<{ head_user_id: string | null }>`select head_user_id from offices where key = 'pastor'`;
+    await ensureOffices(sql, context.userId);
+    const pastor = await sql<{ head_user_id: string | null }>`select head_user_id from offices where key = 'pastor' and porch_id = my_porch(${context.userId})`;
     if (pastor[0]?.head_user_id !== context.userId) {
       noteAttempt(context.userId, "official", "Tried to send an official message.");
       return { ok: false as const, error: "Only the pastor can write an official message." };
     }
     const heads = await sql<{ user_id: string }>`
       select distinct head_user_id as user_id from offices
-      where head_user_id is not null and head_user_id <> ${context.userId}
+      where head_user_id is not null and head_user_id <> ${context.userId} and porch_id = my_porch(${context.userId})
     `;
     const targets = data.userId ? heads.filter((row) => row.user_id === data.userId) : heads;
     if (!targets.length) return { ok: false as const, error: data.userId ? "That person does not hold an office." : "No office holder yet." };
     for (const target of targets) {
       const inserted = await sql<{ id: number }>`
-        insert into office_threads (office_key, member_id, room)
-        values ('pastor', ${target.user_id}, 'official')
-        on conflict (office_key, member_id, room) do update set room = excluded.room
+        insert into office_threads (porch_id, office_key, member_id, room)
+        values (my_porch(${context.userId}), 'pastor', ${target.user_id}, 'official')
+        on conflict (porch_id, office_key, member_id, room) do update set room = excluded.room
         returning id
       `;
       const threadId = inserted[0]?.id;
@@ -749,22 +761,22 @@ export const setOfficeDoor = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if (!data.key || !data.memberId) return { ok: false as const, error: "Choose the person first." };
     const sql = await getSql();
-    await ensureOffices(sql);
-    const office = await sql.query<{ head_user_id: string | null; name: string }>("select head_user_id, name from offices where key = $1", [data.key]);
+    await ensureOffices(sql, context.userId);
+    const office = await sql.query<{ head_user_id: string | null; name: string }>("select head_user_id, name from offices where key = $1 and porch_id = my_porch($2)", [data.key, context.userId]);
     if (!office[0] || office[0].head_user_id !== context.userId) {
       noteAttempt(context.userId, "office-door", "Tried to close or open an office door that isn't theirs.");
       return { ok: false as const, error: "Only the office's head can do that." };
     }
     if (data.memberId === context.userId) return { ok: false as const, error: "That's you." };
     if (!data.open) {
-      await sql.query("insert into office_doors (office_key, member_id) values ($1, $2) on conflict do nothing", [data.key, data.memberId]);
+      await sql.query("insert into office_doors (porch_id, office_key, member_id) values (my_porch($3), $1, $2) on conflict do nothing", [data.key, data.memberId, context.userId]);
       return { ok: true as const };
     }
-    await sql.query("delete from office_doors where office_key = $1 and member_id = $2", [data.key, data.memberId]);
+    await sql.query("delete from office_doors where office_key = $1 and member_id = $2 and porch_id = my_porch($3)", [data.key, data.memberId, context.userId]);
     const released = await sql.query<{ id: number }>(
       `update office_messages m set held = false from office_threads t
-        where t.id = m.thread_id and t.office_key = $1 and t.member_id = $2 and m.held returning m.id`,
-      [data.key, data.memberId],
+        where t.id = m.thread_id and t.office_key = $1 and t.member_id = $2 and t.porch_id = my_porch($3) and m.held returning m.id`,
+      [data.key, data.memberId, context.userId],
     );
     if (released.length) {
       try {

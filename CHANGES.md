@@ -104,6 +104,57 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
   - Your existing post still shows in Phaneroo's feed, and the test account is still admin.
   - "After" pictures are in `../after-stage3a/` and were compared with `../after-stage2/` (see the comparison page).
 
+### 5. Stage 3b (19 Nov 2026): church tags on everything else
+- **New rule (decision 8).** Any on-hold feature must get church tags and pass the two-church test before it is switched back on. This is in BUILD-BRIEF.md and next to every switch in `src/lib/porch/on-hold.ts`.
+- **Four reusable database helpers** (`porch-foundation.ts`):
+  - **Stamp from a person:** rows take the church of the person who saved them.
+  - **Stamp from a parent:** rows take their parent's church, e.g. a hotel takes its event's.
+  - **One per church:** "only one for the whole app" settings become "one per church". Saving one without naming the church fails loudly instead of quietly writing over Phaneroo's.
+  - **Must name its church:** for rows with no person to take it from, such as events.
+
+  Everything that already existed became Phaneroo's.
+- **Offices** (`offices.ts`, `office-book.ts`, `hoo-reports.ts`, `api/office-pdf.ts`):
+  - Each church has its own set of offices. All start with Phaneroo's 8 names; each church will name its own in Stage 4.
+  - Each church has its own heads, office conversations, closed doors, calendar, office books, files, PDFs and H.O.O reports, report pages and Family writer.
+  - The pickers for an office head or report writer only list the church's own members.
+  - Two old database links that assumed one set of offices were removed.
+- **Tour doors:**
+  - **Events** (`events.ts`): events, hotels, rooms, answers, travel, the guest board and the guest list.
+  - **Serve** (`serve.ts`): the volunteer download.
+  - **Transport** (`transport.ts`, `transport-board.ts`): each church has its own current transport event (Phaneroo keeps "31st Night of Prayer"), stage names, transport team, buses, stops and rides. Stage news only reaches that church's riders.
+  - **My 20** (`my20.ts`, `mission-sms.ts`): the admin's "everyone's lists" download and, importantly, **"delete everyone's lists", which used to wipe every church's lists**. The Missions text messages only use the church's own My 20 numbers.
+  - **Pray:** prayer music.
+  - **Feedback** (`trouble.ts`): the complaints list and answering them.
+- **Read** (`read.ts`, `bible-sites.ts`, `devotion-runyankore.ts`, `api/read-pdf.ts`):
+  - Each church has its own shelf: books, PDFs, its own Bible and Devotional entries, and Bible reading sites.
+  - Typed-in or approved Runyankore and Luganda devotional copies are per church, so another church's admin can never overwrite Phaneroo's.
+  - The devotional itself still comes from phaneroo.org for everyone. It becomes a church setting in Stage 4.
+  - Personal notebooks stay with the person, as decided.
+- **Notifications** (`notes.ts`, `push.server.ts`):
+  - The bell shows only the church's own notes.
+  - "Message everyone" alerts reach only the sender's church (the messages already did since Stage 3a). It used to alert every phone on Porchbook.
+- **Wording, sounds and settings** (16 files): these are now one per church, so one church can never overwrite another's:
+  - Edit words
+  - button sounds, message sound
+  - book covers and their butterflies
+  - item sizes
+  - the manual card and bell switches
+  - porch photo, header photo, hide, door, wall, carpet, ceiling, cloth, shelf picture
+  - Rhemaclip, the "previously" clip (its uploaded video is now one file per church; Phaneroo keeps its existing file), prayer music
+
+  An admin removing someone's photo now only works within their own church.
+- **On hold, so not separated (decision 8):** the radio, nuggets, PorchGuy, Clinic, devotional voice and machine translation. Their few spots that would otherwise break or reach another church now read Phaneroo's only, with a note.
+- **The two-church test** now covers every area above. **112 passed, 0 failed, 0 "not private yet".**
+  - For each area, Ben (Porch B) is refused or sees nothing of Porch A.
+  - Matching checks prove Abe can still do it all inside Porch A.
+  - A separate block proves that Porch B's admin changing words, sounds and settings (words, message and button sounds, porch photo, covers, item sizes, manual card, Rhemaclip, prayer music, Bible sites) does **not** change Porch A's.
+- **Why:** BUILD-BRIEF.md Stage 3, second half.
+- **Rules changed:** none on screen.
+- **Checked:**
+  - Type check passes.
+  - After a restart, the test account's real data still works: admin tools, posts, shelf, 8 offices, events, words, transport event, bell and covers. No database errors at start-up.
+  - "After" pictures are in `../after-stage3b/` and were compared with `../after-stage3a/` (see the comparison page).
+
 ## Approved for the redesign stage (not done yet)
 
 These were approved by the owner on 2026-11-18 but will be done later, during the redesign.

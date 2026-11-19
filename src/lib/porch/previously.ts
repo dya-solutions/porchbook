@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { myPorchId, porchTables } from "@/lib/porch/porch-foundation";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
@@ -54,6 +55,7 @@ async function ensurePrevious(sql: Awaited<ReturnType<typeof getSql>>) {
       updated_at timestamptz not null default now()
     )
   `;
+  await porchTables(sql, { key: [["previous_clip", "id"]] });
 }
 
 async function founderFlag(sql: Awaited<ReturnType<typeof getSql>>, userId: string) {
@@ -74,13 +76,13 @@ export const getPrevious = createServerFn({ method: "POST" })
   .validator((input: unknown) => parseSeed(input))
   .handler(async ({ context, data: seed }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, seed);
     await ensurePrevious(sql);
     const founder = await founderFlag(sql, context.userId);
-    const rows = await sql.query<{ kind: string; youtube_id: string | null; url: string | null; mime: string | null; updated_at: string | null }>(
-      `select kind, youtube_id, url, mime,
+    const rows = await sql.query<{ kind: string; youtube_id: string | null; url: string | null; mime: string | null; updated_at: string | null }>(`select kind, youtube_id, url, mime,
               to_char(updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as updated_at
-       from previous_clip where id = 1`,
+       from previous_clip where porch_id = ${porch} and id = 1`,
     );
     const row = rows[0];
     const clip: PreviousClip | null = row
@@ -103,6 +105,7 @@ export const setPreviousLink = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await ensurePrevious(sql);
     if (!(await founderFlag(sql, context.userId))) {
@@ -110,7 +113,7 @@ export const setPreviousLink = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Only the founder can set this video." };
     }
     if (!data.url) {
-      await sql`delete from previous_clip where id = 1`;
+      await sql`delete from previous_clip where porch_id = ${porch} and id = 1`;
       return { ok: true as const };
     }
     let parsed: URL;
@@ -123,16 +126,16 @@ export const setPreviousLink = createServerFn({ method: "POST" })
     const video = youtubeId(data.url);
     if (video) {
       await sql`
-        insert into previous_clip (id, kind, youtube_id, url, mime, updated_at)
-        values (1, 'youtube', ${video}, ${data.url}, null, now())
-        on conflict (id) do update
+        insert into previous_clip (porch_id, id, kind, youtube_id, url, mime, updated_at)
+        values (${porch}, 1, 'youtube', ${video}, ${data.url}, null, now())
+        on conflict (porch_id, id) do update
           set kind = 'youtube', youtube_id = ${video}, url = ${data.url}, mime = null, updated_at = now()
       `;
     } else {
       await sql`
-        insert into previous_clip (id, kind, youtube_id, url, mime, updated_at)
-        values (1, 'link', null, ${data.url}, null, now())
-        on conflict (id) do update
+        insert into previous_clip (porch_id, id, kind, youtube_id, url, mime, updated_at)
+        values (${porch}, 1, 'link', null, ${data.url}, null, now())
+        on conflict (porch_id, id) do update
           set kind = 'link', youtube_id = null, url = ${data.url}, mime = null, updated_at = now()
       `;
     }

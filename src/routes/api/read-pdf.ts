@@ -18,7 +18,7 @@ export const Route = createFileRoute("/api/read-pdf")({
         const key = url.searchParams.get("key") ?? "";
         if (!key || key.length > 40) return new Response("That book is not here.", { status: 404 });
         const sql = await getSql();
-        const rows = await sql.query<{ pdf: string | null }>("select pdf from read_docs where key = $1", [key]);
+        const rows = await sql.query<{ pdf: string | null }>("select pdf from read_docs where key = $1 and porch_id = my_porch($2)", [key, session.user.id]);
         const pdf = rows[0]?.pdf;
         if (!pdf) return new Response("That PDF is not here yet.", { status: 404 });
         return new Response(Buffer.from(pdf, "base64"), {
@@ -49,12 +49,12 @@ export const Route = createFileRoute("/api/read-pdf")({
         }
         if (file.size > 8_000_000) return Response.json({ ok: false, error: "That file is too large." }, { status: 400 });
         const bytes = Buffer.from(await file.arrayBuffer());
-        const found = await sql.query<{ key: string }>("select key from read_docs where key = $1", [key]);
+        const found = await sql.query<{ key: string }>("select key from read_docs where key = $1 and porch_id = my_porch($2)", [key, session.user.id]);
         if (!found.length) return Response.json({ ok: false, error: "That book is not here." }, { status: 404 });
         const book = await bookFromFile(file.name, bytes, kind === "pdf" ? "book" : "plain");
         if ("error" in book) return Response.json({ ok: false, error: book.error }, { status: 400 });
         const pdf = kind === "pdf" ? bytes.toString("base64") : "";
-        await sql`update read_docs set pdf = ${pdf}, body = ${book.body} where key = ${key}`;
+        await sql`update read_docs set pdf = ${pdf}, body = ${book.body} where key = ${key} and porch_id = my_porch(${session.user.id})`;
         return Response.json({ ok: true, body: book.body });
       },
     },

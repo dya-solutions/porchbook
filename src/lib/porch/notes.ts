@@ -9,7 +9,7 @@ async function shownTo(sql: Sql, userId: string) {
   const rows = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [userId]);
   const f = rows[0]?.is_founder;
   const founder = f === true || f === 1 || f === "1" || f === "t" || f === "true";
-  const flag = await sql.query<{ enabled: boolean }>("select enabled from app_flags where key = 'bell'").catch(() => []);
+  const flag = await sql.query<{ enabled: boolean }>("select enabled from app_flags where key = 'bell' and porch_id = my_porch($1)", [userId]).catch(() => []);
   const live = Boolean(flag[0]?.enabled);
   return { show: founder || live, founder, live };
 }
@@ -35,7 +35,7 @@ export const bellCount = createServerFn({ method: "POST" })
     const sql = await getSql();
     const who = await shownTo(sql, context.userId);
     if (!who.show) return { show: false as const, unread: 0 };
-    const rows = await sql.query<{ n: number }>("select count(*)::int as n from notifications where user_id = $1 and not seen", [context.userId]);
+    const rows = await sql.query<{ n: number }>("select count(*)::int as n from notifications where user_id = $1 and not seen and porch_id = my_porch($1)", [context.userId]);
     return { show: true as const, unread: Number(rows[0]?.n ?? 0), founder: who.founder, live: who.live };
   });
 
@@ -55,7 +55,7 @@ export const bellNotes = createServerFn({ method: "POST" })
               to_char(n.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as at,
               n.actor_id, p.display_name as actor_name, p.image_url as actor_image
        from notifications n left join profiles p on p.user_id = n.actor_id
-       where n.user_id = $1 ${data.before ? "and n.created_at < $2::timestamptz" : ""}
+       where n.user_id = $1 and n.porch_id = my_porch($1) ${data.before ? "and n.created_at < $2::timestamptz" : ""}
        order by n.created_at desc limit 61`,
       params,
     );
@@ -81,6 +81,6 @@ export const bellSeen = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    await sql.query("update notifications set seen = true where user_id = $1 and not seen", [context.userId]);
+    await sql.query("update notifications set seen = true where user_id = $1 and not seen and porch_id = my_porch($1)", [context.userId]);
     return { ok: true as const };
   });

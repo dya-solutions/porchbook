@@ -16,13 +16,13 @@ export const Route = createFileRoute("/api/office-pdf")({
         const sql = await getSql();
         // Offices are locked: only that office's head, the founder and the H.O.O may open its books.
         const me = await sql.query<{ is_founder: boolean | string | number | null }>("select is_porch_admin($1) as is_founder", [session.user.id]);
-        const heads = await sql.query<{ key: string; head_user_id: string | null }>("select key, head_user_id from offices where key in ('hoo', $1)", [key]);
+        const heads = await sql.query<{ key: string; head_user_id: string | null }>("select key, head_user_id from offices where key in ('hoo', $1) and porch_id = my_porch($2)", [key, session.user.id]);
         const founder = [true, 1, "1", "t", "true"].includes(me[0]?.is_founder as never);
         const allowed = founder || heads.some((row) => (row.key === key || row.key === "hoo") && row.head_user_id === session.user.id);
         if (!allowed) return new Response("That office is locked.", { status: 403 });
         const rows = await sql.query<{ pdf: string | null; hoo_pdf: string | null }>(
-          "select pdf, hoo_pdf from office_pdfs where office_key = $1 and part = $2",
-          [key, part],
+          "select pdf, hoo_pdf from office_pdfs where office_key = $1 and part = $2 and porch_id = my_porch($3)",
+          [key, part, session.user.id],
         );
         const row = rows[0];
         const pdf = view === "hoo" ? row?.pdf || row?.hoo_pdf : row?.pdf;

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { myPorchId, porchTables } from "@/lib/porch/porch-foundation";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
@@ -45,6 +46,7 @@ async function ensure(sql: Awaited<ReturnType<typeof getSql>>) {
       updated_at timestamptz not null default now()
     )
   `;
+  await porchTables(sql, { key: [["button_sound", "id"]] });
   await sql`alter table button_sound add column if not exists belongs text not null default ''`;
 }
 
@@ -58,12 +60,12 @@ export const loadButtonSound = createServerFn({ method: "POST" })
   .validator((input: unknown) => parseSeed(input))
   .handler(async ({ context, data: seed }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, seed);
     await ensure(sql);
     const founder = await founderFlag(sql, context.userId);
-    const rows = await sql.query<{ id: number; mime: string; audio: string; updated_at: string; belongs: string }>(
-      `select id, mime, audio, belongs, to_char(updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at
-       from button_sound where id in (1, 2, 3, 4, 5, 6)`,
+    const rows = await sql.query<{ id: number; mime: string; audio: string; updated_at: string; belongs: string }>(`select id, mime, audio, belongs, to_char(updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at
+       from button_sound where porch_id = ${porch} and id in (1, 2, 3, 4, 5, 6)`,
     );
     const tap = rows.find((row) => Number(row.id) === 1);
     const leave = rows.find((row) => Number(row.id) === 2);
@@ -110,6 +112,7 @@ export const setButtonSound = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
@@ -117,11 +120,11 @@ export const setButtonSound = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Only the founder can set this sound." };
     }
     if (data.slot === 6 && data.belongsOnly) {
-      await sql`update button_sound set belongs = ${data.belongs} where id = 6`;
+      await sql`update button_sound set belongs = ${data.belongs} where porch_id = ${porch} and id = 6`;
       return { ok: true as const };
     }
     if (!data.audio) {
-      await sql`delete from button_sound where id = ${data.slot}`;
+      await sql`delete from button_sound where porch_id = ${porch} and id = ${data.slot}`;
       return { ok: true as const };
     }
     if (!TYPES.has(data.mime)) return { ok: false as const, error: "Use an mp3, m4a, wav, or webm sound." };
@@ -134,9 +137,9 @@ export const setButtonSound = createServerFn({ method: "POST" })
     if (bytes > MAX_BYTES) return { ok: false as const, error: "Keep the sound under 400 KB." };
     const belongs = data.slot === 6 ? data.belongs : "";
     await sql`
-      insert into button_sound (id, mime, audio, belongs, updated_at)
-      values (${data.slot}, ${data.mime}, ${data.audio}, ${belongs}, now())
-      on conflict (id) do update set mime = ${data.mime}, audio = ${data.audio}, belongs = ${belongs}, updated_at = now()
+      insert into button_sound (porch_id, id, mime, audio, belongs, updated_at)
+      values (${porch}, ${data.slot}, ${data.mime}, ${data.audio}, ${belongs}, now())
+      on conflict (porch_id, id) do update set mime = ${data.mime}, audio = ${data.audio}, belongs = ${belongs}, updated_at = now()
     `;
     return { ok: true as const };
   });

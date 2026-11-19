@@ -21,7 +21,7 @@ export type Segment = { s: number; e: number; t: string };
 export async function stationNuggets(sql: Sql, founder: boolean): Promise<FmTrack[]> {
   try {
     const set = await sql.query<{ breaks_on: unknown; every_items: number }>("select breaks_on, every_items from nugget_settings where id = 1");
-    const flag = await sql.query<{ enabled: unknown }>("select enabled from app_flags where key = 'nuggets'");
+    const flag = await sql.query<{ enabled: unknown }>(/* On hold: Phaneroo's switch only. Must become per church before switching on (decision 8). */ "select enabled from app_flags where key = 'nuggets' and porch_id = 1");
     // While Bible readings are on, they are the station breaks: the automatic nugget breaks pause.
     const bible = await sql.query<{ readings_on: unknown }>("select readings_on from bible_settings where id = 1").catch(() => []);
     // Everyone (the founder too) hears the same schedule: a founder-only rotation would put the founder's

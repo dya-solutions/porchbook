@@ -3,6 +3,7 @@ import { appendFile, mkdir, readFile, rename, stat, unlink, writeFile } from "no
 import path from "node:path";
 import { auth } from "@/lib/auth/server";
 import { getSql } from "@/lib/db";
+import { myPorchId, porchTables } from "@/lib/porch/porch-foundation";
 
 const MAX_BYTES = 48 * 1024 * 1024;
 const CHUNK_BYTES = 700_000;
@@ -29,12 +30,13 @@ function videoDir() {
   return path.join(process.cwd(), "data", "previously");
 }
 
-function videoPath() {
-  return path.join(videoDir(), "video");
+/** One video per church porch (Phaneroo keeps the original file name). */
+function videoPath(porch: number) {
+  return path.join(videoDir(), porch === 1 ? "video" : `video-${porch}`);
 }
 
-function partPath() {
-  return path.join(videoDir(), "upload.bin");
+function partPath(porch: number) {
+  return path.join(videoDir(), porch === 1 ? "upload.bin" : `upload-${porch}.bin`);
 }
 
 async function founder(userId: string) {
@@ -51,12 +53,14 @@ export const Route = createFileRoute("/api/previously")({
         const session = await auth.api.getSession({ headers: request.headers });
         if (!session?.user) return new Response("Sign in to watch.", { status: 401 });
         const sql = await getSql();
+        const porch = await myPorchId(sql, session.user.id);
         const rows = await sql.query<{ mime: string | null; kind: string }>(
-          "select mime, kind from previous_clip where id = 1",
+          "select mime, kind from previous_clip where id = 1 and porch_id = $1",
+          [porch],
         );
         if (rows[0]?.kind !== "file") return new Response("No uploaded video.", { status: 404 });
         try {
-          const bytes = await readFile(videoPath());
+          const bytes = await readFile(videoPath(porch));
           return new Response(bytes, {
             headers: {
               "content-type": rows[0].mime || "video/mp4",
@@ -82,6 +86,8 @@ export const Route = createFileRoute("/api/previously")({
         if (!Number.isInteger(part) || !Number.isInteger(parts) || parts < 1 || parts > 80 || part < 0 || part >= parts) {
           return Response.json({ ok: false, error: "That video didn't upload. Try it again." }, { status: 400 });
         }
+        const porch = await myPorchId(await getSql(), session.user.id);
+        if (!porch) return Response.json({ ok: false, error: "Join a porch first." }, { status: 403 });
         let bytes: Uint8Array;
         try {
           bytes = new Uint8Array(await request.arrayBuffer());
@@ -93,15 +99,15 @@ export const Route = createFileRoute("/api/previously")({
         }
         try {
           await mkdir(videoDir(), { recursive: true });
-          if (part === 0) await writeFile(partPath(), bytes);
-          else await appendFile(partPath(), bytes);
+          if (part === 0) await writeFile(partPath(porch), bytes);
+          else await appendFile(partPath(porch), bytes);
           if (part < parts - 1) return Response.json({ ok: true, part });
-          const saved = await stat(partPath());
+          const saved = await stat(partPath(porch));
           if (saved.size > MAX_BYTES) {
-            await unlink(partPath()).catch(() => undefined);
+            await unlink(partPath(porch)).catch(() => undefined);
             return Response.json({ ok: false, error: "That video is larger than 48 MB." }, { status: 400 });
           }
-          await rename(partPath(), videoPath());
+          await rename(partPath(porch), videoPath(porch));
           const sql = await getSql();
           await sql`
             create table if not exists previous_clip (
@@ -113,10 +119,11 @@ export const Route = createFileRoute("/api/previously")({
               updated_at timestamptz not null default now()
             )
           `;
+          await porchTables(sql, { key: [["previous_clip", "id"]] });
           await sql`
-            insert into previous_clip (id, kind, youtube_id, url, mime, updated_at)
-            values (1, 'file', null, null, ${mime}, now())
-            on conflict (id) do update
+            insert into previous_clip (porch_id, id, kind, youtube_id, url, mime, updated_at)
+            values (${porch}, 1, 'file', null, null, ${mime}, now())
+            on conflict (porch_id, id) do update
               set kind = 'file', youtube_id = null, url = null, mime = ${mime}, updated_at = now()
           `;
         } catch {

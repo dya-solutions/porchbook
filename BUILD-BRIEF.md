@@ -98,3 +98,11 @@ JT's answers to the questions raised after Stage 1. Where these differ from anyt
 5. **Hide The Message (MSG) and Amplified (AMPC) Bibles for everyone**, Phaneroo included, until JT confirms permission. Keep KJV and the other free versions.
 6. **Going online, file storage and the call relay: not now.** Everything stays on JT's computer. Calls are handled in Stage 8.
 7. **Ownership:** JT will sort it out with the creator.
+8. **Rule for on-hold features:** any feature on hold (radio, PorchGuy, Clinic, group calls, devotional voice, machine translation) must get **church tags** and **pass the two-church test** before it is ever switched back on. Each switch in `src/lib/porch/on-hold.ts` carries the same note.
+9. **Anyone can build a porch** (church, ministry, gospel artist, organisation). A person is a **member of only one porch: their church**. They can be an **admin of other non-church porches** they build.
+10. **The public porch shows only posts from porches you follow.** Members can follow, unfollow and react, but **cannot post or comment** there.
+11. **Every member automatically follows their own church's porch**, and its main church if it is a branch. They **can't unfollow their own church**.
+12. **"Find porches":** a search to find porches to follow, by name, town or type. It never adds posts to your feed by itself; only following does.
+13. **Public porch design:** `design-reference/Public.dc.html` was updated. The filter chips are replaced by "From the X porches you follow" and a **"Find porches"** button. Follow that version.
+
+Decisions 9–13 belong to **Stage 6 (public porch)**.

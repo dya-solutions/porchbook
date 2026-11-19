@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { myPorchId, porchTables } from "@/lib/porch/porch-foundation";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
@@ -77,11 +78,8 @@ async function prepare(sql: Awaited<ReturnType<typeof getSql>>) {
   await sql`alter table notebook_notes add column if not exists kind text not null default 'personal'`;
   // Deleted notes wait a minute (for Undo), then go for good.
   await sql`alter table notebook_notes add column if not exists deleted_at timestamptz`;
-  await sql`
-    insert into read_docs (key, title, body, link, sort)
-    values ('bible', 'Bible', '', '', 0), ('devotion', 'Devotional', '', '', 1)
-    on conflict (key) do nothing
-  `;
+  await porchTables(sql, { key: [["read_docs", "key"]] });
+  await shelfFor(sql, 1);
   await sql`alter table read_docs add column if not exists pdf text not null default ''`;
   await sql`alter table read_docs add column if not exists link_set_at timestamptz`;
   await sql`alter table read_docs add column if not exists auto_checked_at timestamptz`;
@@ -100,11 +98,12 @@ function lastSwitchMs(nowMs: number) {
   return switchMs;
 }
 
-async function refreshDevotion(sql: Awaited<ReturnType<typeof getSql>>) {
+async function refreshDevotion(sql: Awaited<ReturnType<typeof getSql>>, porch: number) {
   const rows = await sql.query<{ link: string; set_ms: string | number | null; checked_ms: string | number | null }>(
     `select link, (extract(epoch from link_set_at) * 1000)::bigint as set_ms,
             (extract(epoch from auto_checked_at) * 1000)::bigint as checked_ms
-       from read_docs where key = 'devotion'`,
+       from read_docs where key = 'devotion' and porch_id = $1`,
+    [porch],
   );
   const row = rows[0];
   if (!row) return;
@@ -113,12 +112,29 @@ async function refreshDevotion(sql: Awaited<ReturnType<typeof getSql>>) {
   // Already switched (or pasted) since midnight, or checked a moment ago.
   if (row.set_ms !== null && Number(row.set_ms) >= since) return;
   if (row.checked_ms !== null && nowMs - Number(row.checked_ms) < RECHECK_MS) return;
-  await sql`update read_docs set auto_checked_at = now() where key = 'devotion'`;
+  await sql`update read_docs set auto_checked_at = now() where key = 'devotion' and porch_id = ${porch}`;
   const { newestDevotionLink } = await import("@/lib/porch/phaneroo-site.server");
   const newest = await newestDevotionLink();
   // Not posted yet (still yesterday's): keep it and look again in a few minutes.
   if (!newest || newest === row.link) return;
-  await sql`update read_docs set link = ${newest}, link_set_at = now() where key = 'devotion'`;
+  await sql`update read_docs set link = ${newest}, link_set_at = now() where key = 'devotion' and porch_id = ${porch}`;
+}
+
+/** Each church porch's shelf starts with its Bible and Devotional (Stage 3b). */
+async function shelfFor(sql: Awaited<ReturnType<typeof getSql>>, porch: number) {
+  if (!porch) return;
+  await sql`
+    insert into read_docs (porch_id, key, title, body, link, sort)
+    values (${porch}, 'bible', 'Bible', '', '', 0), (${porch}, 'devotion', 'Devotional', '', '', 1)
+    on conflict (porch_id, key) do nothing
+  `;
+}
+
+/** The viewer's church porch, with its shelf ready. */
+async function shelfPorch(sql: Awaited<ReturnType<typeof getSql>>, userId: string) {
+  const porch = await myPorchId(sql, userId);
+  await shelfFor(sql, porch);
+  return porch;
 }
 
 async function ready(sql: Awaited<ReturnType<typeof getSql>>) {
@@ -277,10 +293,12 @@ export const loadReadShelf = createServerFn({ method: "POST" })
   .handler(async ({ context, data: seed }) => {
     const sql = await getSql();
     await Promise.all([touchProfile(sql, context.userId, seed), ready(sql)]);
+    const porch = await shelfPorch(sql, context.userId);
     const [isFounder, rows] = await Promise.all([
       founder(sql, context.userId),
       sql.query<{ key: string; title: string; link: string; has_pdf: boolean }>(
-        "select key, title, link, (pdf <> '') as has_pdf from read_docs order by sort, title",
+        "select key, title, link, (pdf <> '') as has_pdf from read_docs where porch_id = $1 order by sort, title",
+        [porch],
       ),
     ]);
     return {
@@ -301,6 +319,7 @@ export const loadReadDoc = createServerFn({ method: "POST" })
     await touchProfile(sql, context.userId, data.seed);
     await ready(sql);
     const isFounder = await founder(sql, context.userId);
+    const porch = await shelfPorch(sql, context.userId);
     if (data.key === "notebook") {
       const rows = await sql.query<{ title: string; body: string; updated_at: string }>(
         `select title, body, to_char(updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at
@@ -321,28 +340,28 @@ export const loadReadDoc = createServerFn({ method: "POST" })
     }
     if (data.key === "devotion") {
       try {
-        await refreshDevotion(sql);
+        await refreshDevotion(sql, porch);
       } catch {
         /* keep the current devotional */
       }
     }
     const rows = await sql.query<{ title: string; body: string; link: string; has_pdf: boolean }>(
-      "select title, body, link, (pdf <> '') as has_pdf from read_docs where key = $1",
-      [data.key],
+      "select title, body, link, (pdf <> '') as has_pdf from read_docs where key = $1 and porch_id = $2",
+      [data.key, porch],
     );
     if (!rows.length) return { ok: false as const, error: "That book is not here." };
     const hasPdf = boolish(rows[0].has_pdf);
     let library = readLibrary(rows[0].body);
     let scan: string | null = null;
     if (!library && hasPdf) {
-      const stored = await sql.query<{ pdf: string | null }>("select pdf from read_docs where key = $1", [data.key]);
+      const stored = await sql.query<{ pdf: string | null }>("select pdf from read_docs where key = $1 and porch_id = $2", [data.key, porch]);
       const pdf = stored[0]?.pdf;
       if (pdf) {
         const { bookFromPdf } = await import("@/lib/porch/pdf-book.server");
         const result = await bookFromPdf(Buffer.from(pdf, "base64"), "book");
         if ("error" in result) scan = result.error;
         else {
-          await sql`update read_docs set body = ${result.body} where key = ${data.key}`;
+          await sql`update read_docs set body = ${result.body} where key = ${data.key} and porch_id = ${porch}`;
           library = readLibrary(result.body);
         }
       }
@@ -387,14 +406,15 @@ export const saveReadDoc = createServerFn({ method: "POST" })
       noteAttempt(context.userId, "read-write", "Tried to change a book they only read.");
       return { ok: false as const, error: "Only the pastor can change this book." };
     }
+    const porch = await shelfPorch(sql, context.userId);
     if (data.key === "devotion" || data.key === "bible") {
       if (!data.link) return { ok: false as const, error: "Paste the page address. It must begin with https://" };
-      await sql`update read_docs set link = ${data.link}, link_set_at = now() where key = ${data.key}`;
+      await sql`update read_docs set link = ${data.link}, link_set_at = now() where key = ${data.key} and porch_id = ${porch}`;
       return { ok: true as const };
     }
-    const found = await sql.query<{ key: string }>("select key from read_docs where key = $1", [data.key]);
+    const found = await sql.query<{ key: string }>("select key from read_docs where key = $1 and porch_id = $2", [data.key, porch]);
     if (!found.length) return { ok: false as const, error: "That book is not here." };
-    await sql`update read_docs set body = ${data.body} where key = ${data.key}`;
+    await sql`update read_docs set body = ${data.body} where key = ${data.key} and porch_id = ${porch}`;
     return { ok: true as const };
   });
 
@@ -410,12 +430,13 @@ export const addReadBook = createServerFn({ method: "POST" })
     await touchProfile(sql, context.userId, data.seed);
     await ready(sql);
     if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only the pastor can add a book." };
-    const count = await sql.query<{ n: string }>("select count(*)::text as n from read_docs");
+    const porch = await shelfPorch(sql, context.userId);
+    const count = await sql.query<{ n: string }>("select count(*)::text as n from read_docs where porch_id = $1", [porch]);
     if (Number(count[0]?.n ?? 0) >= 12) return { ok: false as const, error: "The shelf is full." };
     const key = `book${Date.now().toString(36)}`;
     await sql`
-      insert into read_docs (key, title, body, link, sort)
-      values (${key}, ${data.title}, '', '', 10)
+      insert into read_docs (porch_id, key, title, body, link, sort)
+      values (${porch}, ${key}, ${data.title}, '', '', 10)
     `;
     return { ok: true as const };
   });
@@ -437,7 +458,7 @@ export const renameReadBook = createServerFn({ method: "POST" })
     await touchProfile(sql, context.userId, data.seed);
     await ready(sql);
     if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only the pastor can rename a book." };
-    const found = await sql.query<{ key: string }>("update read_docs set title = $1 where key = $2 returning key", [data.title, data.key]);
+    const found = await sql.query<{ key: string }>("update read_docs set title = $1 where key = $2 and porch_id = my_porch($3) returning key", [data.title, data.key, context.userId]);
     if (!found.length) return { ok: false as const, error: "That book is not here." };
     return { ok: true as const, title: data.title };
   });
@@ -460,12 +481,13 @@ export const addReadPdf = createServerFn({ method: "POST" })
     await touchProfile(sql, context.userId, data.seed);
     await ready(sql);
     if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only the pastor can add a book." };
-    const count = await sql.query<{ n: string }>("select count(*)::text as n from read_docs");
+    const porch = await shelfPorch(sql, context.userId);
+    const count = await sql.query<{ n: string }>("select count(*)::text as n from read_docs where porch_id = $1", [porch]);
     if (Number(count[0]?.n ?? 0) >= 12) return { ok: false as const, error: "The shelf is full." };
     const key = `book${Date.now().toString(36)}`;
     await sql`
-      insert into read_docs (key, title, body, link, sort, pdf)
-      values (${key}, ${data.title}, '', '', 10, ${data.file})
+      insert into read_docs (porch_id, key, title, body, link, sort, pdf)
+      values (${porch}, ${key}, ${data.title}, '', '', 10, ${data.file})
     `;
     return { ok: true as const, key };
   });
@@ -487,7 +509,7 @@ export const dropReadBooks = createServerFn({ method: "POST" })
     await ready(sql);
     if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only the pastor can delete a book." };
     for (const key of keys) {
-      await sql`delete from read_docs where key = ${key}`;
+      await sql`delete from read_docs where key = ${key} and porch_id = my_porch(${context.userId})`;
     }
     return { ok: true as const };
   });

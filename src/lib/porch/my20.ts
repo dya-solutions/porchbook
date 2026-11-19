@@ -390,8 +390,9 @@ export const downloadMyTwenty = createServerFn({ method: "POST" })
               to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at
        from my_twenty n
        join profiles p on p.user_id = n.user_id
-       where n.person_name <> '' or n.phone <> ''
+       where n.porch_id = my_porch($1) and (n.person_name <> '' or n.phone <> '')
        order by lower(p.display_name), n.batch, n.slot`,
+      [context.userId],
     );
     const groups: Group[] = [];
     for (const row of saved) {
@@ -447,8 +448,9 @@ export const resetMyTwenty = createServerFn({ method: "POST" })
               to_char(n.updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at
        from my_twenty n
        join profiles p on p.user_id = n.user_id
-       where n.person_name <> '' or n.phone <> ''
+       where n.porch_id = my_porch($1) and (n.person_name <> '' or n.phone <> '')
        order by lower(p.display_name), n.batch, n.slot`,
+      [context.userId],
     );
     const groups: Group[] = [];
     for (const row of saved) {
@@ -469,7 +471,8 @@ export const resetMyTwenty = createServerFn({ method: "POST" })
     const taken = `Taken ${stamp(new Date())}`;
     const pdf = pdfBase64(buildPdf(groups, taken, "All before Delete"));
     if (!pdf) return { ok: false as const, error: "Couldn't make All before Delete. Nothing was deleted." };
-    await sql`delete from my_twenty`;
+    // Only this church's lists (never another church's).
+    await sql`delete from my_twenty where porch_id = my_porch(${context.userId})`;
     return { ok: true as const, pdf, filename: "All before Delete.pdf" };
   });
 

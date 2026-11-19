@@ -310,7 +310,9 @@ export const downloadServe = createServerFn({ method: "POST" })
               s.discipleship, s.how_long, s.department, s.serves_elsewhere, s.elsewhere, s.profession, s.skills
        from serve_forms s
        join profiles p on p.user_id = s.user_id
+       where p.porch_id = my_porch($1)
        order by lower(s.last_name), lower(s.first_name)`,
+      [context.userId],
     );
     const pages: string[] = [];
     if (rows.length === 0) {

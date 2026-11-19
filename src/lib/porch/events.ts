@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getSql, type Sql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { tablePdf, type PdfBlock } from "@/lib/porch/pdf-lite";
+import { porchTables } from "@/lib/porch/porch-foundation";
 
 /**
  * Events: the founder (Media and Hospitality for now) adds events and hotels. Members say whether
@@ -75,6 +76,7 @@ async function ensure(sql: Sql) {
   try {
     const done = await sql.query<{ key: string }>("select key from porch_flags where key = 'events-v1'");
     if (done.length) {
+      await tagEvents(sql);
       ready = true;
       return;
     }
@@ -138,7 +140,27 @@ async function ensure(sql: Sql) {
   )`);
   await sql.query("create table if not exists porch_flags (key text primary key)");
   await sql.query("insert into porch_flags (key) values ('events-v1') on conflict (key) do nothing");
+  await tagEvents(sql);
   ready = true;
+}
+
+/** Events belong to a church porch; hotels, rooms, answers and travel follow their event (Stage 3b). */
+async function tagEvents(sql: Sql) {
+  await porchTables(sql, {
+    own: ["pb_events"],
+    child: [
+      ["pb_hotels", "event_id", "pb_events"],
+      ["pb_rooms", "hotel_id", "pb_hotels"],
+      ["pb_event_rsvp", "event_id", "pb_events"],
+      ["pb_event_travel", "event_id", "pb_events"],
+    ],
+  });
+}
+
+/** Is this event in the viewer's own church porch? Anything else is refused. */
+async function eventInMyPorch(sql: Sql, userId: string, eventId: number) {
+  const rows = await sql.query<{ id: number }>("select id from pb_events where id = $1 and porch_id = my_porch($2)", [eventId, userId]);
+  return rows.length > 0;
 }
 
 async function who(sql: Sql, userId: string) {
@@ -219,7 +241,7 @@ export const listEvents = createServerFn({ method: "POST" })
               (select count(*) from pb_event_rsvp r where r.event_id = e.id and r.answer = 'maybe') as maybe,
               (select answer from pb_event_rsvp r where r.event_id = e.id and r.user_id = $1) as mine
          from pb_events e
-        where not e.dropped and (coalesce(nullif(e.ends_on, ''), e.starts_on) >= $2 or $3)
+        where e.porch_id = my_porch($1) and not e.dropped and (coalesce(nullif(e.ends_on, ''), e.starts_on) >= $2 or $3)
         order by e.starts_on asc, e.id asc`,
       [context.userId, today, me.founder],
     );
@@ -258,6 +280,7 @@ export const answerEvent = createServerFn({ method: "POST" })
     if (!data.answer) return { ok: false as const, error: "Choose Yes, Maybe or No." };
     const sql = await getSql();
     await ensure(sql);
+    if (!(await eventInMyPorch(sql, context.userId, data.eventId))) return { ok: false as const, error: "That event is gone." };
     await sql.query(
       `insert into pb_event_rsvp (event_id, user_id, answer) values ($1, $2, $3)
        on conflict (event_id, user_id) do update set answer = excluded.answer, updated_at = now()`,
@@ -269,9 +292,10 @@ export const answerEvent = createServerFn({ method: "POST" })
 export const eventHotels = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => ({ eventId: Number(rec(input).eventId) || 0 }))
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
     const sql = await getSql();
     await ensure(sql);
+    if (!(await eventInMyPorch(sql, context.userId, data.eventId))) return { hotels: [] as Hotel[] };
     return { hotels: await readHotels(sql, data.eventId) };
   });
 
@@ -299,7 +323,7 @@ export const saveTravel = createServerFn({ method: "POST" })
     if (data.leaveAt && data.leaveAt <= data.arriveAt) return { ok: false as const, error: "There's an error in your dates entry. Please check it." };
     const sql = await getSql();
     await ensure(sql);
-    const event = await sql.query<{ id: number }>("select id from pb_events where id = $1 and not dropped", [data.eventId]);
+    const event = await sql.query<{ id: number }>("select id from pb_events where id = $1 and not dropped and porch_id = my_porch($2)", [data.eventId, context.userId]);
     if (!event.length) return { ok: false as const, error: "That event is gone." };
     const before = await sql.query<TravelRow>("select * from pb_event_travel where event_id = $1 and user_id = $2", [data.eventId, context.userId]);
     const was = before[0] ? toTravel(before[0]) : null;
@@ -368,11 +392,11 @@ export const saveEvent = createServerFn({ method: "POST" })
     if (data.id) {
       await sql.query(
         `update pb_events set title = $2, starts_on = $3, ends_on = $4, venue = $5, gates = $6, about = $7,
-           flyer = case when $9 then flyer else $8 end where id = $1`,
-        [data.id, data.title, data.startsOn, endsOn, data.venue, data.gates, data.about, data.flyer, data.keepFlyer],
+           flyer = case when $9 then flyer else $8 end where id = $1 and porch_id = my_porch($10)`,
+        [data.id, data.title, data.startsOn, endsOn, data.venue, data.gates, data.about, data.flyer, data.keepFlyer, context.userId],
       );
     } else {
-      await sql.query("insert into pb_events (title, starts_on, ends_on, venue, gates, about, flyer) values ($1, $2, $3, $4, $5, $6, $7)", [
+      await sql.query("insert into pb_events (porch_id, title, starts_on, ends_on, venue, gates, about, flyer) values (my_porch($8), $1, $2, $3, $4, $5, $6, $7)", [
         data.title,
         data.startsOn,
         endsOn,
@@ -380,6 +404,7 @@ export const saveEvent = createServerFn({ method: "POST" })
         data.gates,
         data.about,
         data.flyer,
+        context.userId,
       ]);
     }
     return { ok: true as const };
@@ -391,7 +416,7 @@ export const dropEvent = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     if (!(await who(sql, context.userId)).founder) return { ok: false as const, error: "Only the Media team removes events." };
-    await sql.query("update pb_events set dropped = true where id = $1", [data.id]);
+    await sql.query("update pb_events set dropped = true where id = $1 and porch_id = my_porch($2)", [data.id, context.userId]);
     return { ok: true as const };
   });
 
@@ -405,8 +430,11 @@ export const saveHotel = createServerFn({ method: "POST" })
     const sql = await getSql();
     if (!(await who(sql, context.userId)).founder) return { ok: false as const, error: "Only Hospitality changes hotels." };
     if (!data.name) return { ok: false as const, error: "Name the hotel." };
-    if (data.id) await sql.query("update pb_hotels set name = $2, note = $3, packages = $4 where id = $1", [data.id, data.name, data.note, data.packages]);
-    else await sql.query("insert into pb_hotels (event_id, name, note, packages) values ($1, $2, $3, $4)", [data.eventId, data.name, data.note, data.packages]);
+    if (data.id) await sql.query("update pb_hotels set name = $2, note = $3, packages = $4 where id = $1 and porch_id = my_porch($5)", [data.id, data.name, data.note, data.packages, context.userId]);
+    else {
+      if (!(await eventInMyPorch(sql, context.userId, data.eventId))) return { ok: false as const, error: "That event is gone." };
+      await sql.query("insert into pb_hotels (event_id, name, note, packages) values ($1, $2, $3, $4)", [data.eventId, data.name, data.note, data.packages]);
+    }
     return { ok: true as const };
   });
 
@@ -416,7 +444,7 @@ export const dropHotel = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     if (!(await who(sql, context.userId)).founder) return { ok: false as const, error: "Only Hospitality changes hotels." };
-    await sql.query("update pb_hotels set dropped = true where id = $1", [data.id]);
+    await sql.query("update pb_hotels set dropped = true where id = $1 and porch_id = my_porch($2)", [data.id, context.userId]);
     return { ok: true as const };
   });
 
@@ -438,8 +466,10 @@ export const saveRoom = createServerFn({ method: "POST" })
     const sql = await getSql();
     if (!(await who(sql, context.userId)).founder) return { ok: false as const, error: "Only Hospitality changes rooms." };
     if (data.id) {
-      await sql.query("update pb_rooms set kind = $2, price = $3, currency = $4, per = $5, available = $6 where id = $1", [data.id, data.kind, data.price, data.currency, data.per, data.available]);
+      await sql.query("update pb_rooms set kind = $2, price = $3, currency = $4, per = $5, available = $6 where id = $1 and porch_id = my_porch($7)", [data.id, data.kind, data.price, data.currency, data.per, data.available, context.userId]);
     } else {
+      const hotel = await sql.query<{ id: number }>("select id from pb_hotels where id = $1 and porch_id = my_porch($2)", [data.hotelId, context.userId]);
+      if (!hotel.length) return { ok: false as const, error: "That hotel is gone." };
       await sql.query("insert into pb_rooms (hotel_id, kind, price, currency, per, available) values ($1, $2, $3, $4, $5, $6)", [data.hotelId, data.kind, data.price, data.currency, data.per, data.available]);
     }
     return { ok: true as const };
@@ -451,7 +481,7 @@ export const dropRoom = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     if (!(await who(sql, context.userId)).founder) return { ok: false as const, error: "Only Hospitality changes rooms." };
-    await sql.query("update pb_rooms set dropped = true where id = $1", [data.id]);
+    await sql.query("update pb_rooms set dropped = true where id = $1 and porch_id = my_porch($2)", [data.id, context.userId]);
     return { ok: true as const };
   });
 
@@ -487,6 +517,7 @@ export const guestBoard = createServerFn({ method: "POST" })
     const sql = await getSql();
     const me = await who(sql, context.userId);
     if (!me.board) return { ok: false as const, error: "Only Hospitality and Transport see the guest board." };
+    if (!(await eventInMyPorch(sql, context.userId, data.eventId))) return { ok: false as const, error: "That event is gone." };
     const counts = await sql.query<{ answer: string; n: string | number }>("select answer, count(*) as n from pb_event_rsvp where event_id = $1 group by answer", [data.eventId]);
     const { hotels, guests } = await readGuests(sql, data.eventId);
     return {
@@ -505,6 +536,7 @@ export const decideStay = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     if (!(await who(sql, context.userId)).founder) return { ok: false as const, error: "Only Hospitality approves rooms." };
+    if (!(await eventInMyPorch(sql, context.userId, data.eventId))) return { ok: false as const, error: "That request is gone." };
     const rows = await sql.query<TravelRow>("select * from pb_event_travel where event_id = $1 and user_id = $2", [data.eventId, data.userId]);
     if (!rows[0]) return { ok: false as const, error: "That request is gone." };
     const travel = toTravel(rows[0]);
@@ -537,6 +569,7 @@ export const guestListPdf = createServerFn({ method: "POST" })
     const sql = await getSql();
     const me = await who(sql, context.userId);
     if (!me.board) return { ok: false as const, error: "Only Hospitality and Transport take this list." };
+    if (!(await eventInMyPorch(sql, context.userId, data.eventId))) return { ok: false as const, error: "That event is gone." };
     const event = await sql.query<{ title: string; starts_on: string }>("select title, starts_on from pb_events where id = $1", [data.eventId]);
     const title = event[0]?.title ?? "Event";
     const { hotels, guests } = await readGuests(sql, data.eventId);

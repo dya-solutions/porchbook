@@ -269,7 +269,7 @@ export async function notifyTeam(sql: Sql, senderId: string, body: string): Prom
   try {
     const preview = body.replace(/\s+/g, " ").trim().slice(0, 140);
     const rows = await sql.query<{ id: number; endpoint: string; p256dh: string; auth: string }>(
-      "select id, endpoint, p256dh, auth from push_subscriptions where user_id <> $1",
+      "select id, endpoint, p256dh, auth from push_subscriptions where user_id <> $1 and same_porch(user_id, $1)",
       [senderId],
     );
     if (!preview) return;

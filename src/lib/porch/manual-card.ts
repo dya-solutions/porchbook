@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { myPorchId } from "@/lib/porch/porch-foundation";
 import { getSql, type Sql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 
@@ -18,8 +19,9 @@ export const manualCard = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     const founder = await isFounder(sql, context.userId);
-    const flag = await sql.query<{ enabled: boolean }>("select enabled from app_flags where key = 'manual_card'").catch(() => []);
+    const flag = await sql.query<{ enabled: boolean }>(`select enabled from app_flags where porch_id = ${porch} and key = 'manual_card'`).catch(() => []);
     if (!founder && !flag[0]?.enabled) return { show: false as const };
     const read = await sql.query<{ opened_at: string | null; hide_until: string | null }>("select opened_at, hide_until from manual_reads where user_id = $1", [context.userId]);
     if (read[0]?.opened_at) return { show: false as const };
@@ -35,6 +37,7 @@ export const manualOpened = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await sql.query(
       `insert into manual_reads (user_id, opened_at) values ($1, now())
        on conflict (user_id) do update set opened_at = coalesce(manual_reads.opened_at, now())`,
@@ -49,6 +52,7 @@ export const hideManualCard = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ how: rec(input).how === "close" ? ("close" as const) : ("later" as const) }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     const prev = await sql.query<{ hides: number }>("select hides from manual_reads where user_id = $1", [context.userId]);
     const closes = (prev[0]?.hides ?? 0) + (data.how === "close" ? 1 : 0);
     const days = data.how === "later" ? 1 : closes >= 2 ? 36500 : 14;
@@ -66,7 +70,8 @@ export const setManualCardLive = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ on: rec(input).on === true }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     if (!(await isFounder(sql, context.userId))) return { ok: false as const };
-    await sql.query("insert into app_flags (key, enabled) values ('manual_card', $1) on conflict (key) do update set enabled = excluded.enabled", [data.on]);
+    await sql.query(`insert into app_flags (porch_id, key, enabled) values (${porch}, 'manual_card', $1) on conflict (porch_id, key) do update set enabled = excluded.enabled`, [data.on]);
     return { ok: true as const };
   });

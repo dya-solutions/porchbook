@@ -164,6 +164,69 @@ const SETUP: string[] = [
   `drop trigger if exists group_members_porch_check on group_members`,
   `create trigger group_members_porch_check before insert on group_members for each row execute function porch_check_group_member()`,
 
+  // ---- Stage 3b: three reusable helpers, called by each part of the app once its tables exist. ----
+  /** porch_tag(table, person column): every row is stamped with that person's church porch. */
+  `create or replace function porch_tag_row() returns trigger language plpgsql as $$
+   begin
+     if new.porch_id is null then new.porch_id := my_porch(to_jsonb(new) ->> TG_ARGV[0]); end if;
+     return new;
+   end $$`,
+  `create or replace function porch_tag(tbl text, by_col text) returns void language plpgsql as $$
+   begin
+     execute format('alter table %I add column if not exists porch_id integer', tbl);
+     execute format('update %I set porch_id = coalesce(my_porch(%I::text), 1) where porch_id is null', tbl, by_col);
+     execute format('drop trigger if exists %I on %I', tbl || '_porch_tag', tbl);
+     execute format('create trigger %I before insert on %I for each row execute function porch_tag_row(%L)', tbl || '_porch_tag', tbl, by_col);
+   end $$`,
+  /** porch_tag_child(table, link column, parent table): every row takes its parent's church porch. */
+  `create or replace function porch_tag_child_row() returns trigger language plpgsql as $$
+   declare found integer;
+   begin
+     if new.porch_id is null then
+       execute format('select porch_id from %I where id::text = $1', TG_ARGV[1]) into found using (to_jsonb(new) ->> TG_ARGV[0]);
+       new.porch_id := found;
+     end if;
+     return new;
+   end $$`,
+  `create or replace function porch_tag_child(tbl text, fk_col text, parent text) returns void language plpgsql as $$
+   begin
+     execute format('alter table %I add column if not exists porch_id integer', tbl);
+     execute format('update %I t set porch_id = coalesce((select p.porch_id from %I p where p.id::text = t.%I::text), 1) where t.porch_id is null', tbl, parent, fk_col);
+     execute format('drop trigger if exists %I on %I', tbl || '_porch_tag', tbl);
+     execute format('create trigger %I before insert on %I for each row execute function porch_tag_child_row(%L, %L)', tbl || '_porch_tag', tbl, fk_col, parent);
+   end $$`,
+  /**
+   * porch_key(table, key columns): an "only one" settings table becomes "one per church porch".
+   * Existing rows become Phaneroo's. The church must always be given when saving: forgetting it
+   * fails loudly instead of quietly writing over another church's setting.
+   */
+  `create or replace function porch_key(tbl text, keycols text) returns void language plpgsql as $$
+   declare pk text;
+   begin
+     execute format('alter table %I add column if not exists porch_id integer', tbl);
+     execute format('update %I set porch_id = 1 where porch_id is null', tbl);
+     execute format('alter table %I alter column porch_id set not null', tbl);
+     select c.conname into pk from pg_constraint c where c.conrelid = tbl::regclass and c.contype = 'p';
+     if pk is not null and not exists (
+       select 1 from pg_constraint c join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any (c.conkey)
+       where c.conname = pk and c.conrelid = tbl::regclass and a.attname = 'porch_id'
+     ) then
+       execute format('alter table %I drop constraint %I', tbl, pk);
+       execute format('alter table %I add primary key (porch_id, %s)', tbl, keycols);
+     end if;
+   end $$`,
+
+  /**
+   * porch_own(table): rows that belong to a church porch but have no person to take it from
+   * (events, transport events…). Existing rows become Phaneroo's; new rows must name their church.
+   */
+  `create or replace function porch_own(tbl text) returns void language plpgsql as $$
+   begin
+     execute format('alter table %I add column if not exists porch_id integer', tbl);
+     execute format('update %I set porch_id = 1 where porch_id is null', tbl);
+     execute format('alter table %I alter column porch_id set not null', tbl);
+   end $$`,
+
   /** A post (or a reply's post) in the viewer's own church porch. */
   `create or replace function post_in_my_porch(uid text, pid integer) returns boolean language sql stable as $$
      select exists (select 1 from posts where id = pid and porch_id = my_porch(uid))
@@ -183,7 +246,53 @@ const FOUNDER_TO_ADMIN = `
 export async function setupPorches(sql: Sql): Promise<void> {
   for (const statement of SETUP) await sql.query(statement);
   await sql.query(FOUNDER_TO_ADMIN);
+  // Stage 3b: tables that always exist from the start (made by migrations/) are tagged here.
+  await porchTables(sql, {
+    tag: [["my_twenty", "user_id"], ["notifications", "user_id"]],
+    own: ["bible_sites"],
+    key: [["devotion_translations", "link, lang"], ["item_sizes", "place, item"], ["app_flags", "key"]],
+  });
   await applyLocalSetup(sql);
+}
+
+/**
+ * Called by each part of the app right after it creates its own tables (Stage 3b):
+ *   tag:   [table, person column]          rows take that person's church porch
+ *   child: [table, link column, parent]    rows take their parent row's church porch
+ *   key:   [table, key columns]            "only one" settings become "one per church porch"
+ * Safe to call again and again; each table is only set up once per run.
+ */
+const tablesDone = new Set<string>();
+export async function porchTables(
+  sql: Sql,
+  spec: { own?: string[]; tag?: [string, string][]; child?: [string, string, string][]; key?: [string, string][] },
+): Promise<void> {
+  for (const table of spec.own ?? []) {
+    if (tablesDone.has(table)) continue;
+    await sql.query("select porch_own($1)", [table]);
+    tablesDone.add(table);
+  }
+  for (const [table, column] of spec.tag ?? []) {
+    if (tablesDone.has(table)) continue;
+    await sql.query("select porch_tag($1, $2)", [table, column]);
+    tablesDone.add(table);
+  }
+  for (const [table, column, parent] of spec.child ?? []) {
+    if (tablesDone.has(table)) continue;
+    await sql.query("select porch_tag_child($1, $2, $3)", [table, column, parent]);
+    tablesDone.add(table);
+  }
+  for (const [table, columns] of spec.key ?? []) {
+    if (tablesDone.has(table)) continue;
+    await sql.query("select porch_key($1, $2)", [table, columns]);
+    tablesDone.add(table);
+  }
+}
+
+/** The church porch a person belongs to (0 when unknown). */
+export async function myPorchId(sql: Sql, userId: string): Promise<number> {
+  const rows = await sql.query<{ porch_id: number | null }>("select porch_id from profiles where user_id = $1", [userId]);
+  return Number(rows[0]?.porch_id ?? 0) || 0;
 }
 
 /** A newly signed-up person joins Phaneroo for now, and gets any role porch-local.json gives them. */

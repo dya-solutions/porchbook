@@ -315,7 +315,8 @@ async function whatsOnNow(sql: Awaited<ReturnType<typeof getSql>>): Promise<stri
     lines.push(`- Event: ${e.title}. ${when}${e.venue ? `, at ${e.venue}` : ""}${e.gates ? `. Gates open ${clock(e.gates)}` : ""}.${e.about ? ` ${e.about.slice(0, 400)}` : ""} (In Events on Tour: say if you're attending, and plan travel and stay.)`);
   }
   try {
-    const t = await currentEvent(sql);
+    // On hold: reads Phaneroo's transport event. Must become per church before switching on (decision 8).
+    const t = await currentEvent(sql, "");
     if (t.name) {
       const closed = isClosed(t);
       lines.push(

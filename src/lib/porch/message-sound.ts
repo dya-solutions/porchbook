@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { myPorchId, porchTables } from "@/lib/porch/porch-foundation";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
@@ -36,6 +37,7 @@ async function ensure(sql: Awaited<ReturnType<typeof getSql>>) {
       updated_at timestamptz not null default now()
     )
   `;
+  await porchTables(sql, { key: [["message_sound", "id"]] });
 }
 async function founderFlag(sql: Awaited<ReturnType<typeof getSql>>, userId: string) {
   const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [userId]);
@@ -47,11 +49,11 @@ export const getMessageSound = createServerFn({ method: "POST" })
   .validator((input: unknown) => parseSeed(input))
   .handler(async ({ context, data: seed }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, seed);
     await ensure(sql);
     const founder = await founderFlag(sql, context.userId);
-    const rows = await sql.query<{ mime: string; audio: string; updated_at: string }>(
-      `select mime, audio, to_char(updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at from message_sound where id = 1`,
+    const rows = await sql.query<{ mime: string; audio: string; updated_at: string }>(`select mime, audio, to_char(updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at from message_sound where porch_id = ${porch} and id = 1`,
     );
     return { founder, mime: rows[0]?.mime ?? "", audio: rows[0]?.audio ?? "", updatedAt: rows[0]?.updated_at ?? "" };
   });
@@ -68,6 +70,7 @@ export const setMessageSound = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
@@ -75,7 +78,7 @@ export const setMessageSound = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Only the founder can change the message sound." };
     }
     if (!data.audio) {
-      await sql`delete from message_sound where id = 1`;
+      await sql`delete from message_sound where porch_id = ${porch} and id = 1`;
       return { ok: true as const };
     }
     if (data.mime !== "audio/wav") return { ok: false as const, error: "That sound could not be prepared." };
@@ -87,8 +90,8 @@ export const setMessageSound = createServerFn({ method: "POST" })
     }
     if (bytes > MAX_BYTES) return { ok: false as const, error: "That sound is too long." };
     await sql`
-      insert into message_sound (id, mime, audio, updated_at) values (1, ${data.mime}, ${data.audio}, now())
-      on conflict (id) do update set mime = ${data.mime}, audio = ${data.audio}, updated_at = now()
+      insert into message_sound (porch_id, id, mime, audio, updated_at) values (${porch}, 1, ${data.mime}, ${data.audio}, now())
+      on conflict (porch_id, id) do update set mime = ${data.mime}, audio = ${data.audio}, updated_at = now()
     `;
     return { ok: true as const };
   });

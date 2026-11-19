@@ -66,6 +66,8 @@ export const removeFace = createServerFn({ method: "POST" })
     if (target !== context.userId) {
       const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
       if (!truthy(me[0]?.is_founder)) return { ok: false as const, error: "Only the founder can remove someone's photo." };
+      const same = await sql.query<{ ok: unknown }>("select same_porch($1, $2) as ok", [target, context.userId]);
+      if (!truthy(same[0]?.ok)) return { ok: false as const, error: "That person is not in your porch." };
     }
     await ensureFaces(sql);
     await sql.query("delete from profile_faces where user_id = $1", [target]);

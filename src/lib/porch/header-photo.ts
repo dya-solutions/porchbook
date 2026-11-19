@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { myPorchId, porchTables } from "@/lib/porch/porch-foundation";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
@@ -36,6 +37,7 @@ async function ensure(sql: Awaited<ReturnType<typeof getSql>>) {
       updated_at timestamptz not null default now()
     )
   `;
+  await porchTables(sql, { key: [["porch_header", "id"]] });
 }
 async function founderFlag(sql: Awaited<ReturnType<typeof getSql>>, userId: string) {
   const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [userId]);
@@ -47,11 +49,11 @@ export const getHeaderPhoto = createServerFn({ method: "POST" })
   .validator((input: unknown) => parseSeed(input))
   .handler(async ({ context, data: seed }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, seed);
     await ensure(sql);
     const founder = await founderFlag(sql, context.userId);
-    const rows = await sql.query<{ mime: string; image: string; updated_at: string }>(
-      `select mime, image, to_char(updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at from porch_header where id = 1`,
+    const rows = await sql.query<{ mime: string; image: string; updated_at: string }>(`select mime, image, to_char(updated_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at from porch_header where porch_id = ${porch} and id = 1`,
     );
     return { founder, mime: rows[0]?.mime ?? "", image: rows[0]?.image ?? "", updatedAt: rows[0]?.updated_at ?? "" };
   });
@@ -68,6 +70,7 @@ export const setHeaderPhoto = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     await touchProfile(sql, context.userId, data.seed);
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
@@ -75,7 +78,7 @@ export const setHeaderPhoto = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Only the founder can change the header photo." };
     }
     if (!data.image) {
-      await sql`delete from porch_header where id = 1`;
+      await sql`delete from porch_header where porch_id = ${porch} and id = 1`;
       return { ok: true as const };
     }
     if (data.mime !== "image/jpeg") return { ok: false as const, error: "Use a photo." };
@@ -87,8 +90,8 @@ export const setHeaderPhoto = createServerFn({ method: "POST" })
     }
     if (bytes > MAX_BYTES) return { ok: false as const, error: "That photo is too large. Choose another." };
     await sql`
-      insert into porch_header (id, mime, image, updated_at) values (1, ${data.mime}, ${data.image}, now())
-      on conflict (id) do update set mime = ${data.mime}, image = ${data.image}, updated_at = now()
+      insert into porch_header (porch_id, id, mime, image, updated_at) values (${porch}, 1, ${data.mime}, ${data.image}, now())
+      on conflict (porch_id, id) do update set mime = ${data.mime}, image = ${data.image}, updated_at = now()
     `;
     return { ok: true as const };
   });

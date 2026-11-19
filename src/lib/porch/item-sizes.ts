@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { myPorchId } from "@/lib/porch/porch-foundation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
@@ -43,8 +44,8 @@ export const loadItemSizes = createServerFn({ method: "POST" })
     const founder = await isFounder(context.userId);
     if (!data.place) return { founder, sizes: {} as ItemSizes };
     const sql = await getSql();
-    const rows = await sql.query<{ item: string; w: number; h: number }>(
-      "select item, w, h from item_sizes where place = $1",
+    const porch = await myPorchId(sql, context.userId);
+    const rows = await sql.query<{ item: string; w: number; h: number }>(`select item, w, h from item_sizes where porch_id = ${porch} and place = $1`,
       [data.place],
     );
     const sizes: ItemSizes = {};
@@ -71,14 +72,14 @@ export const saveItemSize = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Only the founder can resize." };
     }
     const sql = await getSql();
+    const porch = await myPorchId(sql, context.userId);
     if (data.reset) {
-      await sql.query("delete from item_sizes where place = $1 and item = $2", [data.place, data.item]);
+      await sql.query(`delete from item_sizes where porch_id = ${porch} and place = $1 and item = $2`, [data.place, data.item]);
       return { ok: true as const };
     }
     if (data.w === null || data.h === null) return { ok: false as const, error: "That size isn't valid." };
-    await sql.query(
-      `insert into item_sizes (place, item, w, h, updated_at) values ($1, $2, $3, $4, now())
-       on conflict (place, item) do update set w = excluded.w, h = excluded.h, updated_at = now()`,
+    await sql.query(`insert into item_sizes (porch_id, place, item, w, h, updated_at) values (${porch}, $1, $2, $3, $4, now())
+       on conflict (porch_id, place, item) do update set w = excluded.w, h = excluded.h, updated_at = now()`,
       [data.place, data.item, data.w, data.h],
     );
     return { ok: true as const };
