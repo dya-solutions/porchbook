@@ -40,7 +40,7 @@ export const saveBibleSites = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only the founder can choose the versions." };
+    if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only an admin can choose the versions." };
     // Only this church's list is replaced.
     await sql.query("delete from bible_sites where porch_id = my_porch($1)", [context.userId]);
     let sort = 0;
@@ -57,7 +57,7 @@ export const setBibleSiteStart = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only the founder can set where a version starts." };
+    if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only an admin can set where a version starts." };
     await sql.query("update bible_sites set start_text = $2, updated_at = now() where id = $1 and porch_id = my_porch($3)", [data.id, data.text || null, context.userId]);
     return { ok: true as const };
   });

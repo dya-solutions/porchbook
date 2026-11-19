@@ -33,7 +33,7 @@ export const founderResetPassword = createServerFn({ method: "POST" })
     );
     if (!boolish(me[0]?.is_founder)) {
       noteAttempt(context.userId, "password-reset", "Tried to reset another member's password.");
-      return { ok: false as const, error: "Only the founder can reset passwords." };
+      return { ok: false as const, error: "Only an admin can reset passwords." };
     }
     if (!data.userId || data.userId === context.userId) {
       return { ok: false as const, error: "Choose another member. Change your own password from your account." };

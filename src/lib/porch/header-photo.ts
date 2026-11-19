@@ -6,7 +6,7 @@ import { noteAttempt } from "@/lib/porch/guard.server";
 import { touchProfile } from "@/lib/porch/api";
 import type { Seed } from "@/lib/porch/model";
 
-/** The photo behind the app's header (the founder's choice; the crowd when none is set). */
+/** The photo behind the app's header (an admin's choice; the crowd when none is set). */
 
 const MAX_BYTES = 500_000;
 
@@ -75,7 +75,7 @@ export const setHeaderPhoto = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "header", "Tried to change the header photo.");
-      return { ok: false as const, error: "Only the founder can change the header photo." };
+      return { ok: false as const, error: "Only an admin can change the header photo." };
     }
     if (!data.image) {
       await sql`delete from porch_header where porch_id = ${porch} and id = 1`;

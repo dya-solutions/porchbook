@@ -274,7 +274,7 @@ export const saveBed = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can do that." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can do that." };
     if (data.url && !/^\/api\/fm-file\?id=\d+$/.test(data.url) && !(await (await import("@/lib/porch/audio-store.server")).isStoreUrl(sql, data.url)))
       return { ok: false as const, error: "That file isn't from Porchbook's upload." };
     await sql.query(
@@ -290,7 +290,7 @@ export const getVoiceSetup = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can set the devotional voice." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can set the devotional voice." };
     const { key, voice } = await settings(sql);
     let voices: VoiceChoice[] = [];
     let problem = "";
@@ -377,7 +377,7 @@ export const saveVoiceKey = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ key: String(rec(input).key ?? "").trim().slice(0, 200) }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can set the devotional voice." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can set the devotional voice." };
     if (data.key && !/^AIza[0-9A-Za-z_-]{20,}$/.test(data.key) && !/^sk_[0-9A-Za-z]{20,}$/.test(data.key))
       return { ok: false as const, error: "That doesn't look like an ElevenLabs key (it starts with sk_)." };
     if (isElevenKey(data.key)) {
@@ -398,7 +398,7 @@ export const chooseVoice = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ voice: String(rec(input).voice ?? "").slice(0, 80) }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can set the devotional voice." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can set the devotional voice." };
     if (data.voice && !GOOGLE_VOICE.test(data.voice) && !ELEVEN_VOICE.test(data.voice)) return { ok: false as const, error: "Unknown voice." };
     await sql.query(
       `insert into devotion_voice_settings (id, voice, updated_at) values (1, $1, now())
@@ -417,7 +417,7 @@ export const saveBackupKey = createServerFn({ method: "POST" })
   }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can set the devotional voice." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can set the devotional voice." };
     if (data.key && data.region) {
       if (!/^[a-z0-9]{3,30}$/.test(data.region)) return { ok: false as const, error: "The region should look like westeurope." };
       if (!/^[A-Za-z0-9]{32,100}$/.test(data.key)) return { ok: false as const, error: "That doesn't look like an Azure key. Copy KEY 1 again." };
@@ -442,7 +442,7 @@ export const setBackupFirst = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ on: rec(input).on === true }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can set the devotional voice." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can set the devotional voice." };
     await sql.query("update devotion_voice_settings set backup_first = $1, updated_at = now() where id = 1", [data.on]);
     return { ok: true as const };
   });
@@ -453,7 +453,7 @@ export const chooseBackupVoice = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ voice: String(rec(input).voice ?? "").slice(0, 80) }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can set the devotional voice." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can set the devotional voice." };
     if (data.voice && !GOOGLE_VOICE.test(data.voice) && !AZURE_VOICE.test(data.voice)) return { ok: false as const, error: "Unknown voice." };
     await sql.query(
       `insert into devotion_voice_settings (id, backup_voice, updated_at) values (1, $1, now())
@@ -469,7 +469,7 @@ export const sampleVoice = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ voice: String(rec(input).voice ?? "").slice(0, 80) }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can hear samples." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can hear samples." };
     const { key: mainKey, backupSavedKey } = await settings(sql);
     // A Google voice is sampled with the backup key when ElevenLabs is the main one.
     const key = AZURE_VOICE.test(data.voice) ? backupSavedKey : GOOGLE_VOICE.test(data.voice) && !(mainKey && !isElevenKey(mainKey)) ? backupSavedKey : mainKey;
@@ -489,7 +489,7 @@ export const remakeVoice = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { state: "failed" as const, error: "Only the founder can do that." };
+    if (!(await isFounder(sql, context.userId))) return { state: "failed" as const, error: "Only an admin can do that." };
     const docs = await sql.query<{ link: string }>("select link from read_docs where key = 'devotion'");
     await sql.query("update devotion_voices set status = 'failed', started_at = now() - interval '1 hour' where link = $1", [docs[0]?.link ?? ""]);
     return makeToday(sql);
@@ -504,7 +504,7 @@ export const saveVoiceWords = createServerFn({ method: "POST" })
   }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can do that." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can do that." };
     await sql.query(
       `insert into devotion_voice_settings (id, opening, closing, updated_at) values (1, $1, $2, now())
        on conflict (id) do update set opening = excluded.opening, closing = excluded.closing, updated_at = now()`,
@@ -519,7 +519,7 @@ export const saveSayLike = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ sayLike: String(rec(input).sayLike ?? "").slice(0, 2000) }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can do that." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can do that." };
     await sql.query(
       `insert into devotion_voice_settings (id, say_like, updated_at) values (1, $1, now())
        on conflict (id) do update set say_like = excluded.say_like, updated_at = now()`,
@@ -537,7 +537,7 @@ export const testSay = createServerFn({ method: "POST" })
   }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can do that." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can do that." };
     const s = await settings(sql);
     const [key, voice] = s.backupFirst ? [s.backupKey, s.backupVoice] : [s.key, s.voice];
     if (!key || !voice) return { ok: false as const, error: "Choose a voice first." };

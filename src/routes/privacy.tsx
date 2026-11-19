@@ -18,7 +18,7 @@ function PrivacyPage() {
         <p>What is stored:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>The name, email, and sign-in method you use to join.</li>
-          <li>A message the founder sends into each member's chat.</li>
+          <li>A message an admin sends into each member's chat.</li>
           <li>Posts, replies, and reactions on the shared feed.</li>
           <li>Private messages, which only the two people in that conversation can read.</li>
           <li>Groups you create or join, and the notes inside them. Only members can read those.</li>

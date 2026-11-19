@@ -75,7 +75,7 @@ export const Route = createFileRoute("/api/previously")({
         const session = await auth.api.getSession({ headers: request.headers });
         if (!session?.user) return Response.json({ ok: false, error: "Sign in first." }, { status: 401 });
         if (!(await founder(session.user.id))) {
-          return Response.json({ ok: false, error: "Only the founder can upload this video." }, { status: 403 });
+          return Response.json({ ok: false, error: "Only an admin can upload this video." }, { status: 403 });
         }
         const url = new URL(request.url);
         const part = Number(url.searchParams.get("part") ?? "0");

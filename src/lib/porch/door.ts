@@ -85,7 +85,7 @@ export const setDoor = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "door", "Tried to change the door texture.");
-      return { ok: false as const, error: "Only the founder can change the door texture." };
+      return { ok: false as const, error: "Only an admin can change the door texture." };
     }
     if (!data.image) {
       await sql`delete from porch_door where porch_id = ${porch} and id = 1`;

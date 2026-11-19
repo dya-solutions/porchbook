@@ -53,10 +53,10 @@ export function DevotionRead({
   const local: Local | null = tongue === "en" ? null : tongue;
   const runya: Copy = local ? copies[local] : EMPTY;
   const setCopy = (lang: Local, change: (c: Copy) => Copy) => setCopies((all) => ({ ...all, [lang]: change(all[lang]) }));
-  // The founder's check of a machine translation: the text is editable until approved.
+  // The admin's check of a machine translation: the text is editable until approved.
   const checkBox = useRef<HTMLDivElement>(null);
   const [check, setCheck] = useState<{ busy: boolean; note: string }>({ busy: false, note: "" });
-  // The founder's own copy (when Phaneroo hasn't published one, or to replace Sunbird's).
+  // The admin's own copy (when Phaneroo hasn't published one, or to replace Sunbird's).
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState("");
   async function saveOwn() {

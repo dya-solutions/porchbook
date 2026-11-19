@@ -230,7 +230,7 @@ export const setTransportTeam = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const who = await canArrange(sql, context.userId);
-    if (!who.founder) return { ok: false as const, error: "Only the founder chooses the Transport team." };
+    if (!who.founder) return { ok: false as const, error: "Only an admin chooses the Transport team." };
     await sql.query("update profiles set is_transport = $2 where user_id = $1 and same_porch(user_id, $3)", [data.userId, data.on, context.userId]);
     return { ok: true as const };
   });

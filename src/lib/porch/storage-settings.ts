@@ -64,7 +64,7 @@ export const saveStorageKeys = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only the founder can do this." };
+    if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only an admin can do this." };
     const endpoint = data.endpoint.replace(/\/+$/, "").replace(/\/porchbook-radio$/i, "");
     if (!/^https:\/\/[a-z0-9]+\.(eu\.|fedramp\.)?r2\.cloudflarestorage\.com$/i.test(endpoint)) return { ok: false as const, error: "The endpoint should look like https://<account>.r2.cloudflarestorage.com" };
     if (!/^https:\/\/pub-[a-z0-9]+\.r2\.dev$/i.test(data.publicBase.replace(/\/+$/, "")) && !/^https:\/\/[a-z0-9.-]+\.[a-z]{2,}$/i.test(data.publicBase.replace(/\/+$/, "")))
@@ -99,7 +99,7 @@ export const moveStep = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only the founder can do this." };
+    if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only an admin can do this." };
     if (!process.env.BLOB_READ_WRITE_TOKEN) return { ok: false as const, error: "Vercel storage isn't connected." };
     const store = await import("@/lib/porch/audio-store.server");
     const r2 = await store.getR2(sql, true);
@@ -155,7 +155,7 @@ export const finishMove = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only the founder can do this." };
+    if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only an admin can do this." };
     const rows = await sql.query<{ moved_at: string | null }>("select moved_at from storage_settings where id = 1");
     if (!rows[0]?.moved_at) return { ok: false as const, error: "Move the files first." };
     const { list, del } = await import("@vercel/blob");

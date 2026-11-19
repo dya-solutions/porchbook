@@ -85,7 +85,7 @@ export const setHide = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "hide", "Tried to change the file texture.");
-      return { ok: false as const, error: "Only the founder can change the file texture." };
+      return { ok: false as const, error: "Only an admin can change the file texture." };
     }
     if (!data.image) {
       await sql`delete from porch_hide where porch_id = ${porch} and id = 1`;

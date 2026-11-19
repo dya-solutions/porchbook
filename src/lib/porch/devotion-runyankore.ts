@@ -95,7 +95,7 @@ export const devotionRunyankore = createServerFn({ method: "POST" })
     );
     const { devotionSheet } = await import("@/lib/porch/devotion-page.server");
     if (kept[0]?.html) {
-      // A copy of our own (Sunbird's or the founder's) gives way when Phaneroo publishes theirs (looked for every half hour).
+      // A copy of our own (Sunbird's or an admin's) gives way when Phaneroo publishes theirs (looked for every half hour).
       const staleRow = kept[0].stale === true || kept[0].stale === "t" || kept[0].stale === 1;
       if (kept[0].source !== "phaneroo" && staleRow) {
         const theirs = phanerooCopyOf(await devotionSheet(link).catch(() => ""), data.lang);
@@ -139,7 +139,7 @@ export const saveSunbirdKey = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ key: String(rec(input).key ?? "").trim().slice(0, 2000) }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can set this." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can set this." };
     if (data.key) {
       try {
         await sunbird(data.key, "Good morning.");
@@ -171,7 +171,7 @@ export const approveRunyankore = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ link: String(rec(input).link ?? "").slice(0, 600), html: String(rec(input).html ?? "").slice(0, 200_000), lang: tongueOf(rec(input).lang) }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can approve it." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can approve it." };
     // Only headings and paragraphs are kept, as plain text (whatever the editing left behind).
     const blocks = [...data.html.matchAll(/<(h1|h2|p)(\s[^>]*)?>([\s\S]*?)<\/\1>/g)];
     const html = blocks
@@ -195,7 +195,7 @@ export const addOwnDevotion = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ link: String(rec(input).link ?? "").slice(0, 600), lang: tongueOf(rec(input).lang), text: String(rec(input).text ?? "").slice(0, 60_000) }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can add it." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can add it." };
     const docs = await sql.query<{ link: string }>("select link from read_docs where key = 'devotion' and porch_id = my_porch($1)", [context.userId]);
     const link = data.link || docs[0]?.link || "";
     const { publicPage } = await import("@/lib/porch/devotion-page.server");

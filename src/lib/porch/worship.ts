@@ -148,7 +148,7 @@ export const addWorship = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "worship", "Tried to add a worship song.");
-      return { ok: false as const, error: "Only the founder can add worship songs." };
+      return { ok: false as const, error: "Only an admin can add worship songs." };
     }
     const found = linksOf(data.links);
     if (!found.links.length) {
@@ -182,7 +182,7 @@ export const dropWorship = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "worship", "Tried to remove a worship song.");
-      return { ok: false as const, error: "Only the founder can remove a worship song." };
+      return { ok: false as const, error: "Only an admin can remove a worship song." };
     }
     if (data.id) await sql`delete from worship_songs where id = ${data.id}`;
     return { ok: true as const, songs: await listed(sql) };

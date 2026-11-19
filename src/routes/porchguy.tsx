@@ -472,11 +472,11 @@ function PorchGuyPage() {
         <GuyMeter refreshKey={turns.length} />
         {founder ? (
           <>
-            <button type="button" className={`pg-more${toolsOpen ? " is-open" : ""}`} aria-label="Founder tools" aria-expanded={toolsOpen} onClick={() => setToolsOpen((open) => !open)}>
+            <button type="button" className={`pg-more${toolsOpen ? " is-open" : ""}`} aria-label="Admin tools" aria-expanded={toolsOpen} onClick={() => setToolsOpen((open) => !open)}>
               {toolsOpen ? "✕" : "⋯"}
             </button>
             <div className={`pg-founder${toolsOpen ? " is-open" : ""}`}>
-              <span className="pg-founder-lab">Founder</span>
+              <span className="pg-founder-lab">Admin</span>
               <EditWordsButton className="porchguy-wall-open" />
               <div className="pg-bg">
                 <p>Background</p>

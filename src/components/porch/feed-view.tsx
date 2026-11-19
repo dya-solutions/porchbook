@@ -41,6 +41,7 @@ import { RestingFly, flyHome, flyToBox } from "@/components/porch/logo-fly";
 import { Avatar, CallLink, LinkText, PersonLink, PostWindow, KeptPhoto, fieldClass, primaryButtonClass, quietButtonClass } from "@/components/porch/bits";
 import { PostSlides } from "@/components/porch/post-slides";
 import { ManualCard } from "@/components/porch/manual-card";
+import { PbAvatar, PbIcon } from "@/components/porch/pb-shell";
 
 const ICONS = {
   care: Heart,
@@ -48,6 +49,9 @@ const ICONS = {
   insight: HandHeart,
   cheer: Waves,
 } as const;
+
+/** The rooms' icons in the new design. */
+const ROOM_ICON: Record<Room, string> = { proclaim: "star", inform: "bulb", ask: "ask" };
 
 const FEED_CACHE = "porch-feed";
 
@@ -452,7 +456,7 @@ export function FeedView({
   const refresh = () => setTick((value) => value + 1);
 
   return (
-    <div className="relative z-10 space-y-4">
+    <div className="pb-feed relative z-10 flex flex-col gap-3">
       <Composer
         filter={filter}
         mineOn={mineOn}
@@ -466,13 +470,42 @@ export function FeedView({
           });
         }}
       />
+      <div className="pb-chips" role="group" aria-label="Rooms">
+        {(["all", ...ROOMS] as FeedFilter[]).map((item) => (
+          <Link
+            key={item}
+            to="/"
+            search={{ room: item } as never}
+            aria-current={filter === item ? "true" : undefined}
+            className={`pb-chip${filter === item ? " is-on" : ""}`}
+          >
+            {item === "all" ? null : <PbIcon name={ROOM_ICON[item]} size={15} />}
+            {item === "all" ? "All" : ROOM_META[item].label}
+          </Link>
+        ))}
+        <button
+          type="button"
+          aria-pressed={mineOn}
+          className={`pb-chip${mineOn ? " is-on" : ""}`}
+          onClick={() => {
+            setMineOn((on) => {
+              const next = !on;
+              window.localStorage.setItem("porch-mine", next ? "1" : "0");
+              return next;
+            });
+          }}
+        >
+          <PbIcon name="person" size={15} />
+          Mine
+        </button>
+      </div>
       {offline && posts.length ? (
         <p className="feed-offline" role="status">
           📴 No data: showing the posts saved on this phone. Posting, reactions and comments wait for data.
         </p>
       ) : null}
       {status === "error" ? (
-        <div className="pointer-events-auto rim rounded-3xl bg-card p-5">
+        <div className="pb-card pointer-events-auto p-5">
           <p className="font-medium text-ink">{offline ? "No data, and no posts are saved on this phone yet." : "The feed didn't load."}</p>
           <button type="button" className={`${quietButtonClass} mt-2`} onClick={refresh}>
             Try again
@@ -480,7 +513,7 @@ export function FeedView({
         </div>
       ) : null}
       {status === "ready" && posts.length === 0 ? (
-        <div className="pointer-events-auto rim rounded-3xl bg-card px-5 py-10 text-center">
+        <div className="pb-card pointer-events-auto px-5 py-10 text-center">
           <img src="/speaker.png" alt="" className="mx-auto mb-4 h-56 w-auto object-contain" draggable={false} />
           <h2 className="font-display text-2xl text-ink">Porchbook is quiet</h2>
           <p className="mx-auto mt-2 max-w-sm text-muted">
@@ -503,7 +536,7 @@ export function FeedView({
         />
       ) : null}
       {posts.length && !mineOn ? (
-        <ul className="space-y-3">
+        <ul className="flex flex-col gap-3">
           {posts.map((post) => (
             <li key={post.id}>
               <PostCard post={post} userId={userId} seed={{ displayName, email, imageUrl }} onChange={refresh} />
@@ -512,7 +545,7 @@ export function FeedView({
         </ul>
       ) : null}
       {!mineOn && hasMore ? (
-        <button type="button" className={`${quietButtonClass} pointer-events-auto w-full`} onClick={() => void loadOlder()} disabled={paging}>
+        <button type="button" className="pb-btn2 pointer-events-auto w-full" onClick={() => void loadOlder()} disabled={paging}>
           {paging ? "Loading…" : "Older posts"}
         </button>
       ) : null}
@@ -616,6 +649,8 @@ function Composer({
   const [photoHash, setPhotoHash] = useState("");
   const [photoError, setPhotoError] = useState("");
   const [askTo, setAskTo] = useState<{ id: string; name: string } | null>(null);
+  // The post box is one line until tapped (approved for the redesign, CHANGES.md).
+  const [open, setOpen] = useState(false);
   // The logo's butterfly comes down to rest on the box while someone writes, and goes home when they post.
   const postBox = useRef<HTMLDivElement>(null);
   const writing = Boolean(body.trim());
@@ -670,20 +705,36 @@ function Composer({
     setBody("");
     setPhoto("");
     setPhotoHash("");
+    setOpen(false);
     onPosted();
   }
 
+  if (!open && !body && !photo) {
+    return (
+      <>
+        <ManualCard />
+        <button
+          type="button"
+          className="pb-card pb-share pointer-events-auto"
+          onClick={() => {
+            setOpen(true);
+            window.setTimeout(() => document.getElementById("composer")?.focus(), 40);
+          }}
+        >
+          <PbAvatar name={seed.displayName || "You"} imageUrl={seed.imageUrl} size={36} />
+          <span>Share with your porch…</span>
+          <span style={{ color: "var(--pb-second)", display: "flex" }}>
+            <PbIcon name="photo" size={20} />
+          </span>
+        </button>
+      </>
+    );
+  }
+
   return (
-    <form onSubmit={onSubmit} className="pointer-events-auto rim rounded-3xl bg-card p-4">
-      <label className="sr-only" htmlFor="composer">
-        Share with the team
-      </label>
+    <form onSubmit={onSubmit} className="pb-card pb-compose pointer-events-auto">
       <ManualCard />
-      <div className="pd-device">
-      <div ref={postBox} className={`relative pd-screen ink-${room}`}>
-        <span className="pd-room" aria-hidden="true">{ROOM_META[room].label}</span>
-        {!body && !typingHere ? <span className="composer-caret" aria-hidden="true" /> : null}
-        {!body && !typingHere && !photo ? <PostSlides onWrite={() => document.getElementById("composer")?.focus()} /> : null}
+      <div ref={postBox} className="relative">
         <RestingFly />
         <textarea
           id="composer"
@@ -692,9 +743,10 @@ function Composer({
           onBlur={() => setTypingHere(false)}
           onChange={(event) => setBody(event.target.value)}
           maxLength={2000}
-          rows={3}
+          rows={4}
+          placeholder={`Share with your porch… (${ROOM_META[room].label})`}
           aria-label={`Write a post (${ROOM_META[room].label})`}
-          className={`${fieldClass} composer-page composer-ink${body ? " is-typing" : ""} min-h-36 resize-y`}
+          className={typingHere ? "is-typing" : undefined}
           onKeyDown={(event) => {
             if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
               event.currentTarget.form?.requestSubmit();
@@ -702,32 +754,34 @@ function Composer({
           }}
         />
       </div>
-      <div className="pd-keys">
+      <div className="pb-chips" role="group" aria-label="Room">
         {ROOMS.map((item) => (
           <button
             key={item}
             type="button"
             aria-pressed={room === item}
             onClick={() => setRoom(item)}
-            className={`pd-key no-sink pd-${item}${room === item ? " is-on" : ""}`}
+            className={`pb-chip${room === item ? " is-on" : ""}`}
           >
-            {room === item ? <i className="pd-dot" aria-hidden="true" /> : null}
+            <PbIcon name={ROOM_ICON[item]} size={15} />
             {ROOM_META[item].label}
           </button>
         ))}
-        <button type="submit" className="pd-key pd-post no-sink" disabled={pending || (!body.trim() && !photo && !founder)}>
-          <span>{pending ? "…" : "Post"}</span>
-          <span aria-hidden="true" className="pd-return">
-            ↵
-          </span>
-        </button>
-        <label className={`pd-key pd-photo no-sink${photo ? " is-on" : ""}`}>
-          <svg viewBox="0 0 24 24" aria-hidden="true" className="pd-ico">
-            <rect x="4" y="7" width="16" height="11" rx="2" />
-            <circle cx="12" cy="12.5" r="2.6" />
-          </svg>
+      </div>
+      {room === "ask" ? <AskSomeone seed={seed} chosen={askTo} onChoose={setAskTo} /> : null}
+      {photo ? (
+        <div>
+          <img src={photo} alt="" className="w-full rounded-2xl" />
+          <button type="button" className="pb-link" onClick={() => { setPhoto(""); setPhotoHash(""); }}>
+            Remove photo
+          </button>
+        </div>
+      ) : null}
+      <div className="pb-compose-keys">
+        <label className={`pb-chip${photo ? " is-on" : ""}`}>
+          <PbIcon name="photo" size={15} />
           Photo
-              <input
+          <input
             type="file"
             accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
             className="sr-only"
@@ -748,26 +802,26 @@ function Composer({
             }}
           />
         </label>
-        <button type="button" aria-pressed={mineOn} onClick={onToggleMine} className={`pd-key pd-mine no-sink${mineOn ? " is-on" : ""}`}>
-          <svg viewBox="0 0 24 24" aria-hidden="true" className="pd-ico">
-            <circle cx="12" cy="9" r="3.2" />
-            <path d="M6 19c1.3-2.6 3.3-3.8 6-3.8s4.7 1.2 6 3.8" />
-          </svg>
-          Mine
+        <RhemaChip near className="pb-chip pd-rhema" />
+        <span className="pb-spacer" />
+        <button
+          type="button"
+          className="pb-link"
+          onClick={() => {
+            setOpen(false);
+            setBody("");
+            setPhoto("");
+            setPhotoHash("");
+            setError("");
+          }}
+        >
+          Cancel
         </button>
-        <RhemaChip near className="pd-key pd-rhema no-sink" />
+        <button type="submit" className="pb-btn" style={{ minHeight: 44 }} disabled={pending || (!body.trim() && !photo && !founder)}>
+          {pending ? "…" : "Post"}
+        </button>
       </div>
-      </div>
-      {room === "ask" ? <AskSomeone seed={seed} chosen={askTo} onChoose={setAskTo} /> : null}
-      {photo ? (
-        <div className="mt-3">
-          <img src={photo} alt="" className="w-full rounded-2xl" />
-          <button type="button" className={`${quietButtonClass} mt-2`} onClick={() => { setPhoto(""); setPhotoHash(""); }}>
-            Remove photo
-          </button>
-        </div>
-      ) : null}
-      {photoError ? <p className="mt-2 text-sm text-danger">{photoError}</p> : null}
+      {photoError ? <p className="text-sm text-danger">{photoError}</p> : null}
       <Fault text={error} />
     </form>
   );
@@ -960,7 +1014,7 @@ export function PostCard({
 
   return (
     <PostWindow
-      className="post-glass pointer-events-auto rim rounded-3xl p-4"
+      className="pb-card pb-post pointer-events-auto"
       shatter={editing ? undefined : mine ? "delete" : "fun"}
       onShattered={() => {
         setShattered(true);
@@ -978,80 +1032,53 @@ export function PostCard({
         }, 5000);
       }}
     >
-      <header className="flex items-start justify-between gap-3">
-        <PersonLink userId={post.authorId} name={post.authorName} imageUrl={post.authorImage}>
-          <span className="block truncate font-semibold text-ink group-hover:underline">{post.authorName}</span>
-          <span className="block truncate text-sm text-muted">
-            <span className={`font-semibold ${ROOM_META[post.room].mark}`}>{ROOM_META[post.room].label}</span>
+      <header className="pb-post-head">
+        <Link to="/people/$userId" params={{ userId: post.authorId }} aria-label={`${post.authorName}'s page`}>
+          <PbAvatar id={post.authorId} name={post.authorName} imageUrl={post.authorImage} />
+        </Link>
+        <Link to="/people/$userId" params={{ userId: post.authorId }} className="pb-post-who">
+          <b>{post.authorName}</b>
+          <small>
+            <span className={`pb-room-${post.room}`}>{ROOM_META[post.room].label}</span>
             {meta ? ` · ${meta}` : ""}
             {" · "}
             <time dateTime={post.createdAt}>{formatWhen(post.createdAt)}</time>
             {post.editedAt ? " · edited" : ""}
-            {post.afloat ? " · afloat" : ""}
-          </span>
-        </PersonLink>
-        {mine && !editing ? (
-          <div className="flex shrink-0">
-            <button type="button" className={quietButtonClass} onClick={pin} disabled={busy}>
-              {post.pinned ? "Unpin" : "Pin"}
-            </button>
-            <button type="button" className={quietButtonClass} onClick={() => setEditing(true)}>
-              Edit
-            </button>
-            {confirming ? (
-              <button type="button" className={`${quietButtonClass} text-danger`} onClick={remove} disabled={busy}>
-                Delete
-              </button>
-            ) : (
-              <button type="button" className={quietButtonClass} onClick={() => setConfirming(true)}>
-                Remove
-              </button>
-            )}
-          </div>
-        ) : null}
+            {post.pinned ? " · pinned" : ""}
+          </small>
+        </Link>
         {!mine ? (
-          <div className="flex shrink-0">
-            <CallLink userId={post.authorId} name={post.authorName} className={`${quietButtonClass} px-2`} />
-            <Link
-              to="/messages/$userId"
-              params={{ userId: post.authorId }}
-              aria-label={`Message ${post.authorName}`}
-              className={`${quietButtonClass} shrink-0 px-2`}
-            >
-              <Mail className="size-5" aria-hidden="true" />
+          <>
+            <CallLink userId={post.authorId} name={post.authorName} className="pb-iconbtn is-green" />
+            <Link to="/messages/$userId" params={{ userId: post.authorId }} aria-label={`Message ${post.authorName}`} className="pb-iconbtn">
+              <PbIcon name="chat" size={18} />
             </Link>
-          </div>
+          </>
         ) : null}
       </header>
       {editing ? (
-        <form onSubmit={save} className="mt-3 grid gap-3">
+        <form onSubmit={save} className="grid gap-3">
           <textarea
             className={`${fieldClass} min-h-24 !text-post`}
             value={body}
             maxLength={2000}
             onChange={(event) => setBody(event.target.value)}
           />
-          <div className="flex flex-wrap gap-1">
+          <div className="pb-chips">
             {ROOMS.map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setRoom(item)}
-                className={`min-h-10 rounded-full px-3 text-sm font-medium ${
-                  room === item ? ROOM_META[item].on : ROOM_META[item].idle
-                }`}
-              >
+              <button key={item} type="button" onClick={() => setRoom(item)} className={`pb-chip${room === item ? " is-on" : ""}`}>
+                <PbIcon name={ROOM_ICON[item]} size={15} />
                 {ROOM_META[item].label}
               </button>
             ))}
           </div>
           <div className="flex gap-2">
-            <button type="submit" className={primaryButtonClass} disabled={busy || !body.trim()}>
+            <button type="submit" className="pb-btn" disabled={busy || !body.trim()}>
               Save
             </button>
             <button
               type="button"
-              className={quietButtonClass}
+              className="pb-btn2"
               onClick={() => {
                 setEditing(false);
                 setBody(post.body);
@@ -1063,12 +1090,7 @@ export function PostCard({
           </div>
         </form>
       ) : (
-        <div
-          className={editing ? undefined : "cursor-pointer"}
-          onClick={() => {
-            if (!editing) setDetails((open) => !open);
-          }}
-        >
+        <div className="cursor-pointer" onClick={() => setDetails((open) => !open)}>
           <PostBody text={post.body.trim()} green={post.room === "ask"} />
           {post.photo ? <KeptPhoto src={post.photo} compact={compact} title={post.authorName} /> : null}
         </div>
@@ -1097,33 +1119,30 @@ export function PostCard({
         </div>
       ) : null}
       {closedToMe ? null : (
-      <div className="mt-3 flex flex-wrap gap-1">
-        {REACTIONS.map((kind) => {
-          const summary = post.reactions.find((item) => item.kind === kind);
-          const Icon = ICONS[kind];
-          const count = summary?.count ?? 0;
-          const active = summary?.mine ?? false;
-          return (
-            <button
-              key={kind}
-              type="button"
-              aria-pressed={active}
-              aria-label={`${REACTION_META[kind].label}${count ? `, ${count}` : ""}`}
-              onClick={() => react(kind)}
-              className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors duration-150 ${
-                active ? "bg-pine-soft text-pine" : `${post.room === "ask" ? "text-post" : "text-muted"} hover:bg-line hover:text-ink`
-              }`}
-            >
-              <Icon className="size-4" aria-hidden="true" />
-              {REACTION_META[kind].label}
-              {count > 0 ? <span className="tabular-nums">{count}</span> : null}
-            </button>
-          );
-        })}
-      </div>
+        <div className="pb-reacts">
+          {REACTIONS.map((kind, index) => {
+            const summary = post.reactions.find((item) => item.kind === kind);
+            const count = summary?.count ?? 0;
+            const active = summary?.mine ?? false;
+            return (
+              <button
+                key={kind}
+                type="button"
+                aria-pressed={active}
+                aria-label={`${REACTION_META[kind].label}${count ? `, ${count}` : ""}`}
+                onClick={() => react(kind)}
+                className={`pb-react${active ? " is-on" : ""}`}
+              >
+                {index === 0 ? <PbIcon name="heart" size={16} /> : null}
+                {REACTION_META[kind].label}
+                {count > 0 ? <span className="tabular-nums">{count}</span> : null}
+              </button>
+            );
+          })}
+        </div>
       )}
       {post.noticedCount > 0 ? (
-        <p className="mt-2 text-sm text-muted">
+        <p className="text-sm text-muted">
           {noticedLine(
             post.noticed,
             post.noticedCount,
@@ -1133,7 +1152,7 @@ export function PostCard({
         </p>
       ) : null}
       {details && (others.length > 0 || sending.length > 0) ? (
-        <ul className="mt-2 space-y-3 border-t border-line pt-3">
+        <ul className="space-y-3 border-t border-line pt-3">
           {others.map((comment) => (
             <CommentRow
               key={comment.id}
@@ -1160,20 +1179,39 @@ export function PostCard({
           ))}
         </ul>
       ) : null}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      <div className="pb-post-actions">
         {post.locked || closedToMe ? null : (
-          <button type="button" className={quietButtonClass} onClick={openReply}>
+          <button type="button" className="pb-link" onClick={openReply}>
             {waiting && owner ? "Answer" : `Reply${others.length > 0 ? ` · ${others.length}` : ""}`}
           </button>
         )}
         {mine ? (
           <LockButton postId={post.id} locked={post.locked} onChange={onChange} onError={setError} />
         ) : post.locked ? (
-          <p className={`${quietButtonClass} px-0`}>Locked</p>
+          <span className="pb-link">Locked</span>
+        ) : null}
+        {mine && !editing ? (
+          <>
+            <button type="button" className="pb-link" onClick={pin} disabled={busy}>
+              {post.pinned ? "Unpin" : "Pin"}
+            </button>
+            <button type="button" className="pb-link" onClick={() => setEditing(true)}>
+              Edit
+            </button>
+            {confirming ? (
+              <button type="button" className="pb-link text-danger" onClick={remove} disabled={busy}>
+                Delete
+              </button>
+            ) : (
+              <button type="button" className="pb-link" onClick={() => setConfirming(true)}>
+                Remove
+              </button>
+            )}
+          </>
         ) : null}
       </div>
       {details && !post.locked && !closedToMe ? (
-        <form onSubmit={sendReply} className="mt-1 flex gap-2">
+        <form onSubmit={sendReply} className="flex gap-2">
           <label className="sr-only" htmlFor={`reply-${post.id}`}>
             Reply
           </label>
@@ -1186,7 +1224,7 @@ export function PostCard({
             placeholder={waiting && owner ? "Write your answer" : "Write a reply"}
             onChange={(event) => setReply(event.target.value)}
           />
-          <button type="submit" className={`${primaryButtonClass} shrink-0`} disabled={busy || !reply.trim()}>
+          <button type="submit" className="pb-btn shrink-0" style={{ minHeight: 44 }} disabled={busy || !reply.trim()}>
             {busy ? "…" : "Reply"}
           </button>
         </form>

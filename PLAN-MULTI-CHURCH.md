@@ -43,6 +43,9 @@ Any **church, ministry, gospel artist or organisation** starts its own **porch**
 | **Stage 2:** the foundation | ✅ Done (19 Nov). Two-church test: 14 passed, 0 failed, 5 not private yet (feed, people, chat) |
 | **Stage 3a:** MSG/AMPC hidden; feed, chat, group chats, people, "on the porch now" and one-to-one calls private per porch | ✅ Done (19 Nov). Two-church test: 46 passed, 0 failed, 0 not private yet |
 | **Stage 3b:** offices, tour doors, read shelf and devotional, notifications, wording, sounds and settings | ✅ Done (19 Nov). Two-church test: 112 passed, 0 failed, 0 not private yet |
+| **Stage 4a:** six themes, Dawn/Dusk/Night dimmer, new top and bottom bars, My porch, Who is on the porch, "founder" → "admin" | ✅ Done (19 Nov) |
+| **Stage 4b:** Tour, Offices tab, offices each church creates, office screens, request status | ❌ Not started |
+| **Stage 4c:** Read, Chat, messaging, profiles, Porch settings screen | ❌ Not started |
 | Stages 3–8 | ❌ Not started |
 
 ---
@@ -233,7 +236,7 @@ After every stage: git undo point, CHANGES.md, "after" pictures where screens ch
    - **3b** ✅ Done (19 Nov): offices (and the office-head and report pickers), tour doors (Events, Serve, Transport, My 20 and its SMS, Pray, Feedback), read shelf and devotional, notifications and alerts ("send to everyone" is now "everyone in this porch"), and per-porch wording, sounds and every "only one" setting.
    - **Still not separated, by decision:** the on-hold features (radio, nuggets, PorchGuy, Clinic, devotional voice, machine translation, group calls). They must be tagged and pass the two-church test before being switched on (decision 8).
    - **Left for later stages:** moving between churches (Stage 5: old conversations, office threads, roles, and old Porchbook "legacy" posts claimed by email); the devotional source and the 8 office names as church settings (Stage 4); calls through outside services (Stage 8).
-4. **Themes and the new design**, one screen at a time, following `design-reference/`. Hide the old photo and texture settings and the old Themes menu (decisions 2 and 3), and make Dawn / Dusk / Night a gentle dimmer (decision 4). The colour settings come first, then Porch, Tour, Offices (with its new tab and office actions), Chat, Read, Presence, Conversation and profile. Phaneroo uses Porch Evening.
+4. **Themes and the new design**, in three parts (4a ✅ themes, bars, My porch, Who is on the porch; 4b Tour and Offices; 4c Read, Chat, profiles, Porch settings), one screen at a time, following `design-reference/`. Hide the old photo and texture settings and the old Themes menu (decisions 2 and 3), and make Dawn / Dusk / Night a gentle dimmer (decision 4). The colour settings come first, then Porch, Tour, Offices (with its new tab and office actions), Chat, Read, Presence, Conversation and profile. Phaneroo uses Porch Evening.
 5. **Joining, leaving and starting a porch**, with invite codes, the 3-step Start a porch screen, and platform-owner approval.
 6. **Public porch**: porch pages, following (automatic for your own church and its main church), public posts and reactions (separate tables), and Find porches. Members react only; no posting or comments.
 7. **Branches**: link requests, approval by the main porch, the branch list on the porch page, unlinking.

@@ -163,7 +163,11 @@ export function NoteBell({ userId, seed }: { userId: string; seed: Seed }) {
   return (
     <>
       <button type="button" className="note-bell" aria-label={unread ? `${unread} new notifications` : "Notifications"} onClick={() => void openList()}>
-        <span aria-hidden="true">🔔</span>
+        {/* The design's outline bell (Stage 4a). */}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M6 16v-5a6 6 0 1 1 12 0v5l2 2H4z" />
+          <path d="M10 21h4" />
+        </svg>
         {unread ? <b>{unread > 99 ? "99+" : unread}</b> : null}
       </button>
       {open && typeof document !== "undefined"

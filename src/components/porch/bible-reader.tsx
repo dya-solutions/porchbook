@@ -724,7 +724,7 @@ export function BibleReader({ onBack, passage, onSwitch }: { onBack: () => void;
                     <span className="block text-sm text-white/60">On this phone</span>
                   </button>
                 ))}
-                {/* BIBLES: the verse you're on, in other versions online (the founder's chosen sites). */}
+                {/* BIBLES: the verse you're on, in other versions online (an admin's chosen sites). */}
                 <button
                   type="button"
                   className="rounded-xl border border-[#f8c46a]/45 bg-white/10 px-3 py-3 text-left"

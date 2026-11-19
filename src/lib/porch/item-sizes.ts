@@ -69,7 +69,7 @@ export const saveItemSize = createServerFn({ method: "POST" })
     if (!data.place || !data.item) return { ok: false as const, error: "Nothing to resize." };
     if (!(await isFounder(context.userId))) {
       noteAttempt(context.userId, "item-size", "Tried to resize something.");
-      return { ok: false as const, error: "Only the founder can resize." };
+      return { ok: false as const, error: "Only an admin can resize." };
     }
     const sql = await getSql();
     const porch = await myPorchId(sql, context.userId);

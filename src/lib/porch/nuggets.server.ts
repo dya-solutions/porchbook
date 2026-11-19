@@ -24,7 +24,7 @@ export async function stationNuggets(sql: Sql, founder: boolean): Promise<FmTrac
     const flag = await sql.query<{ enabled: unknown }>(/* On hold: Phaneroo's switch only. Must become per church before switching on (decision 8). */ "select enabled from app_flags where key = 'nuggets' and porch_id = 1");
     // While Bible readings are on, they are the station breaks: the automatic nugget breaks pause.
     const bible = await sql.query<{ readings_on: unknown }>("select readings_on from bible_settings where id = 1").catch(() => []);
-    // Everyone (the founder too) hears the same schedule: a founder-only rotation would put the founder's
+    // Everyone (an admin too) hears the same schedule: a founder-only rotation would put an admin's
     // radio out of step, and items would start mid-way for him after every break.
     void founder;
     const breaks = Boolean(set[0]) && bool(set[0].breaks_on) && bool(flag[0]?.enabled) && !bool(bible[0]?.readings_on);

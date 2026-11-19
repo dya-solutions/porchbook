@@ -47,7 +47,7 @@ export const setWord = createServerFn({ method: "POST" })
     await ensure(sql);
     const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
     const founder = me[0]?.is_founder === true || me[0]?.is_founder === "t" || me[0]?.is_founder === "true";
-    if (!founder) return { ok: false as const, error: "Only the founder rewords Porchbook." };
+    if (!founder) return { ok: false as const, error: "Only an admin rewords Porchbook." };
     if (!data.text) await sql.query(`delete from porch_words where porch_id = ${porch} and key = $1`, [data.key]);
     else
       await sql.query(`insert into porch_words (porch_id, key, text) values (${porch}, $1, $2) on conflict (porch_id, key) do update set text = excluded.text, updated_at = now()`,

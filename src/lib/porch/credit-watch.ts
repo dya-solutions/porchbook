@@ -71,7 +71,7 @@ export const getCreditWarnings = createServerFn({ method: "POST" })
     } catch {
       /* couldn't reach ElevenLabs: say nothing rather than a false alarm */
     }
-    // Today's machine-translated Runyankore or Luganda, waiting for the founder's check.
+    // Today's machine-translated Runyankore or Luganda, waiting for an admin's check.
     try {
       const waiting = await sql.query<{ lang: string }>(
         `select distinct t.lang from devotion_translations t join read_docs d on d.link = t.link and d.key = 'devotion'

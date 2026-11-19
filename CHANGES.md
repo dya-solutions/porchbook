@@ -155,13 +155,66 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
   - After a restart, the test account's real data still works: admin tools, posts, shelf, 8 offices, events, words, transport event, bell and covers. No database errors at start-up.
   - "After" pictures are in `../after-stage3b/` and were compared with `../after-stage3a/` (see the comparison page).
 
-## Approved for the redesign stage (not done yet)
+### 6. Stage 4a (19 Nov 2026): themes, the new bars, My porch and Who is on the porch
+- **Six themes, one set of colours** (`src/lib/porch/themes.ts`, `src/pb.css`).
+  - The six themes from BUILD-BRIEF.md are one table. Every new screen reads its colours from it, and the shades in between (borders, raised surfaces, the bottom bar) are mixed from those colours.
+  - Each porch's theme is saved in its porch settings. Phaneroo uses **Porch Evening**.
+  - A porch admin can change the theme. The settings screen with the theme picker comes in Stage 4c.
+  - The phone remembers the last theme, so the right colours show before anything loads.
+- **Dawn / Dusk / Night is a gentle dimmer on every theme** (decision 4). The dimmer now stops at 40% (it used to reach 90%, nearly black), and it covers the whole screen, bars included. A "Light: Dawn / Dusk / Night" row, as in the Tour design, sits on the Tour page for phones and computers. It replaces the old ☀ in the old bottom bar.
+- **The old porch photograph and textures are hidden** (decision 2). Every page has the plain theme background. The admin's photo and texture settings are hidden behind a new switch, `oldLooks` in `on-hold.ts`, together with the old Themes menu (decision 3).
+- **New top bar** (Porch.dc.html):
+  - the porch's initials and name, and which screen you're on;
+  - the bell, with the design's outline bell;
+  - your own picture, which **opens your profile**.
 
-These were approved by the owner on 2026-11-18 but will be done later, during the redesign.
-Both go against `public/porchbook-state.md`, so that file must be updated when they are made.
+  The old header (Home/Tour/Read switch, Lite key, account menu) is gone.
+- **New bottom bar:** Porch, Tour, Offices, Read, Chat, with the unread count on Chat. Offices opens the existing offices page for now.
+- **Nothing from the old menus was lost.** Your own profile now has a **"Your account"** card with:
+  - Who is on the porch
+  - Alerts
+  - Invite someone
+  - Feedback
+  - Refresh Porchbook
+  - Keep Porchbook running (in the Android app)
+  - Admin tools (for admins)
+  - Sign out
+  - How you appear (online, do not disturb, hidden)
+  - Porchbook Lite
 
-- **Post cards: room, team and time on one line** under the name, instead of each on its own line. Rulebook section "Home" currently says they are "on their own lines".
-- **Posting box opens when tapped:** it shows as one "Share something…" line until tapped. Rulebook section "Posting panel" currently says "The composer is open at the top of the feed".
+  "Something new on Porchbook · tap Refresh" now shows just above the bottom bar.
+- **My porch** (`routes/index.tsx`, `feed-view.tsx`):
+  - The "My porch / Public porch" switch. The Public porch shows "coming soon" until Stage 6.
+  - The **"on the porch now"** strip: faces, how many are here, and Visible or Hidden. It opens Who is on the porch.
+  - **"Share with your porch…"**, which opens the post box when tapped (approved earlier). The post box keeps everything: rooms, Photo, Rhemaclip, Ask someone, Post.
+  - Room chips: All, Inspire, Inform, Inquire, plus Mine.
+  - Post cards as in the design: face, name, room and time on one line, the text, and the Love / Like / Touching / Deep pills with counts. Reply, Lock, Pin, Edit, Remove, call and message are all still there.
+  - The old slides inside the post box are gone. Radio is on hold; the devotional, Chat and Write are one tap away in the bottom bar and the post box.
+- **Who is on the porch** (new page `/presence`, Presence.dc.html): the "Show me on the porch" switch and the list, with message and call buttons. The old rule stays: while you're hidden, you don't see who else is here.
+- **"Founder" becomes "admin"** in 102 on-screen wordings across 53 files, e.g. "Only an admin can…". Code names were not changed.
+- **Also:**
+  - "Property of …" under the older screens now names the viewer's own porch.
+  - The old "the first account becomes founder" note in the code now reads "admin".
+- **Rules changed (BUILD-BRIEF.md wins over porchbook-state.md):**
+  - The porch photograph, glass posts on the photo, the 3D Home/Tour/Read switch and the old header are replaced by the design.
+  - The bottom bar is now Porch, Tour, Offices, Read, Chat. It used to be Feed, Chat, Invite, Refresh.
+  - The dark letter edges and the leaf-green post box are replaced by the theme colours.
+  - The two items approved on 18 Nov are done (see below).
+- **Not yet in the new look:** Tour, Offices, Read, Chat, profiles and the older pages keep their old look inside the new bars until Stages 4b and 4c. On Morning Light (the light theme), those older pages still look dark for now.
+- **Checked:**
+  - Type check passes.
+  - Two-church test: 112 passed, 0 failed, 0 not private yet.
+  - Design vs app comparison and theme pictures are in `../compare-design.html` (Porch Evening, Morning Light, Royal Night). Phaneroo was set back to Porch Evening afterwards.
+  - "After" pictures are in `../after-stage4a/`.
+- **Fixed during this stage:** a crash ("Rendered more hooks…") I had caused in the frame while sign-in finishes. It was caught by the theme pictures and fixed before saving.
+- **Known, not new:** a "hydration" warning in the browser log. The server draws an empty placeholder before it knows who you are, and the browser redraws. This was already there; the page works. It can be tidied later.
+
+## Approved for the redesign stage
+
+These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).
+
+- ✅ **Done in Stage 4a:** post cards have room, team and time on one line under the name.
+- ✅ **Done in Stage 4a:** the posting box is one "Share with your porch…" line until tapped.
 
 ## Left alone on purpose
 

@@ -93,7 +93,7 @@ export const setCloth = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "cloth", "Tried to change the porch guy's clothes.");
-      return { ok: false as const, error: "Only the founder can change his clothes." };
+      return { ok: false as const, error: "Only an admin can change his clothes." };
     }
     const id = CLOTH_ID[data.part];
     if (!data.color) {

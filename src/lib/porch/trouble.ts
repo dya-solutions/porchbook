@@ -212,7 +212,7 @@ export const handleTrouble = createServerFn({ method: "POST" })
     return { id: Number(raw.id) || 0, line: typeof raw.line === "string" ? clip(raw.line, 300) : "" };
   })
   .handler(async ({ context, data }) => {
-    if (!(await founder(context.userId))) return { ok: false as const, error: "Only the founder handles feedback." };
+    if (!(await founder(context.userId))) return { ok: false as const, error: "Only an admin handles feedback." };
     const sql = await getSql();
     await ready(sql);
     const rows = await sql.query<{ id: number }>(

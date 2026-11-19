@@ -108,7 +108,7 @@ export const setCover = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "cover", "Tried to change a book cover.");
-      return { ok: false as const, error: "Only the founder can change book covers." };
+      return { ok: false as const, error: "Only an admin can change book covers." };
     }
     if (!data.book) return { ok: false as const, error: "Which book?" };
     if (!data.image) {
@@ -168,7 +168,7 @@ export const setButterfly = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "cover", "Tried to move a book's butterfly.");
-      return { ok: false as const, error: "Only the founder can move the butterflies." };
+      return { ok: false as const, error: "Only an admin can move the butterflies." };
     }
     if (!data.book) return { ok: false as const, error: "Which book?" };
     if (data.reset) {

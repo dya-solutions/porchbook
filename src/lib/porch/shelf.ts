@@ -103,7 +103,7 @@ export const setShelf = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "shelf", "Tried to change the shelf.");
-      return { ok: false as const, error: "Only the founder can change the shelf." };
+      return { ok: false as const, error: "Only an admin can change the shelf." };
     }
     if (!data.image) {
       await sql`delete from porch_shelf where porch_id = ${porch} and id = ${PART_ID[data.part]}`;

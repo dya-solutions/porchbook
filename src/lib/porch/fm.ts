@@ -84,7 +84,7 @@ export const getFm = createServerFn({ method: "POST" })
     const { ensureReadings } = await import("@/lib/porch/bible-radio.server");
     await ensureReadings(sql);
     const station = await readStation(sql, boolish(me[0]?.is_founder));
-    // The devotional's strings (the founder's track and level), played under sermons marked for it.
+    // The devotional's strings (an admin's track and level), played under sermons marked for it.
     const bedRows = await sql.query<{ bed_url: string; bed_level: number }>("select bed_url, bed_level from devotion_voice_settings where id = 1").catch(() => []);
     const bed = bedRows[0]?.bed_url ? { url: bedRows[0].bed_url, level: Number(bedRows[0].bed_level) || 0.18 } : null;
     return { ...station, bed, breaks: await readBreaks(sql), studio: await canRunStudio(sql, context.userId), founder: boolish(me[0]?.is_founder), serverNow: Date.now() };
@@ -290,7 +290,7 @@ export const listenersPdf = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const sql = await getSql();
     const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
-    if (!boolish(me[0]?.is_founder)) return { ok: false as const, error: "Only the founder can take the listeners PDF." };
+    if (!boolish(me[0]?.is_founder)) return { ok: false as const, error: "Only an admin can take the listeners PDF." };
     const rows = await sql.query<{ user_id: string; who: string | null; day: string; hour: number }>(
       `select h.user_id, p.display_name as who,
               to_char(h.hour_start at time zone 'Africa/Kampala', 'YYYY-MM-DD') as day,
@@ -1137,7 +1137,7 @@ export const requestHistoryPdf = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
-    if (!boolish(me[0]?.is_founder)) return { ok: false as const, error: "Only the founder can take the request history." };
+    if (!boolish(me[0]?.is_founder)) return { ok: false as const, error: "Only an admin can take the request history." };
     await ensureRequests(sql);
     await ensureBreakMessage(sql);
     const month = data.month || new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 7);
@@ -1229,7 +1229,7 @@ export const skipFmNext = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const sql = await getSql();
     const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
-    if (!boolish(me[0]?.is_founder)) return { ok: false as const, error: "Only the founder can skip to the next item." };
+    if (!boolish(me[0]?.is_founder)) return { ok: false as const, error: "Only an admin can skip to the next item." };
     await ensureBreakMessage(sql);
     const station = await readStation(sql);
     const breaks = await readBreaks(sql);

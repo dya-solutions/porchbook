@@ -141,7 +141,7 @@ export const Route = createFileRoute("/api/city-board")({
         const session = await sessionOf(request);
         if (!session?.user) return Response.json({ ok: false, error: "Sign in first." }, { status: 401 });
         if (!(await founder(session.user.id))) {
-          return Response.json({ ok: false, error: "Only the founder can add an event." }, { status: 403 });
+          return Response.json({ ok: false, error: "Only an admin can add an event." }, { status: 403 });
         }
         const url = new URL(request.url);
         const id = safeId(url.searchParams.get("id") ?? "");
@@ -238,7 +238,7 @@ export const Route = createFileRoute("/api/city-board")({
         const session = await sessionOf(request);
         if (!session?.user) return Response.json({ ok: false, error: "Sign in first." }, { status: 401 });
         if (!(await founder(session.user.id))) {
-          return Response.json({ ok: false, error: "Only the founder can remove an event." }, { status: 403 });
+          return Response.json({ ok: false, error: "Only an admin can remove an event." }, { status: 403 });
         }
         const id = safeId(new URL(request.url).searchParams.get("id") ?? "");
         if (!id) return Response.json({ ok: false, error: "That event is not here." }, { status: 400 });

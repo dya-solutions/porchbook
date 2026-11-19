@@ -20,6 +20,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as NextRouteImport } from './routes/next'
 import { Route as PorchguyRouteImport } from './routes/porchguy'
+import { Route as PresenceRouteImport } from './routes/presence'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ReadRouteImport } from './routes/read'
 import { Route as RollRouteImport } from './routes/roll'
@@ -114,6 +115,11 @@ const NextRoute = NextRouteImport.update({
 const PorchguyRoute = PorchguyRouteImport.update({
   id: '/porchguy',
   path: '/porchguy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PresenceRoute = PresenceRouteImport.update({
+  id: '/presence',
+  path: '/presence',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -329,6 +335,7 @@ export interface FileRoutesByFullPath {
   '/manual': typeof ManualRoute
   '/next': typeof NextRoute
   '/porchguy': typeof PorchguyRoute
+  '/presence': typeof PresenceRoute
   '/privacy': typeof PrivacyRoute
   '/read': typeof ReadRoute
   '/roll': typeof RollRoute
@@ -382,6 +389,7 @@ export interface FileRoutesByTo {
   '/manual': typeof ManualRoute
   '/next': typeof NextRoute
   '/porchguy': typeof PorchguyRoute
+  '/presence': typeof PresenceRoute
   '/privacy': typeof PrivacyRoute
   '/read': typeof ReadRoute
   '/roll': typeof RollRoute
@@ -436,6 +444,7 @@ export interface FileRoutesById {
   '/manual': typeof ManualRoute
   '/next': typeof NextRoute
   '/porchguy': typeof PorchguyRoute
+  '/presence': typeof PresenceRoute
   '/privacy': typeof PrivacyRoute
   '/read': typeof ReadRoute
   '/roll': typeof RollRoute
@@ -491,6 +500,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/next'
     | '/porchguy'
+    | '/presence'
     | '/privacy'
     | '/read'
     | '/roll'
@@ -544,6 +554,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/next'
     | '/porchguy'
+    | '/presence'
     | '/privacy'
     | '/read'
     | '/roll'
@@ -597,6 +608,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/next'
     | '/porchguy'
+    | '/presence'
     | '/privacy'
     | '/read'
     | '/roll'
@@ -651,6 +663,7 @@ export interface RootRouteChildren {
   ManualRoute: typeof ManualRoute
   NextRoute: typeof NextRoute
   PorchguyRoute: typeof PorchguyRoute
+  PresenceRoute: typeof PresenceRoute
   PrivacyRoute: typeof PrivacyRoute
   ReadRoute: typeof ReadRoute
   RollRoute: typeof RollRoute
@@ -770,6 +783,13 @@ declare module '@tanstack/react-router' {
       path: '/porchguy'
       fullPath: '/porchguy'
       preLoaderRoute: typeof PorchguyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/presence': {
+      id: '/presence'
+      path: '/presence'
+      fullPath: '/presence'
+      preLoaderRoute: typeof PresenceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -1067,6 +1087,7 @@ const rootRouteChildren: RootRouteChildren = {
   ManualRoute: ManualRoute,
   NextRoute: NextRoute,
   PorchguyRoute: PorchguyRoute,
+  PresenceRoute: PresenceRoute,
   PrivacyRoute: PrivacyRoute,
   ReadRoute: ReadRoute,
   RollRoute: RollRoute,

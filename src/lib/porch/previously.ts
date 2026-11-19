@@ -110,7 +110,7 @@ export const setPreviousLink = createServerFn({ method: "POST" })
     await ensurePrevious(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "previous", "Tried to set Previously in Phaneroo.");
-      return { ok: false as const, error: "Only the founder can set this video." };
+      return { ok: false as const, error: "Only an admin can set this video." };
     }
     if (!data.url) {
       await sql`delete from previous_clip where porch_id = ${porch} and id = 1`;

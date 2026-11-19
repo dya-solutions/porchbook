@@ -211,7 +211,7 @@ export const setRhema = createServerFn({ method: "POST" })
     await ensureRhema(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "rhema", "Tried to change the Rhemaclip.");
-      return { ok: false as const, error: "Only the founder can set the Rhemaclip." };
+      return { ok: false as const, error: "Only an admin can set the Rhemaclip." };
     }
     if (!data.url) {
       await sql`delete from rhema_clip where porch_id = ${porch} and id = 1`;
@@ -281,7 +281,7 @@ export const setPrayer = createServerFn({ method: "POST" })
     await ensurePrayer(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "prayer", "Tried to change the prayer music.");
-      return { ok: false as const, error: "Only the founder can set the prayer music." };
+      return { ok: false as const, error: "Only an admin can set the prayer music." };
     }
     if (!data.url) {
       await sql`delete from prayer_track where id = 1 and porch_id = my_porch(${context.userId})`;

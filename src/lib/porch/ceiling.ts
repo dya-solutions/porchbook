@@ -77,7 +77,7 @@ export const setCeiling = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "ceiling", "Tried to change the ceiling.");
-      return { ok: false as const, error: "Only the founder can change the ceiling." };
+      return { ok: false as const, error: "Only an admin can change the ceiling." };
     }
     if (!data.image) {
       await sql`delete from porch_ceiling where porch_id = ${porch} and id = 1`;

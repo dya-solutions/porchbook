@@ -214,7 +214,7 @@ export const saveTransportStage = createServerFn({ method: "POST" })
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
     const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [context.userId]);
-    if (!boolish(me[0]?.is_founder)) return { ok: false as const, error: "Only the founder can name a stage." };
+    if (!boolish(me[0]?.is_founder)) return { ok: false as const, error: "Only an admin can name a stage." };
     if (!data.place || !data.stage) return { ok: false as const, error: "Name the place and the stage." };
     await ready(sql);
     await sql`insert into transport_stages (porch_id, place, stage) values (my_porch(${context.userId}), ${data.place}, ${data.stage})`;

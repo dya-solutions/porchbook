@@ -279,7 +279,7 @@ export const setOfficeHead = createServerFn({ method: "POST" })
     await ensureOffices(sql, context.userId);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "office-head", "Tried to choose an office head.");
-      return { ok: false as const, error: "Only the founder can choose a head." };
+      return { ok: false as const, error: "Only an admin can choose a head." };
     }
     const found = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${data.userId} and same_porch(user_id, ${context.userId})`;
     if (!found.length) return { ok: false as const, error: "That person is not in your porch." };

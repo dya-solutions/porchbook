@@ -12,6 +12,7 @@ import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-ro
 import { warmDevotion } from "@/lib/porch/devotion-cache";
 import { LiteKey, LiteOffer } from "@/components/porch/lite-bits";
 import { NoteBell } from "@/components/porch/note-bell";
+import { BottomNav, PbIcon, TopBar, usePorchLook } from "@/components/porch/pb-shell";
 import { NuggetLink } from "@/components/porch/nugget-bits";
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { CircleHelp, House, Landmark, Mail, Megaphone, MessageCircle, Share2, Users, Bell, AudioLines, RefreshCw, Eye, EyeOff } from "lucide-react";
@@ -261,7 +262,7 @@ function HeadMeasure({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     const el = ref.current?.querySelector("header") ?? ref.current;
     if (!el) return;
-    const apply = () => document.documentElement.style.setProperty("--porch-head", `calc(${Math.max(el.offsetHeight, 136)}px + var(--radio-strip, 0px))`);
+    const apply = () => document.documentElement.style.setProperty("--porch-head", `calc(${el.offsetHeight}px + var(--radio-strip, 0px))`);
     apply();
     const observer = new ResizeObserver(apply);
     observer.observe(el);
@@ -527,6 +528,7 @@ function UnreadCount({ count }: { count: number }) {
 }
 
 const DESK_EVENT = "porch-founder-desk";
+export const REFRESH_EVENT = "porch-refresh-app";
 
 export function toggleFounderDesk() {
   if (typeof window === "undefined") return;
@@ -626,13 +628,18 @@ function FounderDesk({ user, home }: { user: AppUser; home: boolean }) {
         </Link>
       <ButtonSoundSetter />
       <MessageSoundSetter />
-      <HeaderPhotoSetter />
-      <CallLookSetter />
+      {/* The old photo and texture settings are hidden (BUILD-BRIEF.md decision 2); a logo and cover photo come later. */}
+      {featureShown("oldLooks") ? (
+        <>
+          <HeaderPhotoSetter />
+          <CallLookSetter />
+          <GroundSetter />
+          <ShelfSetter />
+          <HideSetter />
+          <DoorSetter />
+        </>
+      ) : null}
       <LegacyImportSetter />
-      <GroundSetter />
-      <ShelfSetter />
-      <HideSetter />
-      <DoorSetter />
       <RhemaSetter />
       <ClearEvents />
     </section>
@@ -657,6 +664,9 @@ export function AppFrame({
   const unread = useUnread(user, pathname);
   const guy = pathname === "/city" || pathname === "/porchguy";
   const rhema = useRhemaPlay();
+  // These run on every draw, before any early return (React needs the same order every time).
+  const look = usePorchLook();
+  const face = useMyFace(user?.id ?? "");
   // Keep today's devotional on the phone so it opens instantly.
   useEffect(() => {
     if (!user?.id) return;
@@ -871,6 +881,15 @@ export function AppFrame({
     });
   }
 
+  // "Refresh Porchbook" on your account card asks the frame to refresh.
+  const refreshRef = useRef(refreshApp);
+  refreshRef.current = refreshApp;
+  useEffect(() => {
+    const run = () => void refreshRef.current();
+    window.addEventListener(REFRESH_EVENT, run);
+    return () => window.removeEventListener(REFRESH_EVENT, run);
+  }, []);
+
   function leave() {
     if (signingOut) return;
     setSigningOut(true);
@@ -939,117 +958,62 @@ export function AppFrame({
     );
   }
 
+  // My porch and Who is on the porch have the new design; the other screens get theirs in Stages 4b and 4c.
+  const newScreen = pathname === "/" || pathname === "/presence";
+  const showBars = !guy && pathname !== "/calls" && pathname !== "/call";
+  const owner = look?.name ?? "Phaneroo Ministries Mbarara";
+
   return (
     <div
       className={`porch-shell flex h-dvh flex-col overflow-hidden${pathname === "/calls" ? " call-pass" : ""}`}
-      style={{ ["--book-dock" as string]: pathname === "/" || pathname === "/next" || pathname === "/read" ? "calc(6.5rem + env(safe-area-inset-bottom))" : "0px" }}
+      style={{ ["--book-dock" as string]: showBars ? "calc(4.25rem + env(safe-area-inset-bottom))" : "0px" }}
     >
       {featureShown("radio") ? <OnAirBar /> : null}
       <CallCard />
       <HeadMeasure>
-      <header className={`crowd-head fixed inset-x-0 top-0 z-30 max-w-full ${pathname === "/next" ? "bg-black" : "border-b border-line bg-paper"}`}>
-        <div className="pc-head mx-auto max-w-6xl px-3 py-2 sm:px-4 lg:px-6">
-          <div className="flex items-center justify-between gap-3">
-            <Link to="/" search={{ room: "all" }} className="flex h-12 min-w-0 items-center">
-              <HeadLogo />
-              {rhema.over ? <DigitalClock /> : null}
-            </Link>
-            <div className="flex items-center gap-2">
-              <NoteBell userId={user.id} seed={{ displayName: user.displayName ?? "", email: user.primaryEmail, imageUrl: user.profileImageUrl }} />
-              <LiteKey />
-              <NameMenu user={user} signingOut={signingOut} onLeave={leave} />
+        {showBars && pathname !== "/presence" ? (
+          <TopBar
+            look={look}
+            subtitle={screenName(pathname)}
+            me={{ id: user.id, name: user.displayName ?? "", imageUrl: face ?? user.profileImageUrl ?? null }}
+            bell={<NoteBell userId={user.id} seed={{ displayName: user.displayName ?? "", email: user.primaryEmail, imageUrl: user.profileImageUrl }} />}
+          />
+        ) : null}
+        <IncomingCall />
+        <LiteOffer />
+        <PresenceInvite />
+      </HeadMeasure>
+      <div
+        className={
+          guy
+            ? "relative mx-auto min-h-0 w-full max-w-none flex-1 overflow-hidden"
+            : newScreen
+              ? "min-h-0 w-full flex-1 overflow-hidden"
+              : `mx-auto grid min-h-0 w-full flex-1 gap-4 overflow-hidden ${pathname === "/next" ? "tour-page-shell max-w-none px-2 pt-2" : `max-w-6xl px-4 py-3 lg:px-6 lg:grid-cols-[minmax(0,1fr)_16rem]${pathname === "/read" ? " pc-read" : ""}${pathname.startsWith("/messages") ? " pc-wide" : ""}`}`
+        }
+      >
+        <main className="min-h-0 overflow-hidden">
+          <div key={`${pathname}#${refreshKey}`} className="rise h-full min-h-0 overflow-y-auto">
+            <div className={newScreen ? "pb pb-column" : undefined}>
+              <FounderDesk user={user} home={pathname === "/"} />
+              {children}
+              {pathname === "/calls" ? null : <TroubleBar />}
+              {pathname === "/calls" ? null : <RideNews />}
+              {pathname === "/calls" ? null : <AskNews />}
+              {pathname === "/calls" || !featureShown("radio") ? null : <RadioNews />}
+              {featureShown("radio") ? <NuggetLink /> : null}
+              {newScreen ? null : <p className="porch-property">Property of {owner}</p>}
+              <WordsEditor />
+              <KeepRunning />
+              <AppUpdateCard />
             </div>
           </div>
-          <div className="porch-nav mt-2">
-            <HomeTourSwitch side={pathname === "/next" ? "tour" : pathname === "/read" ? "read" : pathname === "/" ? "home" : "away"} />
-            {featureShown("porchGuy") ? (
-            <Link
-              to="/porchguy"
-              search={{ film: "", worship: "" }}
-              onPointerDown={() => playButtonSound()}
-              aria-current={pathname === "/porchguy" ? "page" : undefined}
-              className={`porch-nav-pill porch-nav-right no-sink${pathname === "/porchguy" ? " is-on" : ""}`}
-            >
-              PorchGuy
-            </Link>
-            ) : null}
-          </div>
-        </div>
-      </header>
-      <IncomingCall />
-      <LiteOffer />
-      <PresenceInvite />
-      </HeadMeasure>
-      <div className={guy ? "relative mx-auto min-h-0 w-full max-w-none flex-1 overflow-hidden" : `mx-auto grid min-h-0 w-full flex-1 gap-4 overflow-hidden ${pathname === "/next" ? "tour-page-shell max-w-none px-2 pt-2" : "max-w-6xl px-4 py-3 lg:px-6"} ${pathname === "/" ? "pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:grid-cols-[12rem_minmax(0,1fr)_16rem] pc-home lg:pb-3" : pathname === "/next" ? "" : pathname === "/read" ? "pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:grid-cols-[minmax(0,1fr)_16rem] lg:pb-3 pc-read" : `pb-3 lg:grid-cols-[minmax(0,1fr)_16rem]${pathname.startsWith("/messages") ? " pc-wide" : ""}`}`}>
-        {pathname === "/" ? (
-        <nav className="hidden lg:block">
-          <ul className="pc-menu sticky top-4 space-y-1">
-            {NAV.map((item) => {
-              const active = item.match(pathname);
-              const Icon = item.icon;
-              return (
-                <li key={item.to}>
-                  <Link
-                    to={item.to}
-                    search={item.to === "/" ? { room: "all" } : undefined}
-                    className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold ${
-                      active ? "bg-pine-soft text-pine" : "text-muted hover:bg-line hover:text-ink"
-                    }`}
-                  >
-                    <Icon className="size-5" aria-hidden="true" />
-                    {item.label}
-                    {item.to === "/messages" ? (
-                      <span className="ml-auto">
-                        <UnreadCount count={unread} />
-                      </span>
-                    ) : null}
-                  </Link>
-                </li>
-              );
-            })}
-            <li className="px-3 pt-5 text-xs font-medium tracking-wide text-faint uppercase">Rooms</li>
-            {ROOMS.map((item) => {
-              const Icon = ROOM_ICONS[item];
-              const active = room === item;
-              return (
-                <li key={item}>
-                  <Link
-                    to="/"
-                    search={{ room: item }}
-                    className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold ${
-                      active ? ROOM_META[item].on : `${ROOM_META[item].idle} hover:bg-line`
-                    }`}
-                  >
-                    <Icon className="size-4" aria-hidden="true" />
-                    {ROOM_META[item].label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-        ) : null}
-        <main className="min-h-0 overflow-hidden">
-          <div key={`${pathname}#${refreshKey}`} className={`rise h-full min-h-0 ${pathname === "/next" ? "overflow-y-auto" : "overflow-y-auto"}`}>
-          <FounderDesk user={user} home={pathname === "/"} />
-          {children}
-          {pathname === "/calls" ? null : <TroubleBar />}
-          {pathname === "/calls" ? null : <RideNews />}
-          {pathname === "/calls" ? null : <AskNews />}
-          {pathname === "/calls" || !featureShown("radio") ? null : <RadioNews />}
-          {featureShown("radio") ? <NuggetLink /> : null}
-          <p className="porch-property">Property of Phaneroo Ministries Mbarara</p>
-          <WordsEditor />
-          <KeepRunning />
-          <AppUpdateCard />
-          </div>
         </main>
-        <aside className={pathname === "/next" ? "hidden" : "hidden lg:block"}>
-          <div className="sticky top-4 space-y-4">
-            {pathname === "/" ? <PcSide /> : null}
-            {rail}
-          </div>
-        </aside>
+        {newScreen || pathname === "/next" || guy ? null : (
+          <aside className="hidden lg:block">
+            <div className="sticky top-4 space-y-4">{rail}</div>
+          </aside>
+        )}
       </div>
       <RhemaStage
         videoId={rhema.videoId}
@@ -1061,62 +1025,32 @@ export function AppFrame({
         onClose={rhema.close}
         onEnded={rhema.markOver}
       />
-      {pathname === "/" || pathname === "/next" || pathname === "/read" ? (
-      <nav className="safe-bottom porch-dock fixed inset-x-0 bottom-0 z-20 lg:hidden">
-        <div className="bk-row">
-          <OnlineTicker strip />
-          <BrightKey />
+      {newBuild && newBuild !== hiddenBuild ? (
+        <div className="pb pb-update" role="status">
+          <button type="button" className="pb-link" onClick={refreshApp}>
+            <W k="refresh.bubble">Something new on Porchbook · tap Refresh</W>
+          </button>
+          <button type="button" className="pb-link" aria-label="Close" onClick={() => hideBuild(newBuild)}>
+            ✕
+          </button>
         </div>
-        <ul className="mx-auto grid max-w-md grid-cols-4 gap-2 px-3 pt-2 pb-1.5">
-          {NAV.map((item) => {
-            const active = item.match(pathname);
-            const Icon = item.icon;
-            return (
-              <li key={item.to}>
-                <Link
-                  to={item.to}
-                  aria-current={active ? "page" : undefined}
-                  className={`porch-dock-key${active ? " is-on" : ""}`}
-              >
-                <span className="relative">
-                  <Icon className="size-5" aria-hidden="true" />
-                  {item.to === "/messages" && unread > 0 ? (
-                    <span className="absolute -top-1 -right-2">
-                      <UnreadCount count={unread} />
-                    </span>
-                  ) : null}
-                </span>
-                <span>{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-          <li className="relative">
-            {newBuild && newBuild !== hiddenBuild ? (
-              <div className="refresh-bubble" role="status">
-                <button type="button" className="refresh-bubble-text" onClick={refreshApp}>
-                  <W k="refresh.bubble">Something new on Porchbook · tap Refresh</W>
-                </button>
-                <button type="button" className="refresh-bubble-x" aria-label="Close" onClick={() => hideBuild(newBuild)}>
-                  ✕
-                </button>
-              </div>
-            ) : null}
-            <button
-              type="button"
-              className={`porch-dock-key disabled:opacity-60${newBuild ? " has-news" : ""}`}
-              disabled={refreshing || signingOut}
-              onClick={refreshApp}
-            >
-              <RefreshCw className={`size-5 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
-              <span>Refresh</span>
-            </button>
-          </li>
-        </ul>
-      </nav>
       ) : null}
+      {showBars ? <BottomNav pathname={pathname} unread={unread} /> : null}
     </div>
   );
+}
+
+/** What the top bar says under the porch's name. */
+function screenName(pathname: string) {
+  if (pathname === "/") return "Your porch";
+  if (pathname === "/next") return "Tour";
+  if (pathname.startsWith("/offices")) return "Offices";
+  if (pathname === "/read") return "Read";
+  if (pathname.startsWith("/messages")) return "Chat";
+  if (pathname.startsWith("/people")) return "People";
+  if (pathname.startsWith("/groups")) return "Groups";
+  if (pathname === "/invite") return "Invite";
+  return "Your porch";
 }
 
 /** ☀ at the end of the "on the porch" strip: a tap opens the brightness roller above it. */
@@ -1155,5 +1089,102 @@ function HeadLogo() {
       <img src={away ? "/logo-text.png?v=1" : "/logo.png?v=5"} alt="Porchbook" className="head-logo h-11 w-auto sm:h-12" />
       <LogoFlyer />
     </>
+  );
+}
+
+/**
+ * "Your account", on your own profile (Stage 4a). The top bar's picture now opens your profile,
+ * so everything that was in the old account menu (and the old bottom bar's Invite and Refresh) lives here.
+ */
+export function AccountCard({ user }: { user: AppUser }) {
+  const [alerts, setAlerts] = useState<NotificationPermission | "unsupported">("unsupported");
+  const [alertNote, setAlertNote] = useState("");
+  const [admin, setAdmin] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const navigate = useNavigate();
+  const seed = { displayName: user.displayName ?? "", email: user.primaryEmail ?? null, imageUrl: user.profileImageUrl ?? null };
+  useEffect(() => {
+    setAlerts(alertPermission());
+    founderDesk({ data: seed })
+      .then((result) => setAdmin(result.isFounder))
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id]);
+  return (
+    <section className="pb">
+      <h2 className="pb-ttl" style={{ fontSize: 20, margin: "8px 4px 8px" }}>
+        Your account
+      </h2>
+      <div className="pb-card pb-account">
+        <Link to="/presence">
+          <PbIcon name="eye" size={20} />
+          Who is on the porch
+        </Link>
+        {alerts === "unsupported" ? null : (
+          <button
+            type="button"
+            onClick={() => {
+              setAlertNote("");
+              void enableAlerts(seed).then((result) => {
+                setAlerts(alertPermission());
+                if (!result.ok) setAlertNote(result.error);
+              });
+            }}
+          >
+            <Bell className="size-5" aria-hidden="true" />
+            Alerts
+            <small>{alerts === "granted" ? "On" : "Off"}</small>
+          </button>
+        )}
+        {alertNote ? <p style={{ padding: "0 16px 10px", fontSize: 13, color: "var(--pb-quiet)" }}>{alertNote}</p> : null}
+        <Link to="/invite">
+          <Share2 className="size-5" aria-hidden="true" />
+          Invite someone
+        </Link>
+        <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("porch-trouble", { detail: "__choose" }))}>
+          <MessageCircle className="size-5" aria-hidden="true" />
+          Feedback
+        </button>
+        <button type="button" onClick={() => window.dispatchEvent(new Event(REFRESH_EVENT))}>
+          <RefreshCw className="size-5" aria-hidden="true" />
+          Refresh Porchbook
+        </button>
+        {inPorchApp() ? (
+          <button type="button" onClick={() => window.dispatchEvent(new Event(OPEN_KEEP))}>
+            <AudioLines className="size-5" aria-hidden="true" />
+            Keep Porchbook running
+          </button>
+        ) : null}
+        {admin ? (
+          <button
+            type="button"
+            onClick={() => {
+              void navigate({ to: "/", search: { room: "all" } as never }).then(() => window.setTimeout(toggleFounderDesk, 60));
+            }}
+          >
+            <Landmark className="size-5" aria-hidden="true" />
+            Admin tools
+            <small>Message everyone, the roll, sounds</small>
+          </button>
+        ) : null}
+        <button
+          type="button"
+          disabled={leaving}
+          onClick={() => {
+            setLeaving(true);
+            void playSignOutSound();
+            void signOut().catch(() => setLeaving(false));
+          }}
+        >
+          {leaving ? "Signing out…" : "Sign out"}
+        </button>
+      </div>
+      <div className="pb-card" style={{ marginTop: 12, padding: "4px 0" }}>
+        <PresenceChoice />
+        <div style={{ padding: "8px 16px" }}>
+          <LiteKey />
+        </div>
+      </div>
+    </section>
   );
 }

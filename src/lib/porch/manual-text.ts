@@ -63,7 +63,7 @@ Call Press Call on the Tour page to see that you're online and who else is on wi
 
 Read: the shelf
 
-The Bible You can read the KJV for now. We'll add other translations once we've purchased them. Meanwhile, tap KJV and choose BIBLES to see the verse you're on in other versions, on websites the founder has chosen. One book button at the top shows the book and chapter: tap it to pick a book, then a chapter, then a verse.
+The Bible You can read the KJV for now. We'll add other translations once we've purchased them. Meanwhile, tap KJV and choose BIBLES to see the verse you're on in other versions, on websites an admin has chosen. One book button at the top shows the book and chapter: tap it to pick a book, then a chapter, then a verse.
 
 Study Study helps you go deeper. It's for your personal study, so you're established in God's Truth.
 

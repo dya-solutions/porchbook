@@ -1,0 +1,435 @@
+/*
+ * Porchbook's new look (Stage 4, design-reference/). Every colour comes from the porch theme
+ * (src/lib/porch/themes.ts) through the --pb-* variables; shades in between are mixed from them.
+ * Fonts: Fraunces (titles) and Source Sans 3 (text). Tap areas are 44px or more.
+ */
+:root {
+  /* Porch Evening until the porch's own theme loads. */
+  --pb-bg: #0e120f;
+  --pb-card: #171d18;
+  --pb-text: #f4f1e8;
+  --pb-quiet: #a3ac9f;
+  --pb-main: #f8a018;
+  --pb-on-main: #1a1205;
+  --pb-second: #90c840;
+  --pb-line: color-mix(in srgb, var(--pb-text) 8%, transparent);
+  --pb-line-2: color-mix(in srgb, var(--pb-text) 14%, transparent);
+  --pb-line-3: color-mix(in srgb, var(--pb-text) 18%, transparent);
+  --pb-raised: color-mix(in srgb, var(--pb-text) 11%, var(--pb-card));
+  --pb-react: color-mix(in srgb, var(--pb-text) 4%, var(--pb-card));
+  --pb-nav: color-mix(in srgb, var(--pb-bg) 55%, var(--pb-card));
+  --pb-second-soft: color-mix(in srgb, var(--pb-second) 16%, transparent);
+  --pb-main-soft: color-mix(in srgb, var(--pb-main) 16%, transparent);
+  --pb-second-card: color-mix(in srgb, var(--pb-second) 8%, var(--pb-card));
+}
+
+/* The plain theme background replaces the old porch photograph (decision 2). */
+html.pb-on,
+html.pb-on body {
+  background: var(--pb-bg) !important;
+  background-image: none !important;
+  color-scheme: var(--pb-scheme, dark);
+}
+
+/* Dawn / Dusk / Night: a gentle dimmer over everything, never nearly black (decision 4). */
+html.pb-on body::after,
+html.pb-on body.tour-ground::after {
+  z-index: 2147483000;
+  background: rgba(0, 0, 0, var(--porch-dim, 0));
+  pointer-events: none;
+}
+
+/* ---- The new screens: the old colour names follow the theme inside them ---- */
+.pb {
+  --color-ink: var(--pb-text);
+  --color-muted: var(--pb-quiet);
+  --color-faint: var(--pb-quiet);
+  --color-post: var(--pb-text);
+  --color-card: var(--pb-card);
+  --color-paper: var(--pb-bg);
+  --color-line: var(--pb-line);
+  --color-pine: var(--pb-main);
+  --color-on-pine: var(--pb-on-main);
+  --color-pine-soft: var(--pb-main-soft);
+  color: var(--pb-text);
+  font-family: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+}
+.pb .pb-ttl { font-family: Fraunces, Georgia, serif; font-weight: 600; margin: 0; }
+.pb .pb-quiet { color: var(--pb-quiet); }
+.pb a { color: inherit; text-decoration: none; }
+
+/* ---- Top bar ---- */
+.pb-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: calc(14px + env(safe-area-inset-top)) 20px 12px;
+  background: var(--pb-bg);
+}
+.pb-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: var(--pb-second);
+  color: color-mix(in srgb, var(--pb-second) 12%, #000);
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.pb-top-name { flex: 1; min-width: 0; }
+.pb-top-name .pb-ttl { font-size: 19px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-top-name p:last-child { margin: 2px 0 0; font-size: 13px; color: var(--pb-quiet); }
+.pb-iconbtn {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: 1px solid var(--pb-line-2);
+  background: transparent;
+  color: var(--pb-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding: 0;
+  position: relative;
+}
+.pb-iconbtn.is-green { color: var(--pb-second); border-color: color-mix(in srgb, var(--pb-second) 40%, transparent); }
+/* The bell keeps its own list; only its button takes the new look. */
+.pb-top .note-bell {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 22px !important;
+  border: 1px solid var(--pb-line-2) !important;
+  background: transparent !important;
+  color: var(--pb-text) !important;
+  box-shadow: none !important;
+}
+.pb-me {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  background: var(--pb-raised);
+  color: var(--pb-text);
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex: none;
+}
+.pb-me img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ---- Bottom bar ---- */
+.pb-nav {
+  flex: none;
+  border-top: 1px solid var(--pb-line);
+  background: var(--pb-nav);
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  padding: 8px 4px calc(10px + env(safe-area-inset-bottom));
+}
+.pb-nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 60px;
+  min-height: 48px;
+  color: var(--pb-quiet);
+  font-size: 12px;
+  font-weight: 600;
+  position: relative;
+}
+.pb-nav a.is-on { color: var(--pb-main); }
+.pb-badge {
+  position: absolute;
+  top: -2px;
+  right: 10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--pb-main);
+  color: var(--pb-on-main);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- My porch / Public porch switch ---- */
+.pb-seg { display: flex; background: var(--pb-card); border-radius: 14px; padding: 4px; margin: 0 16px 4px; flex: none; }
+.pb-seg a {
+  flex: 1;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--pb-quiet);
+}
+.pb-seg a.is-on { background: var(--pb-raised); color: var(--pb-text); }
+
+/* ---- Cards, chips, pills, buttons ---- */
+.pb-body { padding: 4px 16px 24px; display: flex; flex-direction: column; gap: 12px; }
+.pb-card { background: var(--pb-card); border: 1px solid var(--pb-line); border-radius: 20px; }
+.pb-row { display: flex; align-items: center; gap: 12px; }
+.pb-av {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex: none;
+  overflow: hidden;
+  background: var(--pb-raised);
+  color: var(--pb-text);
+}
+.pb-av img { width: 100%; height: 100%; object-fit: cover; }
+.pb-av.tone-1 { background: color-mix(in srgb, var(--pb-main) 22%, var(--pb-card)); color: var(--pb-main); }
+.pb-av.tone-2 { background: color-mix(in srgb, var(--pb-second) 20%, var(--pb-card)); color: var(--pb-second); }
+.pb-av.tone-3 { background: color-mix(in srgb, #8fa8ff 18%, var(--pb-card)); color: color-mix(in srgb, #8fa8ff 60%, var(--pb-text)); }
+.pb-av.tone-4 { background: color-mix(in srgb, #f0b9b9 16%, var(--pb-card)); color: color-mix(in srgb, #f0b9b9 60%, var(--pb-text)); }
+.pb-chips { display: flex; gap: 8px; flex: none; overflow-x: auto; scrollbar-width: none; }
+.pb-chip {
+  height: 36px;
+  padding: 0 15px;
+  border-radius: 18px;
+  border: 1px solid var(--pb-line-3);
+  background: transparent;
+  color: var(--pb-text);
+  font: 600 14px "Source Sans 3", sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex: none;
+}
+.pb-chip.is-on { background: var(--pb-main); color: var(--pb-on-main); border-color: var(--pb-main); }
+.pb-tag { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 10px; display: inline-flex; align-items: center; gap: 4px; }
+.pb-tag.is-green { background: var(--pb-second-soft); color: var(--pb-second); }
+.pb-tag.is-quiet { background: var(--pb-raised); color: var(--pb-quiet); }
+.pb-btn {
+  min-height: 52px;
+  border-radius: 16px;
+  border: none;
+  background: var(--pb-main);
+  color: var(--pb-on-main);
+  font: 700 16px "Source Sans 3", sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 20px;
+}
+.pb-btn:disabled { opacity: 0.55; }
+.pb-btn2 {
+  min-height: 52px;
+  border-radius: 16px;
+  border: 1px solid var(--pb-line-3);
+  background: transparent;
+  color: var(--pb-text);
+  font: 700 16px "Source Sans 3", sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 20px;
+}
+.pb-link { min-height: 44px; display: inline-flex; align-items: center; background: none; border: none; color: var(--pb-quiet); font: 600 14px "Source Sans 3", sans-serif; padding: 0 8px; }
+.pb-link:hover { color: var(--pb-text); }
+
+/* ---- "On the porch now" strip ---- */
+.pb-strip { display: flex; align-items: center; gap: 12px; padding: 10px 14px; flex: none; }
+.pb-strip .pb-faces { display: flex; }
+.pb-strip .pb-faces .pb-av { width: 30px; height: 30px; font-size: 11px; border: 2px solid var(--pb-card); }
+.pb-strip .pb-faces .pb-av + .pb-av { margin-left: -8px; }
+.pb-dot { display: inline-block; width: 9px; height: 9px; border-radius: 5px; background: var(--pb-second); margin-right: 6px; }
+.pb-dot.is-off { background: var(--pb-quiet); }
+
+/* ---- The post box ---- */
+.pb-share { display: flex; align-items: center; gap: 12px; padding: 12px 14px; width: 100%; color: var(--pb-quiet); font: 400 16px "Source Sans 3", sans-serif; text-align: left; cursor: pointer; min-height: 60px; }
+.pb-share span { flex: 1; }
+.pb-compose { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.pb-compose textarea {
+  width: 100%;
+  min-height: 120px;
+  border-radius: 14px;
+  border: 1px solid var(--pb-line-3);
+  background: var(--pb-bg);
+  color: var(--pb-text);
+  padding: 12px 14px;
+  font: 400 16px/1.45 "Source Sans 3", sans-serif;
+  resize: vertical;
+}
+.pb-compose textarea::placeholder { color: var(--pb-quiet); }
+.pb-compose-keys { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pb-compose-keys .pb-spacer { flex: 1; }
+.pb-compose .pd-rhema,
+.pb-compose .pb-chip { cursor: pointer; }
+
+/* ---- Posts ---- */
+.pb-post { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.pb-post-head { display: flex; align-items: center; gap: 12px; }
+.pb-post-who { flex: 1; min-width: 0; }
+.pb-post-who b { display: block; font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-post-who small { display: block; margin-top: 1px; font-size: 13px; color: var(--pb-quiet); }
+.pb-room-proclaim { color: var(--pb-main); font-weight: 600; }
+.pb-room-inform { color: var(--pb-text); font-weight: 600; }
+.pb-room-ask { color: var(--pb-second); font-weight: 600; }
+.pb-post-text { margin: 0; font-size: 16px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--pb-text); }
+.pb-reacts { display: flex; flex-wrap: wrap; gap: 8px; }
+.pb-react {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 18px;
+  background: var(--pb-react);
+  border: 1px solid transparent;
+  color: var(--pb-text);
+  font: 600 13px "Source Sans 3", sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pb-react svg { color: var(--pb-main); }
+.pb-react.is-on { border-color: var(--pb-main); background: var(--pb-main-soft); }
+.pb-post-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: -6px -8px -8px; }
+.pb-post .rim,
+.pb-post.post-glass { background: var(--pb-card) !important; }
+.pb-post input,
+.pb-post textarea {
+  background: var(--pb-bg) !important;
+  color: var(--pb-text) !important;
+  border-color: var(--pb-line-3) !important;
+}
+
+/* ---- Who is on the porch ---- */
+.pb-back { display: flex; align-items: center; gap: 12px; padding: calc(14px + env(safe-area-inset-top)) 20px 12px; }
+.pb-switch { width: 52px; height: 30px; border-radius: 15px; background: var(--pb-raised); position: relative; flex: none; border: none; padding: 0; cursor: pointer; }
+.pb-switch::after { content: ""; position: absolute; left: 3px; top: 3px; width: 24px; height: 24px; border-radius: 12px; background: var(--pb-quiet); transition: left 0.15s ease; }
+.pb-switch[aria-checked="true"] { background: var(--pb-second); }
+.pb-switch[aria-checked="true"]::after { left: 25px; background: color-mix(in srgb, var(--pb-second) 12%, #000); }
+.pb-person { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid color-mix(in srgb, var(--pb-text) 6%, transparent); }
+.pb-person .pb-av { width: 44px; height: 44px; border-radius: 22px; }
+.pb-online-dot { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; border-radius: 6px; background: var(--pb-second); border: 2px solid var(--pb-bg); }
+.pb-online-dot.is-idle { background: var(--pb-quiet); }
+
+/* ---- Your account (on your own profile) ---- */
+.pb-account { padding: 6px 0; display: flex; flex-direction: column; }
+.pb-account > button,
+.pb-account > a,
+.pb-account > label {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  background: none;
+  border: none;
+  color: var(--pb-text);
+  font: 600 16px "Source Sans 3", sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+.pb-account > * + * { border-top: 1px solid var(--pb-line); }
+.pb-account small { color: var(--pb-quiet); font-weight: 400; font-size: 13px; margin-left: auto; }
+
+/* Phones fill the screen; computers get the same column, centred. */
+.pb-column { width: 100%; max-width: 640px; margin: 0 auto; }
+
+/* "Something new on Porchbook": a quiet line just above the bottom bar. */
+.pb-update {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(5rem + env(safe-area-inset-bottom));
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 10px;
+  border-radius: 22px;
+  background: var(--pb-card);
+  border: 1px solid var(--pb-main);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+.pb-update .pb-link { color: var(--pb-text); }
+
+/* The old porch photograph behind every page gives way to the plain theme background (decision 2). */
+html.pb-on body::before {
+  background: var(--pb-bg) !important;
+  background-image: none !important;
+}
+/* The new top bar sits in the page, so nothing is kept free for the old fixed header. */
+html.pb-on .porch-shell { padding-top: var(--radio-strip, 0px) !important; }
+
+/* The avatar in "Share with your porch…" keeps its round size. */
+.pb-share > .pb-av { flex: none; }
+.pb-share > span:nth-child(2) { flex: 1; }
+.pb-share span { flex: initial; }
+
+/* "Read the Porchbook manual", in the new look. */
+.pb .manual-card {
+  background: var(--pb-second-card) !important;
+  background-image: none !important;
+  border: 1px solid color-mix(in srgb, var(--pb-second) 35%, transparent) !important;
+  border-radius: 20px !important;
+  box-shadow: none !important;
+  color: var(--pb-text) !important;
+  padding: 14px 16px !important;
+  margin: 0 !important;
+}
+.pb .manual-card::before,
+.pb .manual-card::after { display: none !important; }
+.pb .manual-card p,
+.pb .manual-card h2,
+.pb .manual-card h3 { color: var(--pb-text) !important; text-shadow: none !important; }
+.pb .manual-card .manual-card-k { color: var(--pb-second) !important; letter-spacing: 0.04em; }
+.pb .manual-card .manual-card-s { color: var(--pb-quiet) !important; }
+.pb .manual-card-go {
+  background: var(--pb-main) !important;
+  background-image: none !important;
+  color: var(--pb-on-main) !important;
+  border: none !important;
+  border-radius: 14px !important;
+  min-height: 44px !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+.pb .manual-card-later {
+  background: transparent !important;
+  border: 1px solid var(--pb-line-3) !important;
+  color: var(--pb-text) !important;
+  border-radius: 14px !important;
+  min-height: 44px !important;
+  box-shadow: none !important;
+}
+.pb .manual-card-x { color: var(--pb-quiet) !important; }
+.pb-top .note-bell { position: relative; display: flex !important; align-items: center; justify-content: center; padding: 0 !important; }
+.pb-top .note-bell b {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--pb-main) !important;
+  color: var(--pb-on-main) !important;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}

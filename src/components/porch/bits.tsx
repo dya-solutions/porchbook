@@ -607,9 +607,20 @@ function readBright() {
   return 100;
 }
 
+/** Dawn / Dusk / Night from the Light row (Stage 4a): the same dimmer as the old dial. */
+export const LIGHT_LEVELS = { dawn: 100, dusk: 50, night: 0 } as const;
+export function setBrightness(level: number) {
+  applyBright(level);
+  window.dispatchEvent(new Event("porch-bright"));
+}
+export function currentBrightness() {
+  return readBright();
+}
+
 function applyBright(level: number) {
   const t = Math.max(0, Math.min(100, level)) / 100;
-  const dim = (1 - t) * 0.9;
+  // A gentle dimmer on every theme: Night is never nearly black (BUILD-BRIEF.md decision 4).
+  const dim = (1 - t) * 0.4;
   const gain = 1 + Math.pow(t, 1.5) * 1.05;
   const wash = Math.pow(t, 2.4) * 0.48;
   const root = document.documentElement.style;

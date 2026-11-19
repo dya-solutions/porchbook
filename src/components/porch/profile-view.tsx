@@ -7,6 +7,7 @@ import { amIFounder, founderResetPassword } from "@/lib/porch/password-reset";
 import { ROOM_META, clipWords, formatWhen, wordCount, type PersonPage, type Profile } from "@/lib/porch/model";
 import { FacePicker, FounderRemoveFace } from "@/components/porch/face-picker";
 import { PhotoViewer } from "@/components/porch/photo-viewer";
+import { AccountCard } from "@/components/porch/frame";
 import { Avatar, CallLink, LinkText, PostWindow, KeptPhoto, fieldClass, primaryButtonClass, quietButtonClass } from "@/components/porch/bits";
 
 export function ProfileView({ userId }: { userId: string }) {
@@ -109,6 +110,7 @@ export function ProfileView({ userId }: { userId: string }) {
           />
         ) : null}
       </section>
+      {page.isSelf && user ? <AccountCard user={user} /> : null}
       <section>
         <h2 className="font-display text-xl text-ink">Recent posts</h2>
         {page.posts.length === 0 ? <p className="mt-2 text-muted">Nothing posted yet.</p> : null}

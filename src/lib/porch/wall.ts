@@ -96,7 +96,7 @@ export const setWall = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "wall", "Tried to change the wall photo.");
-      return { ok: false as const, error: "Only the founder can change the wall photo." };
+      return { ok: false as const, error: "Only an admin can change the wall photo." };
     }
     const id = WALL_ID[data.wall];
     if (!data.image) {

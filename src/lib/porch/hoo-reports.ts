@@ -167,7 +167,7 @@ export const setFamilyWriter = createServerFn({ method: "POST" })
     await hooReady(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "hoo-family", "Tried to choose the Family writer.");
-      return { ok: false as const, error: "Only the founder can choose the Family writer." };
+      return { ok: false as const, error: "Only an admin can choose the Family writer." };
     }
     if (!data.userId) return { ok: false as const, error: "Choose a person." };
     const same = await sql<{ ok: unknown }>`select same_porch(${data.userId}, ${context.userId}) as ok`;

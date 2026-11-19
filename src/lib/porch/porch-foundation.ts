@@ -14,7 +14,7 @@ import type { Sql } from "@/lib/db";
  *   is_porch_admin(user)    -> an admin of the church porch this person belongs to
  *   is_platform_owner(user) -> a platform owner
  * The old `profiles.is_founder` column is no longer read for permissions. Its value was copied
- * once into `porch_admins` (the founder became Phaneroo's first admin) and is left as history.
+ * once into `porch_admins` (an admin became Phaneroo's first admin) and is left as history.
  *
  * Runs at database start-up, before anything else, and is safe to run again and again.
  */

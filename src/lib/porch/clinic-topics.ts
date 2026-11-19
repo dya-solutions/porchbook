@@ -7,7 +7,7 @@ export type ClinicTopic = {
   line: string;
   verse: string;
   ref: string;
-  /** Words in a sermon's title that suggest it belongs here (for the founder's suggestions). */
+  /** Words in a sermon's title that suggest it belongs here (for an admin's suggestions). */
   hints: string[];
 };
 

@@ -86,7 +86,7 @@ export const presenceBeat = createServerFn({ method: "POST" })
            last_touch = case when $2 then now() else presence.last_touch end`,
         [context.userId, data.active],
       );
-      // Waiting for a radio request? The founder hears they're here.
+      // Waiting for a radio request? The admin hears they're here.
       const { noticeRequester, tellPlayedRequests } = await import("@/lib/porch/fm");
       await noticeRequester(sql, context.userId);
       await tellPlayedRequests(sql);

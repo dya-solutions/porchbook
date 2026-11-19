@@ -373,8 +373,8 @@ export const downloadMyTwenty = createServerFn({ method: "POST" })
       [context.userId],
     );
     if (!boolish(me[0]?.is_founder)) {
-      noteAttempt(context.userId, "my20-pdf", "Tried to download My 20 without being the founder.");
-      return { ok: false as const, error: "Only the founder can download My 20." };
+      noteAttempt(context.userId, "my20-pdf", "Tried to download My 20 without being an admin.");
+      return { ok: false as const, error: "Only an admin can download My 20." };
     }
     await sql`alter table my_twenty add column if not exists centre text not null default ''`;
     const saved = await sql.query<{
@@ -431,8 +431,8 @@ export const resetMyTwenty = createServerFn({ method: "POST" })
       [context.userId],
     );
     if (!boolish(me[0]?.is_founder)) {
-      noteAttempt(context.userId, "my20-reset", "Tried to reset My 20 without being the founder.");
-      return { ok: false as const, error: "Only the founder can reset My 20." };
+      noteAttempt(context.userId, "my20-reset", "Tried to reset My 20 without being an admin.");
+      return { ok: false as const, error: "Only an admin can reset My 20." };
     }
     await sql`alter table my_twenty add column if not exists centre text not null default ''`;
     const saved = await sql.query<{

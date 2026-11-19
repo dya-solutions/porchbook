@@ -357,7 +357,7 @@ export const clinicDesk = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only the founder sees the Clinic desk." };
+    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only an admin sees the Clinic desk." };
     await closeDueRounds(sql);
     const qs = await sql.query<{
       id: number; body: string; show_name: unknown; created_at: unknown; group_id: number | null; sent_at: unknown; who: string | null;
@@ -428,7 +428,7 @@ export const clinicGroup = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only the founder can group questions." };
+    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only an admin can group questions." };
     let groupId = data.groupId;
     if (!groupId) {
       let wording = data.wording;
@@ -453,7 +453,7 @@ export const clinicUngroup = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ id: Number(rec(input).id) || 0, groupId: Number(rec(input).groupId) || 0 }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only the founder can do this." };
+    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only an admin can do this." };
     if (data.id) await sql.query("update clinic_questions set group_id = null where id = $1", [data.id]);
     if (data.groupId) {
       const busy = await sql.query<{ month: string }>("select month from clinic_rounds where $1 = any(group_ids)", [data.groupId]);
@@ -470,7 +470,7 @@ export const clinicHide = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ id: Number(rec(input).id) || 0 }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only the founder can do this." };
+    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only an admin can do this." };
     await sql.query("update clinic_questions set hidden = true where id = $1", [data.id]);
     return { ok: true as const };
   });
@@ -484,7 +484,7 @@ export const clinicStartVote = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only the founder can start a vote." };
+    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only an admin can start a vote." };
     if (data.groupIds.length < 2) return { ok: false as const, error: "Pick 2 or 3 questions for the vote." };
     await closeDueRounds(sql);
     const month = monthKey(Date.now());
@@ -509,7 +509,7 @@ export const clinicCloseVote = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only the founder can close the vote." };
+    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only an admin can close the vote." };
     await sql.query("update clinic_rounds set closes_at = now() where not closed");
     await closeDueRounds(sql);
     return { ok: true as const };
@@ -521,7 +521,7 @@ export const clinicPdf = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ who: rec(input).who === "apostle" ? "apostle" : "pastors", again: boolish(rec(input).again) }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only the founder takes the PDFs." };
+    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only an admin takes the PDFs." };
     await closeDueRounds(sql);
     const { textPdf } = await import("@/lib/porch/pdf-lite");
     const today = new Date().toLocaleDateString("en-GB", { timeZone: "Africa/Kampala", day: "numeric", month: "long", year: "numeric" });
@@ -633,7 +633,7 @@ export const clinicAnswer = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only the founder adds answers." };
+    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only an admin adds answers." };
     if (!data.text && !data.url) return { ok: false as const, error: "Write the answer, add a voice note, or pick a sermon." };
     const table = data.target === "group" ? "clinic_groups" : "clinic_questions";
     const fresh = await sql.query<{ id: number; was: unknown }>(
@@ -674,7 +674,7 @@ export const clinicTag = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only the founder files sermons." };
+    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only an admin files sermons." };
     if (!data.topic || !data.trackId) return { ok: false as const, error: "Pick a card and a sermon." };
     if (data.on) await sql.query("insert into clinic_tags (track_id, topic) values ($1, $2) on conflict do nothing", [data.trackId, data.topic]);
     else await sql.query("delete from clinic_tags where track_id = $1 and topic = $2", [data.trackId, data.topic]);
@@ -687,7 +687,7 @@ export const clinicLaunch = createServerFn({ method: "POST" })
   .validator((input: unknown) => ({ on: boolish(rec(input).on) }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only the founder launches the Clinic." };
+    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only an admin launches the Clinic." };
     await sql.query(
       "insert into clinic_state (key, value) values ('launched', $1) on conflict (key) do update set value = excluded.value",
       [data.on ? "yes" : "no"],
@@ -705,7 +705,7 @@ export const clinicSetVideo = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only the founder sets the card's video." };
+    if (!(await founderOnly(sql, context.userId))) return { ok: false as const, error: "Only an admin sets the card's video." };
     if (!data.topic) return { ok: false as const, error: "Pick a card." };
     if (!data.link) {
       await sql.query("delete from clinic_videos where topic = $1", [data.topic]);

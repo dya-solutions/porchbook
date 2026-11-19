@@ -84,7 +84,7 @@ export const listRoll = createServerFn({ method: "POST" })
     await touchProfile(sql, context.userId, seed);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "roll", "Tried to open the roll.");
-      return { ok: false as const, error: "Only the founder can see the roll." };
+      return { ok: false as const, error: "Only an admin can see the roll." };
     }
     const rows = await sql.query<{
       user_id: string;
@@ -167,7 +167,7 @@ export const removeMember = createServerFn({ method: "POST" })
     await touchProfile(sql, context.userId, data.seed);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "roll-remove", "Tried to remove someone from the roll.");
-      return { ok: false as const, error: "Only the founder can remove someone." };
+      return { ok: false as const, error: "Only an admin can remove someone." };
     }
     const found = await sql.query<{ email: string | null; is_founder: boolean }>(
       "select email, is_porch_admin(user_id) as is_founder from profiles where user_id = $1",
@@ -175,7 +175,7 @@ export const removeMember = createServerFn({ method: "POST" })
     );
     const person = found[0];
     if (!person) return { ok: false as const, error: "That person is not on the porch." };
-    if (boolish(person.is_founder)) return { ok: false as const, error: "The founder stays." };
+    if (boolish(person.is_founder)) return { ok: false as const, error: "The admin stays." };
     await sql`
       insert into removed_members (user_id, email)
       values (${data.userId}, ${person.email})

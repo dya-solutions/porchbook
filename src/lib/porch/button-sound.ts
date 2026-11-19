@@ -117,7 +117,7 @@ export const setButtonSound = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "button-sound", "Tried to set the button sound.");
-      return { ok: false as const, error: "Only the founder can set this sound." };
+      return { ok: false as const, error: "Only an admin can set this sound." };
     }
     if (data.slot === 6 && data.belongsOnly) {
       await sql`update button_sound set belongs = ${data.belongs} where porch_id = ${porch} and id = 6`;

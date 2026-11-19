@@ -75,7 +75,7 @@ export const setMessageSound = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "message-sound", "Tried to change the message sound.");
-      return { ok: false as const, error: "Only the founder can change the message sound." };
+      return { ok: false as const, error: "Only an admin can change the message sound." };
     }
     if (!data.audio) {
       await sql`delete from message_sound where porch_id = ${porch} and id = 1`;

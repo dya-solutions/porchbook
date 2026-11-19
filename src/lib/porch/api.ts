@@ -138,7 +138,7 @@ export async function touchProfile(sql: Sql, userId: string, seed: Seed) {
     returning (xmax = 0) as inserted
   `;
   // A new account joins its church porch (Phaneroo, until invite codes arrive).
-  // The old rule "the first account ever becomes the founder" is gone: porch admins are chosen.
+  // The old rule "the first account ever becomes an admin" is gone: porch admins are chosen.
   if (saved[0]?.inserted) await placeNewProfile(sql, userId);
   // Old Porchbook (Grok) posts and notes waiting for this email come in once.
   if (email) await claimLegacy(sql, userId, email);
@@ -1412,8 +1412,8 @@ export const sendToAll = createServerFn({ method: "POST" })
       [context.userId],
     );
     if (!boolish(me[0]?.is_founder)) {
-      noteAttempt(context.userId, "message-everyone", "Tried to message everyone without being the founder.");
-      return { ok: false as const, error: "Only the founder can message everyone." };
+      noteAttempt(context.userId, "message-everyone", "Tried to message everyone without being an admin.");
+      return { ok: false as const, error: "Only an admin can message everyone." };
     }
     const { ensureChat } = await import("@/lib/porch/chat");
     await ensureChat(sql);

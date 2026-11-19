@@ -77,7 +77,7 @@ export const setCarpet = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "carpet", "Tried to change the carpet.");
-      return { ok: false as const, error: "Only the founder can change the carpet." };
+      return { ok: false as const, error: "Only an admin can change the carpet." };
     }
     if (!data.image) {
       await sql`delete from porch_carpet where porch_id = ${porch} and id = 1`;

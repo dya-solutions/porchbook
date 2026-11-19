@@ -286,8 +286,8 @@ export const downloadServe = createServerFn({ method: "POST" })
     await touchProfile(sql, context.userId, seed);
     await ensureServe(sql);
     if (!(await founderFlag(sql, context.userId))) {
-      noteAttempt(context.userId, "serve-pdf", "Tried to download volunteers without being the founder.");
-      return { ok: false as const, error: "Only the founder can download the volunteers." };
+      noteAttempt(context.userId, "serve-pdf", "Tried to download volunteers without being an admin.");
+      return { ok: false as const, error: "Only an admin can download the volunteers." };
     }
     const rows = await sql.query<{
       display_name: string;

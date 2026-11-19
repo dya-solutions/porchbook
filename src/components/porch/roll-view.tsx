@@ -54,7 +54,7 @@ export function RollView() {
 
   if (status === "loading") return null;
   if (status === "error") return <p className="text-danger">Couldn't open the roll.</p>;
-  if (status === "denied") return <p className="text-muted">Only the founder can see the roll.</p>;
+  if (status === "denied") return <p className="text-muted">Only an admin can see the roll.</p>;
 
   return (
     <div>
@@ -70,7 +70,7 @@ export function RollView() {
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold text-ink">
                   {person.displayName}
-                  {person.founder ? " · founder" : ""}
+                  {person.founder ? " · admin" : ""}
                 </span>
                 {meta ? <span className="block truncate text-sm text-muted">{meta}</span> : null}
                 {person.offices ? (

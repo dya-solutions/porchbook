@@ -1289,7 +1289,7 @@ export const groupsOnPassage = createServerFn({ method: "POST" })
     };
   });
 
-// ---- Leaders' groups (Oct 2026): only Leaders (and the founder) start a group; the leader adds the people
+// ---- Leaders' groups (Oct 2026): only Leaders (and an admin) start a group; the leader adds the people
 // under him; a member can leave or be removed. Nothing else happens inside a group for now; older notes and
 // studies stay stored but are no longer shown.
 
@@ -1313,7 +1313,7 @@ async function leaderFlags(sql: Sql, userId: string) {
 export type PlainGroup = { id: number; name: string; purpose: string; ownerId: string; ownerName: string; members: number };
 export type PlainMember = { userId: string; displayName: string; imageUrl: string | null; leader: boolean };
 
-/** The groups you lead or are in (the founder sees them all), and whether you may start one. */
+/** The groups you lead or are in (an admin sees them all), and whether you may start one. */
 export const myGroups = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parseSeed(input))
@@ -1422,7 +1422,7 @@ export const openPlainGroup = createServerFn({ method: "POST" })
     };
   });
 
-/** The leader (or the founder) adds someone to the group. */
+/** The leader (or an admin) adds someone to the group. */
 export const addToGroup = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -1448,7 +1448,7 @@ export const addToGroup = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-/** Leave a group yourself, or (the leader or the founder) remove someone. The leader stays with the group. */
+/** Leave a group yourself, or (the leader or an admin) remove someone. The leader stays with the group. */
 export const removeFromGroup = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -1473,7 +1473,7 @@ export const removeFromGroup = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-/** The founder: who are the Leaders, and marking or unmarking one. */
+/** The admin: who are the Leaders, and marking or unmarking one. */
 export const listLeaders = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -1497,14 +1497,14 @@ export const setLeader = createServerFn({ method: "POST" })
     await ensureLeaders(sql);
     if (!(await leaderFlags(sql, context.userId)).founder) {
       noteAttempt(context.userId, "set-leader", "Tried to mark a leader.");
-      return { ok: false as const, error: "Only the founder can mark leaders." };
+      return { ok: false as const, error: "Only an admin can mark leaders." };
     }
     await sql`update profiles set is_leader = ${data.on} where user_id = ${data.userId} and same_porch(user_id, ${context.userId})`;
     return { ok: true as const };
   });
 
 // ---- Accountability: a leader accounts for what happens in their group. Only that group's
-// leader and the founder (developer) see it; members never do.
+// leader and an admin (developer) see it; members never do.
 
 export type GroupAccount = { id: number; happenedOn: string; attended: number | null; body: string; needs: string; authorId: string; authorName: string; createdAt: string };
 
@@ -1515,7 +1515,7 @@ async function ensureAccounts(sql: Sql) {
   )`;
 }
 
-/** The group's leader, or the founder: the only ones who see and write its accounts. */
+/** The group's leader, or an admin: the only ones who see and write its accounts. */
 async function accountGate(sql: Sql, userId: string, groupId: number | null) {
   if (!groupId) return null;
   const rows = await sql<{ owner_id: string }>`select owner_id from groups where id = ${groupId} and kind = 'personal' and porch_id = my_porch(${userId})`;
@@ -1584,7 +1584,7 @@ export const addGroupAccount = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-/** Take back an account: its writer, or the founder. */
+/** Take back an account: its writer, or an admin. */
 export const removeGroupAccount = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {

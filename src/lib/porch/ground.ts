@@ -85,7 +85,7 @@ export const setGround = createServerFn({ method: "POST" })
     await ensure(sql);
     if (!(await founderFlag(sql, context.userId))) {
       noteAttempt(context.userId, "ground", "Tried to change the background.");
-      return { ok: false as const, error: "Only the founder can change the background." };
+      return { ok: false as const, error: "Only an admin can change the background." };
     }
     if (!data.image) {
       await sql`delete from porch_ground where porch_id = ${porch} and id = 1`;

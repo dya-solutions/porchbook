@@ -29,6 +29,8 @@ export const ON_HOLD = {
   machineTranslation: true,
   /** The Message (MSG) and Amplified Classic (AMPC) Bibles (uploaded versions and "Read in…" links), until JT confirms permission (decision 5). */
   permissionBibles: true,
+  /** The old photo and texture settings (porch photo, header photo, call look, shelf, hide, door) and the old Themes menu (decisions 2 and 3). */
+  oldLooks: true,
 } as const;
 
 export type OnHoldFeature = keyof typeof ON_HOLD;

@@ -69,7 +69,7 @@ async function place(sql: Awaited<ReturnType<typeof getSql>>, userId: string, ke
   const hooHead = await sql.query<{ head_user_id: string | null }>("select head_user_id from offices where key = 'hoo' and porch_id = my_porch($1)", [userId]);
   const founder = boolish(me[0]?.is_founder);
   const head = office[0]?.head_user_id === userId;
-  // Offices are locked: only the office's own head, the founder, and the H.O.O (who receives every office's reports) may read inside.
+  // Offices are locked: only the office's own head, an admin, and the H.O.O (who receives every office's reports) may read inside.
   const hoo = hooHead[0]?.head_user_id === userId;
   return { founder, head, holds: held.length > 0, allowed: founder || head || hoo };
 }

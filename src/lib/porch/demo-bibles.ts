@@ -67,7 +67,7 @@ export const putDemoBible = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if (!data.id || !data.data) return { ok: false as const, error: "That file is too large or not readable." };
     const sql = await getSql();
-    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only the founder can add a demo Bible." };
+    if (!(await isFounder(sql, context.userId))) return { ok: false as const, error: "Only an admin can add a demo Bible." };
     await ensure(sql);
     await sql.query(
       `insert into demo_bibles (id, abbreviation, name, data) values ($1, $2, $3, $4)
