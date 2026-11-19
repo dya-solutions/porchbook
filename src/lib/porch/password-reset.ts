@@ -28,7 +28,7 @@ export const founderResetPassword = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const me = await sql.query<{ is_founder: boolean }>(
-      "select is_founder from profiles where user_id = $1",
+      "select is_porch_admin($1) as is_founder",
       [context.userId],
     );
     if (!boolish(me[0]?.is_founder)) {
@@ -72,7 +72,7 @@ export const amIFounder = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const sql = await getSql();
     const me = await sql.query<{ is_founder: boolean }>(
-      "select is_founder from profiles where user_id = $1",
+      "select is_porch_admin($1) as is_founder",
       [context.userId],
     );
     return { founder: boolish(me[0]?.is_founder) };

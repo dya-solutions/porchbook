@@ -20,7 +20,7 @@ export const getCreditWarnings = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    const me = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [context.userId]);
+    const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
     const f = me[0]?.is_founder;
     if (!(f === true || f === 1 || f === "1" || f === "t" || f === "true")) return { ok: false as const, warnings: [] as CreditWarning[] };
     const warnings: CreditWarning[] = [];

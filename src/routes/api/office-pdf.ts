@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/office-pdf")({
         const view = url.searchParams.get("view") ?? "";
         const sql = await getSql();
         // Offices are locked: only that office's head, the founder and the H.O.O may open its books.
-        const me = await sql.query<{ is_founder: boolean | string | number | null }>("select is_founder from profiles where user_id = $1", [session.user.id]);
+        const me = await sql.query<{ is_founder: boolean | string | number | null }>("select is_porch_admin($1) as is_founder", [session.user.id]);
         const heads = await sql.query<{ key: string; head_user_id: string | null }>("select key, head_user_id from offices where key in ('hoo', $1)", [key]);
         const founder = [true, 1, "1", "t", "true"].includes(me[0]?.is_founder as never);
         const allowed = founder || heads.some((row) => (row.key === key || row.key === "hoo") && row.head_user_id === session.user.id);

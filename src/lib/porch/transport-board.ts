@@ -131,7 +131,7 @@ export function isClosed(event: TransportEvent) {
 
 export async function canArrange(sql: Sql, userId: string) {
   await ensureBoard(sql);
-  const me = await sql.query<{ is_founder: unknown; is_transport: unknown }>("select is_founder, is_transport from profiles where user_id = $1", [userId]);
+  const me = await sql.query<{ is_founder: unknown; is_transport: unknown }>("select is_porch_admin(user_id) as is_founder, is_transport from profiles where user_id = $1", [userId]);
   return { founder: boolish(me[0]?.is_founder), arrange: boolish(me[0]?.is_founder) || boolish(me[0]?.is_transport) };
 }
 

@@ -55,7 +55,7 @@ export const importLegacy = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
-    const me = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [context.userId]);
+    const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
     const flag = me[0]?.is_founder;
     if (!(flag === true || flag === "t" || flag === "true" || flag === 1)) return { ok: false as const, error: "Only the founder can do this." };
     let members: LegacyMember[];

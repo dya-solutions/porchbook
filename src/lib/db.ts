@@ -170,11 +170,14 @@ async function migrateNeon(pool: import("pg").Pool): Promise<void> {
 
 async function createPgliteSql(): Promise<Sql> {
   // Embedded Postgres, imported on demand so it never loads on the Neon path.
-  // One in-memory instance per process, shared across HMR module instances, so
-  // data survives source edits (it resets on dev-server restart).
+  // One instance per process, shared across HMR module instances.
+  // Porchbook: it is saved in a folder on this computer (`.local-db`, or the folder named
+  // in PORCH_LOCAL_DB), so accounts and posts survive restarts. Delete the folder to start empty.
   globalRef.__pgliteInstance__ ??= (async () => {
     const { PGlite } = await import("@electric-sql/pglite");
+    const dataDir = (process.env.PORCH_LOCAL_DB || "").trim() || ".local-db";
     const pg = new PGlite({
+      dataDir,
       parsers: {
         [OID_INT8]: Number,
         [OID_DATE]: identity,
@@ -239,7 +242,11 @@ async function createSql(): Promise<Sql> {
         "or a server route loader, never from client code.",
     );
   }
-  return dbSource === "neon" ? createNeonSql() : createPgliteSql();
+  const sql = await (dbSource === "neon" ? createNeonSql() : createPgliteSql());
+  // Porchbook: porches, porch admins and platform owners, before anything else runs.
+  const { setupPorches } = await import("@/lib/porch/porch-foundation");
+  await setupPorches(sql);
+  return sql;
 }
 
 /**

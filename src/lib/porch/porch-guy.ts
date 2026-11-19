@@ -166,7 +166,7 @@ export const TAX = 1.18;
 
 async function isFounder(userId: string) {
   const sql = await getSql();
-  const me = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [userId]);
+  const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [userId]);
   const v = me[0]?.is_founder;
   return v === true || v === 1 || v === "1" || v === "t" || v === "true";
 }

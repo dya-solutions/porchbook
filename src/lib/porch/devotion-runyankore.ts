@@ -10,7 +10,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 const rec = (input: unknown): Record<string, unknown> => (input && typeof input === "object" ? (input as Record<string, unknown>) : {});
 
 async function isFounder(sql: Sql, userId: string) {
-  const rows = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [userId]);
+  const rows = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [userId]);
   const f = rows[0]?.is_founder;
   return f === true || f === 1 || f === "1" || f === "t" || f === "true";
 }

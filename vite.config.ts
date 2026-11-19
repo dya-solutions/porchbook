@@ -148,6 +148,8 @@ function authPopupPlugin(): Plugin {
 const PORCH_BUILD = Date.now().toString(36);
 
 export default defineConfig(({ command, isPreview }) => ({
+  // The two-church test runs its own copy of the app beside the normal one: give it its own cache.
+  ...(process.env.PORCH_TEST_MODE === "1" ? { cacheDir: "node_modules/.vite-two-church" } : {}),
   server: {
     host: "0.0.0.0",
     port: 8080,

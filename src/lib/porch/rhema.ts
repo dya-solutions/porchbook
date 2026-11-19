@@ -162,7 +162,7 @@ async function ensureRhema(sql: Awaited<ReturnType<typeof getSql>>) {
 }
 
 async function founderFlag(sql: Awaited<ReturnType<typeof getSql>>, userId: string): Promise<boolean> {
-  const me = await sql.query<{ is_founder: boolean }>("select is_founder from profiles where user_id = $1", [userId]);
+  const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [userId]);
   return boolish(me[0]?.is_founder);
 }
 

@@ -15,3 +15,8 @@ artifacts
 .env*
 .vercel/project.json
 .vercel/*.json
+
+# Porchbook local data (this computer only)
+.local-db
+.test-db*
+porch-local.json

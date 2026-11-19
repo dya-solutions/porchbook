@@ -113,7 +113,7 @@ async function tellInbox(sql: Awaited<ReturnType<typeof getSql>>, fromId: string
 }
 
 async function founderId(sql: Awaited<ReturnType<typeof getSql>>) {
-  const rows = await sql.query<{ user_id: string; is_founder: unknown }>("select user_id, is_founder from profiles");
+  const rows = await sql.query<{ user_id: string; is_founder: unknown }>("select user_id, is_porch_admin(user_id) as is_founder from profiles");
   return rows.find((row) => boolish(row.is_founder))?.user_id ?? "";
 }
 
@@ -210,7 +210,7 @@ export const saveTransportStage = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
-    const me = await sql.query<{ is_founder: boolean }>("select is_founder from profiles where user_id = $1", [context.userId]);
+    const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [context.userId]);
     if (!boolish(me[0]?.is_founder)) return { ok: false as const, error: "Only the founder can name a stage." };
     if (!data.place || !data.stage) return { ok: false as const, error: "Name the place and the stage." };
     await ready(sql);

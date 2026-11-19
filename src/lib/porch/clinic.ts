@@ -85,7 +85,7 @@ async function ensureClinic(sql: Sql) {
 }
 
 async function isFounder(sql: Sql, userId: string) {
-  const me = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [userId]);
+  const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [userId]);
   return boolish(me[0]?.is_founder);
 }
 /** The founder launched the Clinic to everyone on 2 Nov 2026. */

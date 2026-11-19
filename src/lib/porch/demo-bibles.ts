@@ -25,7 +25,7 @@ async function ensure(sql: Sql) {
 }
 
 async function isFounder(sql: Sql, userId: string) {
-  const rows = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [userId]);
+  const rows = await sql.query<{ is_founder: unknown }>("select is_platform_owner($1) as is_founder", [userId]);
   return truthy(rows[0]?.is_founder);
 }
 

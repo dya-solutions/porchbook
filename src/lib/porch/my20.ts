@@ -55,7 +55,7 @@ export const loadMyTwenty = createServerFn({ method: "POST" })
     const sql = await getSql();
     await touchProfile(sql, context.userId, seed);
     const me = await sql.query<{ is_founder: boolean }>(
-      "select is_founder from profiles where user_id = $1",
+      "select is_porch_admin($1) as is_founder",
       [context.userId],
     );
     const saved = await sql.query<{ n: string }>(
@@ -369,7 +369,7 @@ export const downloadMyTwenty = createServerFn({ method: "POST" })
     const sql = await getSql();
     await touchProfile(sql, context.userId, seed);
     const me = await sql.query<{ is_founder: boolean }>(
-      "select is_founder from profiles where user_id = $1",
+      "select is_porch_admin($1) as is_founder",
       [context.userId],
     );
     if (!boolish(me[0]?.is_founder)) {
@@ -426,7 +426,7 @@ export const resetMyTwenty = createServerFn({ method: "POST" })
     const sql = await getSql();
     await touchProfile(sql, context.userId, seed);
     const me = await sql.query<{ is_founder: boolean }>(
-      "select is_founder from profiles where user_id = $1",
+      "select is_porch_admin($1) as is_founder",
       [context.userId],
     );
     if (!boolish(me[0]?.is_founder)) {

@@ -61,7 +61,7 @@ async function ready(sql: Awaited<ReturnType<typeof getSql>>) {
 }
 
 async function place(sql: Awaited<ReturnType<typeof getSql>>, userId: string, key: OfficeKey) {
-  const me = await sql.query<{ is_founder: boolean }>("select is_founder from profiles where user_id = $1", [userId]);
+  const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [userId]);
   const office = await sql.query<{ head_user_id: string | null }>("select head_user_id from offices where key = $1", [key]);
   const held = await sql.query<{ head_user_id: string }>("select head_user_id from offices where head_user_id = $1 limit 1", [userId]);
   const hooHead = await sql.query<{ head_user_id: string | null }>("select head_user_id from offices where key = 'hoo'");
@@ -513,7 +513,7 @@ export const loadDeskReading = createServerFn({ method: "POST" })
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
     await filesReady(sql);
-    const me = await sql.query<{ is_founder: boolean }>("select is_founder from profiles where user_id = $1", [context.userId]);
+    const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [context.userId]);
     const heads = await sql.query<{ key: string; head_user_id: string | null }>(
       "select key, head_user_id from offices where key in ('hoo', $1)",
       [key],

@@ -86,3 +86,15 @@ Build the themes as one set of colour settings that every screen reads from, so 
 6. **Public porch**: porch pages, following, public posts and reactions.
 7. **Branches**: link requests, approval, branch list, unlinking.
 8. **One-to-one calls** on a free setup (section 5).
+
+## 8. Decisions, 19 November
+
+JT's answers to the questions raised after Stage 1. Where these differ from anything above, **these win**.
+
+1. **Only church porches have members.** Ministry, Gospel artist and Organisation porches are public pages run by a small team of admins, with no private members. A person belongs to **one church porch** for fellowship, and can also be an **admin of a few non-church porches**.
+2. **Porch photo and textures:** hide the old photo and texture settings (porch photo, header photo, covers, door, wall, carpet, ceiling, cloth and similar). Later, each porch gets just a **logo** and a **cover photo** for its public page.
+3. **Keep** Rhemaclip, Edit words and button sounds. **Replace** the old Themes menu with the six themes (Stage 4).
+4. **Dawn / Dusk / Night** becomes a gentle dimmer on every theme. **Night must never go nearly black**, on any theme.
+5. **Hide The Message (MSG) and Amplified (AMPC) Bibles for everyone**, Phaneroo included, until JT confirms permission. Keep KJV and the other free versions.
+6. **Going online, file storage and the call relay: not now.** Everything stays on JT's computer. Calls are handled in Stage 8.
+7. **Ownership:** JT will sort it out with the creator.

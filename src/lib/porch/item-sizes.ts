@@ -29,7 +29,7 @@ function clamp(value: unknown, low: number, high: number): number | null {
 
 async function isFounder(userId: string): Promise<boolean> {
   const sql = await getSql();
-  const rows = await sql.query<{ is_founder: boolean }>("select is_founder from profiles where user_id = $1", [userId]);
+  const rows = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [userId]);
   return boolish(rows[0]?.is_founder);
 }
 

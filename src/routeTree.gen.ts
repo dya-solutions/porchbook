@@ -42,6 +42,7 @@ import { Route as ApiNotePictureRouteImport } from './routes/api/note-picture'
 import { Route as ApiNuggetWorkerRouteImport } from './routes/api/nugget-worker'
 import { Route as ApiOfficePdfRouteImport } from './routes/api/office-pdf'
 import { Route as ApiPorchPostsRouteImport } from './routes/api/porch-posts'
+import { Route as ApiPorchTestRouteImport } from './routes/api/porch-test'
 import { Route as ApiPostPhotoRouteImport } from './routes/api/post-photo'
 import { Route as ApiPreviouslyRouteImport } from './routes/api/previously'
 import { Route as ApiReadPdfRouteImport } from './routes/api/read-pdf'
@@ -225,6 +226,11 @@ const ApiPorchPostsRoute = ApiPorchPostsRouteImport.update({
   path: '/api/porch-posts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPorchTestRoute = ApiPorchTestRouteImport.update({
+  id: '/api/porch-test',
+  path: '/api/porch-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPostPhotoRoute = ApiPostPhotoRouteImport.update({
   id: '/api/post-photo',
   path: '/api/post-photo',
@@ -345,6 +351,7 @@ export interface FileRoutesByFullPath {
   '/api/nugget-worker': typeof ApiNuggetWorkerRoute
   '/api/office-pdf': typeof ApiOfficePdfRoute
   '/api/porch-posts': typeof ApiPorchPostsRoute
+  '/api/porch-test': typeof ApiPorchTestRoute
   '/api/post-photo': typeof ApiPostPhotoRoute
   '/api/previously': typeof ApiPreviouslyRoute
   '/api/read-pdf': typeof ApiReadPdfRoute
@@ -397,6 +404,7 @@ export interface FileRoutesByTo {
   '/api/nugget-worker': typeof ApiNuggetWorkerRoute
   '/api/office-pdf': typeof ApiOfficePdfRoute
   '/api/porch-posts': typeof ApiPorchPostsRoute
+  '/api/porch-test': typeof ApiPorchTestRoute
   '/api/post-photo': typeof ApiPostPhotoRoute
   '/api/previously': typeof ApiPreviouslyRoute
   '/api/read-pdf': typeof ApiReadPdfRoute
@@ -450,6 +458,7 @@ export interface FileRoutesById {
   '/api/nugget-worker': typeof ApiNuggetWorkerRoute
   '/api/office-pdf': typeof ApiOfficePdfRoute
   '/api/porch-posts': typeof ApiPorchPostsRoute
+  '/api/porch-test': typeof ApiPorchTestRoute
   '/api/post-photo': typeof ApiPostPhotoRoute
   '/api/previously': typeof ApiPreviouslyRoute
   '/api/read-pdf': typeof ApiReadPdfRoute
@@ -504,6 +513,7 @@ export interface FileRouteTypes {
     | '/api/nugget-worker'
     | '/api/office-pdf'
     | '/api/porch-posts'
+    | '/api/porch-test'
     | '/api/post-photo'
     | '/api/previously'
     | '/api/read-pdf'
@@ -556,6 +566,7 @@ export interface FileRouteTypes {
     | '/api/nugget-worker'
     | '/api/office-pdf'
     | '/api/porch-posts'
+    | '/api/porch-test'
     | '/api/post-photo'
     | '/api/previously'
     | '/api/read-pdf'
@@ -608,6 +619,7 @@ export interface FileRouteTypes {
     | '/api/nugget-worker'
     | '/api/office-pdf'
     | '/api/porch-posts'
+    | '/api/porch-test'
     | '/api/post-photo'
     | '/api/previously'
     | '/api/read-pdf'
@@ -661,6 +673,7 @@ export interface RootRouteChildren {
   ApiNuggetWorkerRoute: typeof ApiNuggetWorkerRoute
   ApiOfficePdfRoute: typeof ApiOfficePdfRoute
   ApiPorchPostsRoute: typeof ApiPorchPostsRoute
+  ApiPorchTestRoute: typeof ApiPorchTestRoute
   ApiPostPhotoRoute: typeof ApiPostPhotoRoute
   ApiPreviouslyRoute: typeof ApiPreviouslyRoute
   ApiReadPdfRoute: typeof ApiReadPdfRoute
@@ -913,6 +926,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPorchPostsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/porch-test': {
+      id: '/api/porch-test'
+      path: '/api/porch-test'
+      fullPath: '/api/porch-test'
+      preLoaderRoute: typeof ApiPorchTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/post-photo': {
       id: '/api/post-photo'
       path: '/api/post-photo'
@@ -1069,6 +1089,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiNuggetWorkerRoute: ApiNuggetWorkerRoute,
   ApiOfficePdfRoute: ApiOfficePdfRoute,
   ApiPorchPostsRoute: ApiPorchPostsRoute,
+  ApiPorchTestRoute: ApiPorchTestRoute,
   ApiPostPhotoRoute: ApiPostPhotoRoute,
   ApiPreviouslyRoute: ApiPreviouslyRoute,
   ApiReadPdfRoute: ApiReadPdfRoute,

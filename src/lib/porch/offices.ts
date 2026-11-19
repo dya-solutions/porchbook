@@ -207,7 +207,7 @@ async function holdsOffice(sql: Sql, userId: string): Promise<boolean> {
 
 async function founderFlag(sql: Sql, userId: string): Promise<boolean> {
   const me = await sql.query<{ is_founder: boolean }>(
-    "select is_founder from profiles where user_id = $1",
+    "select is_porch_admin($1) as is_founder",
     [userId],
   );
   return boolish(me[0]?.is_founder);

@@ -33,7 +33,7 @@ export const Route = createFileRoute("/api/read-pdf")({
         const session = await auth.api.getSession({ headers: request.headers });
         if (!session?.user) return Response.json({ ok: false, error: "Sign in." }, { status: 401 });
         const sql = await getSql();
-        const me = await sql.query<{ is_founder: boolean }>("select is_founder from profiles where user_id = $1", [session.user.id]);
+        const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [session.user.id]);
         const flag = me[0]?.is_founder;
         const founder = flag === true || String(flag) === "t" || String(flag) === "true" || String(flag) === "1";
         if (!founder) return Response.json({ ok: false, error: "Only the pastor can add a book." }, { status: 403 });

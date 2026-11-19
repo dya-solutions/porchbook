@@ -143,7 +143,7 @@ async function ensure(sql: Sql) {
 
 async function who(sql: Sql, userId: string) {
   await ensure(sql);
-  const rows = await sql.query<{ is_founder: unknown; is_transport: unknown }>("select is_founder, is_transport from profiles where user_id = $1", [userId]);
+  const rows = await sql.query<{ is_founder: unknown; is_transport: unknown }>("select is_porch_admin(user_id) as is_founder, is_transport from profiles where user_id = $1", [userId]);
   const founder = boolish(rows[0]?.is_founder);
   return { founder, board: founder || boolish(rows[0]?.is_transport) };
 }

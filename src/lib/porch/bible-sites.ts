@@ -13,7 +13,7 @@ export type BibleSite = { id: number; label: string; url: string; /** Words on t
 const boolish = (v: unknown) => v === true || v === "t" || v === "true" || v === 1;
 
 async function founder(sql: Awaited<ReturnType<typeof getSql>>, userId: string) {
-  const me = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [userId]);
+  const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [userId]);
   return boolish(me[0]?.is_founder);
 }
 

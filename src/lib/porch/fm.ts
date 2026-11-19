@@ -16,7 +16,7 @@ function rec(input: unknown): Record<string, unknown> {
 
 /** The founder and the Head of Communications run the studio. */
 export async function canRunStudio(sql: Sql, userId: string): Promise<boolean> {
-  const me = await sql.query<{ is_founder: boolean }>("select is_founder from profiles where user_id = $1", [userId]);
+  const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [userId]);
   if (boolish(me[0]?.is_founder)) return true;
   const head = await sql.query<{ head_user_id: string | null }>(
     "select head_user_id from offices where key = 'communications'",
@@ -79,7 +79,7 @@ export const getFm = createServerFn({ method: "POST" })
     } catch {
       /* the next read tries again */
     }
-    const me = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [context.userId]);
+    const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
     // The coming Bible readings are put on the schedule (checked about once a minute).
     const { ensureReadings } = await import("@/lib/porch/bible-radio.server");
     await ensureReadings(sql);
@@ -289,7 +289,7 @@ export const listenersPdf = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    const me = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [context.userId]);
+    const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
     if (!boolish(me[0]?.is_founder)) return { ok: false as const, error: "Only the founder can take the listeners PDF." };
     const rows = await sql.query<{ user_id: string; who: string | null; day: string; hour: number }>(
       `select h.user_id, p.display_name as who,
@@ -828,7 +828,7 @@ export const listFmRequests = createServerFn({ method: "POST" })
           from fm_requests r left join profiles p on p.user_id = r.user_id
          where r.status <> 'waiting' order by r.done_at desc nulls last limit 15)`,
     );
-    const me = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [context.userId]);
+    const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
     return { ok: true as const, requests: rows.map(toRequest), founder: boolish(me[0]?.is_founder) };
   });
 
@@ -991,7 +991,7 @@ export async function noticeRequester(sql: Sql, userId: string) {
       [userId],
     );
     const listening = Number(live[0]?.n ?? 0) > 0;
-    const founders = await sql.query<{ user_id: string }>("select user_id from profiles where is_founder and user_id <> $1", [userId]);
+    const founders = await sql.query<{ user_id: string }>("select user_id from profiles where is_porch_admin(user_id) and user_id <> $1", [userId]);
     if (!founders.length) return;
     for (const request of waiting) {
       const last = await sql.query<{ listening: boolean | string }>(
@@ -1013,7 +1013,7 @@ export async function noticeRequester(sql: Sql, userId: string) {
 /** For the founder's Porchbook app watch: the latest "requester is online" alert (last 2 minutes). */
 export async function studioAlertFor(sql: Sql, userId: string): Promise<{ id: string; text: string } | null> {
   try {
-    const me = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [userId]);
+    const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [userId]);
     if (!boolish(me[0]?.is_founder)) return null;
     await ensurePings(sql);
     const rows = await sql.query<{ id: number; listening: boolean | string; title: string; by_name: string; display_name: string | null; user_id: string }>(
@@ -1034,7 +1034,7 @@ export async function studioAlertFor(sql: Sql, userId: string): Promise<{ id: st
 // ---- After a request plays: tell the person who asked (and the one it was dedicated to), in Chat.
 
 export async function founderOf(sql: Sql) {
-  const rows = await sql.query<{ user_id: string }>("select user_id from profiles where is_founder limit 1");
+  const rows = await sql.query<{ user_id: string }>("select user_id from profiles where is_porch_admin(user_id) limit 1");
   return rows[0]?.user_id ?? "";
 }
 
@@ -1136,7 +1136,7 @@ export const requestHistoryPdf = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    const me = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [context.userId]);
+    const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
     if (!boolish(me[0]?.is_founder)) return { ok: false as const, error: "Only the founder can take the request history." };
     await ensureRequests(sql);
     await ensureBreakMessage(sql);
@@ -1228,7 +1228,7 @@ export const skipFmNext = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
-    const me = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [context.userId]);
+    const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
     if (!boolish(me[0]?.is_founder)) return { ok: false as const, error: "Only the founder can skip to the next item." };
     await ensureBreakMessage(sql);
     const station = await readStation(sql);

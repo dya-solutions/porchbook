@@ -38,7 +38,7 @@ async function ensureRoll(sql: Awaited<ReturnType<typeof getSql>>) {
 }
 
 async function founderFlag(sql: Awaited<ReturnType<typeof getSql>>, userId: string): Promise<boolean> {
-  const me = await sql.query<{ is_founder: boolean }>("select is_founder from profiles where user_id = $1", [userId]);
+  const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [userId]);
   return boolish(me[0]?.is_founder);
 }
 
@@ -96,13 +96,13 @@ export const listRoll = createServerFn({ method: "POST" })
       is_founder: boolean;
       joined_at: string;
     }>(
-      `select p.user_id, p.display_name, p.image_url, p.role, p.team, p.is_founder,
+      `select p.user_id, p.display_name, p.image_url, p.role, p.team, is_porch_admin(p.user_id) as is_founder,
               coalesce(string_agg(o.name, ', ' order by o.sort), '') as offices,
               to_char(p.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as joined_at
        from profiles p
        left join offices o on o.head_user_id = p.user_id
-       group by p.user_id, p.display_name, p.image_url, p.role, p.team, p.is_founder, p.created_at
-       order by p.is_founder desc, lower(p.display_name) asc`,
+       group by p.user_id, p.display_name, p.image_url, p.role, p.team, p.created_at
+       order by is_porch_admin(p.user_id) desc, lower(p.display_name) asc`,
     );
     const people: RollPerson[] = rows.map((row) => ({
       userId: row.user_id,
@@ -166,7 +166,7 @@ export const removeMember = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Only the founder can remove someone." };
     }
     const found = await sql.query<{ email: string | null; is_founder: boolean }>(
-      "select email, is_founder from profiles where user_id = $1",
+      "select email, is_porch_admin(user_id) as is_founder from profiles where user_id = $1",
       [data.userId],
     );
     const person = found[0];

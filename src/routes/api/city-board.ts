@@ -61,7 +61,7 @@ async function sessionOf(request: Request) {
 
 async function founder(userId: string) {
   const sql = await getSql();
-  const me = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [userId]);
+  const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [userId]);
   return boolish(me[0]?.is_founder);
 }
 

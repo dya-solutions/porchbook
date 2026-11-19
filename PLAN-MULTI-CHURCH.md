@@ -1,6 +1,6 @@
 # Plan: Porchbook for many porches
 
-**Updated:** 19 November 2026, to match **BUILD-BRIEF.md** (stage 1 of 8).
+**Updated:** 19 November 2026, to match **BUILD-BRIEF.md**, including its section 8, "Decisions, 19 November".
 **Which file wins:** BUILD-BRIEF.md, then this plan, then `public/porchbook-state.md` (the creator's original rulebook, which now only describes how Phaneroo's porch looked before this work).
 
 ---
@@ -13,7 +13,7 @@ Any **church, ministry, gospel artist or organisation** starts its own **porch**
 
 | Word | Meaning |
 |---|---|
-| **Porch** | One church's (or ministry's, artist's or organisation's) private space. Each porch is one of four types: Church, Ministry, Gospel artist, Organisation |
+| **Porch** | One of four types: **Church**, Ministry, Gospel artist, Organisation. **Only church porches have members** and a private porch (feed, chat, offices, tour). The other three are **public pages run by a small team of admins**, with no members |
 | **Public porch** | The shared public side, where only porches post and members of any porch follow and react |
 | **Porch page** | A porch's public page: its public posts, its branches, and a Follow button |
 | **Branch** | A full porch of its own that is linked to a main porch (e.g. Phaneroo Kampala → Phaneroo Ministries) |
@@ -37,9 +37,10 @@ Any **church, ministry, gospel artist or organisation** starts its own **porch**
 | App running on this computer, test account, git undo points, Windows start-up fix | ✅ Done |
 | "Before" pictures of every screen (`../before/`) | ✅ Done |
 | **Stage 1:** this plan rewritten; on-hold features hidden | ✅ Done (19 Nov) |
-| Old plan **Step 0**: local database keeps its data, two-church test | ❌ Not started. Part of Stage 2 |
-| Old plan **Step 1**: porch tables, Phaneroo as porch 1 | ❌ Not started. Part of Stage 2 |
-| Old plan **Step 2**: admins instead of the founder | ❌ Not started. Part of Stage 2 |
+| Old plan **Step 0**: local database keeps its data, two-church test | ✅ Done in Stage 2 |
+| Old plan **Step 1**: porch tables, Phaneroo as porch 1 | ✅ Done in Stage 2 |
+| Old plan **Step 2**: admins instead of the founder | ✅ Done in Stage 2 |
+| **Stage 2:** the foundation | ✅ Done (19 Nov). Two-church test: 14 passed, 0 failed, 5 not private yet (feed, people, chat) |
 | Stages 3–8 | ❌ Not started |
 
 ---
@@ -66,7 +67,7 @@ Any **church, ministry, gospel artist or organisation** starts its own **porch**
 | **Platform owner** (JT) | A short list of owner accounts, outside any porch | Approve porches (verification) and branch links. Suspend porches. Manage shared settings (Bible versions, storage, keys). **Never read private messages** |
 | **Porch admin** | A role on their membership (several per porch) | Everything the founder does today, **for their own porch only**: offices, doors, theme, wording, events, transport, serve, My 20, groups, roll and removals, announcements, and posting on the porch's public page |
 | **Office head** | Chosen by porch admins per office | Answer that office's conversations and requests |
-| **Member** | Membership in exactly **one** porch | As today |
+| **Member** | Belongs to exactly **one church porch** | As today. Can also be an **admin of a few non-church porches** (ministry, artist, organisation pages) |
 
 ### Steps
 1. Phaneroo's current founder becomes Phaneroo's first admin. JT becomes platform owner.
@@ -100,10 +101,12 @@ The app has about **150 tables**. About 75 are made by `migrations/` (which we d
 ### C. New tables for porches, roles and the public side
 | Table | Holds |
 |---|---|
-| `porches` | Name, type (Church / Ministry / Gospel artist / Organisation), town and country, status (waiting / approved / suspended), **verified**, invite code, created date. Phaneroo = 1 |
-| `porch_settings` | Theme, time zone, country code, helplines, devotional source, wording, doors on/off, and the other items in section 7 |
-| `porch_members` | Who belongs where, role (member / admin), joined and left dates. One current porch per person |
+| `porches` | Name, short name, type (church / ministry / gospel_artist / organisation), town and country, status (waiting / approved / suspended), **verified**, invite code, created date. Phaneroo = 1 |
+| `porch_settings` | Theme, time zone, country code, and later the other items in section 7 |
+| `profiles.porch_id` | The **one church porch** a person belongs to. One column, so nobody can belong to two churches |
+| `porch_admins` | Who runs which porch. A person can be admin of their own church porch and of a few non-church porches |
 | `platform_owners` | JT's account(s) |
+| `porch_moves` *(Stage 5)* | History of leaving and joining, so posts stay with the old porch |
 | `porch_links` | Branch → main porch link requests: asked, approved, unlinked |
 | `office_actions` | Which actions each office offers (Thank God with me, Contact the pastor, Appointments, Weekly programme, Accountability, Official) |
 | `office_requests` | A member's request to an office and its **status** (Sent, Confirmed, Answered) |
@@ -121,7 +124,7 @@ The app has about **150 tables**. About 75 are made by `migrations/` (which we d
 | **Offices** | `offices`, `office_threads`, `office_messages`, `office_files`, `office_pdfs`, `office_books`, `office_doors`, `office_removed`, `office_calendar`, `hoo_reports`, `hoo_decisions`, `hoo_writers`, `hoo_pages` |
 | **Tour doors** | Pray: `prayer_track`. My 20: `my_twenty`, `mission_sends`, `mission_send_to`, `mission_reports`. Events: `pb_events`, `pb_event_rsvp`, `pb_event_travel`, `pb_hotels`, `pb_rooms`. Serve: `serve_forms`. Transport: `transport_events`, `transport_locations`, `transport_stages`, `transport_buses`, `transport_rides`, `transport_stops`. Feedback: `trouble_reports` |
 | **Read** | `porch_shelf`, shared reading docs, `bible_sites`, porch reading plans, `devotion_translations`, `devotional_translation` |
-| **Looks and wording** | `porch_words`, `button_sound`, `profile_faces`, `porch_once`, `porch_flags`, `app_flags`, plus the old photo and texture tables (`porch_ground`, `porch_header`, `porch_hide`, `porch_door`, `porch_wall`, `porch_carpet`, `porch_ceiling`, `porch_cloth`, `porch_cover`, `porch_cover_fly`, `porch_room_layout`); see question Q3 |
+| **Looks and wording** | `porch_words`, `button_sound`, `profile_faces`, `porch_once`, `porch_flags`, `app_flags`. The old photo and texture tables (`porch_ground`, `porch_header`, `porch_hide`, `porch_door`, `porch_wall`, `porch_carpet`, `porch_ceiling`, `porch_cloth`, `porch_cover`, `porch_cover_fly`, `porch_room_layout`) are **hidden** (decision 2), and are replaced later by a **logo and cover photo** per porch |
 | **Other** | `notifications`, `founder_notes` (→ announcements), `manual_reads`, `previously` |
 | **On hold (tag before switching back on)** | Radio: all `fm_*`, `radio_usage`, `jingle_drafts`, `worship_songs`. Nuggets: `nugget*`. PorchGuy: `porch_guy_*`, `city_board*`. Clinic: `clinic_*`. Devotional voice: `devotion_voice*`, `devotion_voices`. **These hidden features must get their porch tag before anyone switches them back on.** |
 
@@ -166,7 +169,7 @@ The app has about **150 tables**. About 75 are made by `migrations/` (which we d
 - **Bottom bar:** Porch, Tour, Offices, Read, Chat. **Top of the Porch screen:** a "My porch / Public porch" switch. **Your own picture** in the top bar opens your profile.
 - **Keep:** Fraunces and Source Sans 3, rounded cards, tap areas of 44 px or more, clear labels.
 - **Drop:** heavy textures, 3D buttons, the crowded header.
-- **Six themes**, chosen by each porch admin. Only colours change. Built as **one set of colour settings that every screen reads from**, so a new theme is one more row. Phaneroo uses **Porch Evening**. Dawn, Dusk and Night still work on top. All six themes were checked: every text and button colour pair passes the 4.5:1 contrast rule (the lowest is 4.9:1, Crimson Grace's red on its cards).
+- **Six themes**, chosen by each porch admin. Only colours change. Built as **one set of colour settings that every screen reads from**, so a new theme is one more row. Phaneroo uses **Porch Evening**. Dawn, Dusk and Night become a **gentle dimmer** on every theme; Night never goes nearly black. All six themes were checked: every text and button colour pair passes the 4.5:1 contrast rule (the lowest is 4.9:1, Crimson Grace's red on its cards).
 
 ---
 
@@ -209,14 +212,14 @@ Phaneroo's current values become its settings, so nothing changes for Phaneroo.
 After every stage: git undo point, CHANGES.md, "after" pictures where screens changed, the **two-church test** (from Stage 2 on), then stop for JT.
 
 1. **Update the plan and hide on-hold features.** ✅ Done.
-2. **Foundation**
+2. **Foundation** ✅ Done (19 Nov).
    - The local database **keeps its data** between restarts. Today it's held in memory and wiped every time; the fix is to save it in a folder on this computer.
    - Write the **two-church test**.
-   - Add `porches`, `porch_settings`, `porch_members` and `platform_owners`. Phaneroo becomes porch 1, and every existing account joins it.
+   - Add `porches` (with porch type), `porch_settings`, `porch_admins`, `platform_owners` and each person's church (`profiles.porch_id`). Phaneroo becomes porch 1, and every existing account joins it.
    - **Admins instead of the founder**, and remove "first account becomes founder".
    - Test: Phaneroo looks identical (pictures), the admin keeps every tool, a member gets none, and a second admin can be added.
-3. **Porch tags, one area at a time**: feed → chat → people and "on the porch now" → offices → tour doors → read shelf → notifications. Two-church test after each area.
-4. **Themes and the new design**, one screen at a time, following `design-reference/`. The colour settings come first, then Porch, Tour, Offices (with its new tab and office actions), Chat, Read, Presence, Conversation and profile. Phaneroo uses Porch Evening.
+3. **Porch tags, one area at a time.** First, hide the MSG and AMPC Bibles (decision 5). Then: feed → chat → people and "on the porch now" → offices → tour doors → read shelf → notifications. Two-church test after each area.
+4. **Themes and the new design**, one screen at a time, following `design-reference/`. Hide the old photo and texture settings and the old Themes menu (decisions 2 and 3), and make Dawn / Dusk / Night a gentle dimmer (decision 4). The colour settings come first, then Porch, Tour, Offices (with its new tab and office actions), Chat, Read, Presence, Conversation and profile. Phaneroo uses Porch Evening.
 5. **Joining, leaving and starting a porch**, with invite codes, the 3-step Start a porch screen, and platform-owner approval.
 6. **Public porch**: porch pages, following, public posts and reactions (separate tables).
 7. **Branches**: link requests, approval by the main porch, the branch list on the porch page, unlinking.
@@ -253,12 +256,14 @@ All switches live in one file: **`src/lib/porch/on-hold.ts`**. Changing a `true`
 
 ## 10. Risks and open questions
 
-### Questions for JT
-- **Q1. Admins of artist or ministry porches.** "One account belongs to exactly one porch" plus "only porches post publicly" means a gospel artist who attends a church must choose: be a member of their church's porch, *or* run their artist porch. *Suggestion:* a person **belongs** to one porch but can also be an **admin of the public page** of up to a few others.
-- **Q2. Things the brief doesn't mention.** Rhemaclip (YouTube clips in the post box), "Edit words", the old Themes menu (glass top bar, leather bars and so on), button sounds, and "Keep Porchbook running". *Suggestion:* keep Rhemaclip, Edit words and sounds; replace the old Themes menu with the six new themes in Stage 4.
-- **Q3. The porch photograph and textures.** The designs use plain theme colours with no porch photo, and the brief says to drop heavy textures. Do the porch photo, header photo, covers, carpet, ceiling and other picture settings go (hidden like on-hold features), or stay as an option?
-- **Q4. Night on the light theme.** Night "blacks the porch to about 96 percent". On Morning Light (a light theme) that would turn it nearly black. Should Night on a light theme just dim slightly instead?
-- **Q5. Bible versions.** The app includes the **Amplified (AMPC)** and **The Message (MSG)** Bibles (`bibles-private/`). Both are copyrighted. The brief limits new churches to free versions. Was Phaneroo given permission to use them? If not, it may be safer to hide them for Phaneroo too and keep KJV and other free versions.
+### Decisions, 19 November (were questions)
+- **Members only in church porches.** Ministry, Gospel artist and Organisation porches are public pages with a small admin team and no members. A person belongs to one church porch and can also admin a few non-church porches.
+- **Old photo and texture settings: hidden** (Stage 4, when the new design arrives). Later each porch gets a logo and a cover photo for its public page.
+- **Kept:** Rhemaclip, Edit words, button sounds. The old Themes menu is replaced by the six themes in Stage 4.
+- **Dawn / Dusk / Night is a gentle dimmer on every theme.** Night never goes nearly black, on any theme (Stage 4).
+- **MSG and AMPC Bibles are hidden for everyone**, Phaneroo included, until JT confirms permission. KJV and other free versions stay. *To do: first item of Stage 3.*
+- **Going online, file storage and the call relay: not now.** Everything stays on JT's computer, and calls wait for Stage 8.
+- **Ownership:** JT is sorting it out with the creator.
 
 ### Things that may not be free
 - **Putting JT's version online** isn't one of the 8 stages. Free options exist, but each has limits:

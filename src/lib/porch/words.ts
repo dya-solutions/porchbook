@@ -41,7 +41,7 @@ export const setWord = createServerFn({ method: "POST" })
     if (!data.key) return { ok: false as const, error: "That words can't be changed." };
     const sql = await getSql();
     await ensure(sql);
-    const me = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [context.userId]);
+    const me = await sql.query<{ is_founder: unknown }>("select is_porch_admin($1) as is_founder", [context.userId]);
     const founder = me[0]?.is_founder === true || me[0]?.is_founder === "t" || me[0]?.is_founder === "true";
     if (!founder) return { ok: false as const, error: "Only the founder rewords Porchbook." };
     if (!data.text) await sql.query("delete from porch_words where key = $1", [data.key]);

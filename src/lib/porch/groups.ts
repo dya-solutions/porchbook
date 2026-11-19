@@ -1299,7 +1299,7 @@ async function ensureLeaders(sql: Sql) {
 }
 
 async function leaderFlags(sql: Sql, userId: string) {
-  const rows = await sql<{ is_founder: unknown; is_leader: unknown }>`select is_founder, is_leader from profiles where user_id = ${userId}`;
+  const rows = await sql<{ is_founder: unknown; is_leader: unknown }>`select is_porch_admin(user_id) as is_founder, is_leader from profiles where user_id = ${userId}`;
   const founder = yes(rows[0]?.is_founder);
   return { founder, leader: founder || yes(rows[0]?.is_leader) };
 }

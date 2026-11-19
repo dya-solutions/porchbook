@@ -3,6 +3,7 @@ import { getSql, type Sql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
 import { claimLegacy } from "@/lib/porch/legacy-claim";
+import { placeNewProfile } from "@/lib/porch/porch-foundation";
 import {
   FILTERS,
   REACTIONS,
@@ -114,7 +115,7 @@ export async function touchProfile(sql: Sql, userId: string, seed: Seed) {
     // The roll table arrives with the migration.
   }
   const displayName = seed.displayName || "Teammate";
-  await sql`
+  const saved = await sql<{ inserted: boolean }>`
     insert into profiles (user_id, display_name, email, image_url)
     values (${userId}, ${displayName}, ${seed.email}, ${seed.imageUrl})
     on conflict (user_id) do update set
@@ -125,13 +126,11 @@ export async function touchProfile(sql: Sql, userId: string, seed: Seed) {
           then excluded.display_name
         else profiles.display_name
       end
+    returning (xmax = 0) as inserted
   `;
-  await sql`
-    update profiles
-    set is_founder = true
-    where user_id = ${userId}
-      and not exists (select 1 from profiles where is_founder)
-  `;
+  // A new account joins its church porch (Phaneroo, until invite codes arrive).
+  // The old rule "the first account ever becomes the founder" is gone: porch admins are chosen.
+  if (saved[0]?.inserted) await placeNewProfile(sql, userId);
   // Old Porchbook (Grok) posts and notes waiting for this email come in once.
   if (email) await claimLegacy(sql, userId, email);
 }
@@ -1359,7 +1358,7 @@ export const founderDesk = createServerFn({ method: "POST" })
     const sql = await getSql();
     await touchProfile(sql, context.userId, seed);
     const me = await sql.query<{ is_founder: boolean }>(
-      "select is_founder from profiles where user_id = $1",
+      "select is_porch_admin($1) as is_founder",
       [context.userId],
     );
     const notes = await sql.query<{ body: string; created_at: string }>(
@@ -1390,7 +1389,7 @@ export const sendToAll = createServerFn({ method: "POST" })
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
     const me = await sql.query<{ is_founder: boolean }>(
-      "select is_founder from profiles where user_id = $1",
+      "select is_porch_admin($1) as is_founder",
       [context.userId],
     );
     if (!boolish(me[0]?.is_founder)) {

@@ -11,7 +11,7 @@ const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice
 const BLOB_BASE = /^(https:\/\/[a-z0-9.-]+\.public\.blob\.vercel-storage\.com)\//i;
 
 async function founder(sql: Sql, userId: string) {
-  const rows = await sql.query<{ is_founder: unknown }>("select is_founder from profiles where user_id = $1", [userId]);
+  const rows = await sql.query<{ is_founder: unknown }>("select is_platform_owner($1) as is_founder", [userId]);
   const f = rows[0]?.is_founder;
   return f === true || f === 1 || f === "1" || f === "t" || f === "true";
 }
