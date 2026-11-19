@@ -92,8 +92,8 @@ async function hold(sql: Sql, viewer: string, messageId: number): Promise<Held |
             c.low_user_id, c.high_user_id
      from messages m
      join conversations c on c.id = m.conversation_id
-     where m.id = $1`,
-    [messageId],
+     where m.id = $1 and c.porch_id = my_porch($2)`,
+    [messageId, viewer],
   );
   const row = rows[0];
   if (!row || (row.low_user_id !== viewer && row.high_user_id !== viewer)) return null;

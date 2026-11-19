@@ -71,6 +71,39 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
   - "After" pictures are in `../after-stage2/` and were compared with `../after-stage1/` and `../before/` (see the comparison pages).
 - **Not done on purpose:** hiding the MSG and AMPC Bibles is the first item of Stage 3, and hiding the old photo settings is part of Stage 4.
 
+### 4. Stage 3a (19 Nov 2026): church tags on the feed, chat, people, "on the porch now" and calls
+- **MSG and AMPC Bibles hidden for everyone** (decision 5). They could only appear as uploaded "demo Bibles", which used to be founder-only and are now platform-owner-only, and in a "Read in…" link list that isn't used anywhere. Both now leave them out, and opening one is refused. Switch: `permissionBibles` in `src/lib/porch/on-hold.ts`. The files in `bibles-private/` were not used by the app and are untouched.
+- **How the church tag works.** Each post, reply, reaction, conversation, message, group and group-chat note now carries the church porch it belongs to.
+  - The **database stamps it automatically** whenever one is saved, so no saving path can forget it.
+  - Everything that already existed was tagged as Phaneroo's.
+  - Shared database checks ("my porch", "same porch", "post in my porch", "reply in my porch") are used by the app code. They live in `src/lib/porch/porch-foundation.ts`.
+- **Feed** (`api.ts`, `api/porch-posts.ts`):
+  - Only your own church porch's posts show, including pinned posts, "my posts", single posts opened from the bell, a person's page, and the posts list the Android app reads.
+  - Reacting, replying, keeping and reacting to replies are **refused** for posts outside your porch.
+  - A question can only be addressed to someone in your porch.
+- **Chat** (`api.ts`, `chat.ts`):
+  - Your chat list and unread count only include conversations in your porch.
+  - Opening a conversation with, or messaging, someone in another porch is **refused** ("You can only message people in your porch.").
+  - Reacting to, starring, pinning, editing or deleting a message outside your porch is refused.
+  - "Message everyone" reaches only your own porch.
+- **Group chats** (`groups.ts`):
+  - Groups belong to their leader's porch. Lists, browsing, opening, writing, joining, following, adding people, leaders and group accounts all stay inside your porch.
+  - The database also refuses to put anyone into a group from another porch.
+- **People and profiles** (`api.ts`, `roll.ts`): the people list, a person's page, the people count and the admin's roll only show your own porch.
+- **On the porch now** (`presence.ts`): only people in your own porch.
+- **One-to-one calls** (`groups.ts`, `call-ask.ts`, `line-ring.ts`):
+  - Starting a call, ringing, asking to call and ringing someone's phone are **refused** across porches ("You can only call people in your porch.").
+  - The rest of the calling code is unchanged.
+  - The hidden "open porch call" (one call shared by everyone, on hold) is now also refused by the server, not just hidden.
+- **The two-church test** now checks all of the above: **46 passed, 0 failed, 0 not private yet.** For each area, Ben in Porch B is refused (not just hidden from) when he tries to open, react to, reply to, keep, message, join or call anything in Porch A, and nothing of his reaches Porch A. Matching checks prove that Abe, in the same porch as Ann, can still do all of these.
+- **Why:** BUILD-BRIEF.md Stage 3 (first half, as JT asked).
+- **Rules changed:** none on screen.
+- **Checked:**
+  - Type check passes.
+  - Style check: no new problems. The one error it reports is in old code and was there before.
+  - Your existing post still shows in Phaneroo's feed, and the test account is still admin.
+  - "After" pictures are in `../after-stage3a/` and were compared with `../after-stage2/` (see the comparison page).
+
 ## Approved for the redesign stage (not done yet)
 
 These were approved by the owner on 2026-11-18 but will be done later, during the redesign.

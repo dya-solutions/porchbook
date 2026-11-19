@@ -101,6 +101,15 @@ function text(value: unknown): string {
   return value == null ? "" : String(value);
 }
 
+/** Is this post (or reply) in the viewer's own church porch? Anything else is refused. */
+async function inMyPorch(sql: Sql, what: "post" | "comment", userId: string, id: number) {
+  const rows = await sql.query<{ ok: unknown }>(
+    what === "post" ? "select post_in_my_porch($1, $2) as ok" : "select comment_in_my_porch($1, $2) as ok",
+    [userId, id],
+  );
+  return boolish(rows[0]?.ok);
+}
+
 export async function touchProfile(sql: Sql, userId: string, seed: Seed) {
   const email = seed.email?.trim().toLowerCase() ?? "";
   try {
@@ -426,7 +435,7 @@ async function pinnedRow(sql: Sql, userId: string, filter: FeedFilter): Promise<
   const params: unknown[] = [pinId, userId];
   if (filter !== "all") params.push(filter);
   const pinned = await sql.query<PostRow>(
-    `${POST_SELECT} where p.id = $1 and p.author_id = $2${filter === "all" ? "" : " and p.room = $3"}`,
+    `${POST_SELECT} where p.id = $1 and p.author_id = $2 and p.porch_id = my_porch($2)${filter === "all" ? "" : " and p.room = $3"}`,
     params,
   );
   return pinned[0] ?? null;
@@ -440,7 +449,8 @@ export const getOnePost = createServerFn({ method: "POST" })
     if (!postId) return { ok: false as const };
     const sql = await getSql();
     await ensurePostPhoto(sql);
-    const rows = await sql.query<PostRow>(`${POST_SELECT} where p.id = $1`, [postId]);
+    // Only a post in the viewer's own church porch (anything else is refused).
+    const rows = await sql.query<PostRow>(`${POST_SELECT} where p.id = $1 and p.porch_id = my_porch($2)`, [postId, context.userId]);
     if (!rows[0]) return { ok: false as const };
     const [post] = await hydratePosts(sql, rows, context.userId);
     return post ? { ok: true as const, post } : { ok: false as const };
@@ -462,8 +472,9 @@ export const getFeed = createServerFn({ method: "POST" })
     await ensurePostPhoto(sql);
     await touchProfile(sql, context.userId, data.seed);
     const pinned = await pinnedRow(sql, context.userId, data.filter);
-    const params: unknown[] = [];
-    const where: string[] = [];
+    // The feed shows only the viewer's own church porch.
+    const params: unknown[] = [context.userId];
+    const where: string[] = ["p.porch_id = my_porch($1)"];
     if (data.filter !== "all") {
       params.push(data.filter);
       where.push(`p.room = $${params.length}`);
@@ -490,14 +501,14 @@ export const getFeed = createServerFn({ method: "POST" })
     const [posts, me, counts] = await Promise.all([
       hydratePosts(sql, page, context.userId),
       loadMe(sql, context.userId),
-      sql<{ n: number }>`select count(*)::int as n from profiles`,
+      sql<{ n: number }>`select count(*)::int as n from profiles where porch_id = my_porch(${context.userId})`,
     ]);
     let ordered = posts;
     if (!data.before && data.mine) {
       const mineParams: unknown[] = [context.userId];
       if (data.filter !== "all") mineParams.push(data.filter);
       const mineRows = await sql.query<PostRow>(
-        `${POST_SELECT} where p.author_id = $1${data.filter === "all" ? "" : " and p.room = $2"} order by p.created_at desc`,
+        `${POST_SELECT} where p.author_id = $1 and p.porch_id = my_porch($1)${data.filter === "all" ? "" : " and p.room = $2"} order by p.created_at desc`,
         mineParams,
       );
       const pinId = pinned ? num(pinned.id) : 0;
@@ -558,7 +569,7 @@ export const createPost = createServerFn({ method: "POST" })
     }
     await touchProfile(sql, context.userId, data.seed);
     if (data.askedTo) {
-      const owner = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${data.askedTo}`;
+      const owner = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${data.askedTo} and same_porch(user_id, ${context.userId})`;
       if (!owner.length) return { ok: false as const, error: "That person isn't on Porchbook." };
     }
     await sql`
@@ -631,7 +642,7 @@ export const pinPost = createServerFn({ method: "POST" })
     if (!id) return { ok: false as const, error: "Missing post." };
     const sql = await getSql();
     const rows = await sql<{ id: number }>`
-      select id from posts where id = ${id} and author_id = ${context.userId}
+      select id from posts where id = ${id} and author_id = ${context.userId} and porch_id = my_porch(${context.userId})
     `;
     if (!rows.length) {
       noteAttempt(context.userId, "pin-post", "Tried to pin a post that is not theirs.");
@@ -665,7 +676,7 @@ export const addComment = createServerFn({ method: "POST" })
     await touchProfile(sql, context.userId, data.seed);
     await ensurePostPhoto(sql);
     const posts = await sql<{ id: number; locked: unknown; author_id: string; asked_to: string }>`
-      select id, locked, author_id, asked_to from posts where id = ${data.postId}
+      select id, locked, author_id, asked_to from posts where id = ${data.postId} and porch_id = my_porch(${context.userId})
     `;
     if (!posts.length) return { ok: false as const, error: "That post is gone." };
     if (await waitingForAnswer(sql, data.postId, posts[0].asked_to, context.userId)) {
@@ -751,6 +762,7 @@ export const setCommentReaction = createServerFn({ method: "POST" })
     if (!data.commentId || !data.kind) return { ok: false as const, error: "Pick a reaction." };
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
+    if (!(await inMyPorch(sql, "comment", context.userId, data.commentId))) return { ok: false as const, error: "That reply is gone." };
     const existing = await sql<{ kind: string }>`
       select kind from comment_reactions where comment_id = ${data.commentId} and user_id = ${context.userId}
     `;
@@ -794,6 +806,7 @@ export const toggleCommentKeep = createServerFn({ method: "POST" })
   .handler(async ({ context, data: commentId }) => {
     if (!commentId) return { ok: false as const, error: "Missing reply." };
     const sql = await getSql();
+    if (!(await inMyPorch(sql, "comment", context.userId, commentId))) return { ok: false as const, error: "That reply is gone." };
     const existing = await sql<{ comment_id: number }>`
       select comment_id from comment_keeps where user_id = ${context.userId} and comment_id = ${commentId}
     `;
@@ -822,7 +835,7 @@ export const setReaction = createServerFn({ method: "POST" })
     `;
     await ensurePostPhoto(sql);
     const posts = await sql<{ id: number; author_id: string; asked_to: string; body: string }>`
-      select id, author_id, asked_to, body from posts where id = ${data.postId}
+      select id, author_id, asked_to, body from posts where id = ${data.postId} and porch_id = my_porch(${context.userId})
     `;
     const post = posts[0];
     if (!post) return { ok: false as const, error: "That post is gone." };
@@ -862,6 +875,7 @@ export const toggleKeep = createServerFn({ method: "POST" })
   .handler(async ({ context, data: postId }) => {
     if (!postId) return { ok: false as const, error: "Missing post." };
     const sql = await getSql();
+    if (!(await inMyPorch(sql, "post", context.userId, postId))) return { ok: false as const, error: "That post is gone." };
     const existing = await sql<{ post_id: number }>`
       select post_id from keeps where user_id = ${context.userId} and post_id = ${postId}
     `;
@@ -901,7 +915,8 @@ export const listPeople = createServerFn({ method: "POST" })
     const sql = await getSql();
     await touchProfile(sql, context.userId, seed);
     const rows = await sql.query<ProfileRow>(
-      `select ${PROFILE_COLS} from profiles order by lower(display_name) asc`,
+      `select ${PROFILE_COLS} from profiles where porch_id = my_porch($1) order by lower(display_name) asc`,
+      [context.userId],
     );
     const people: PublicProfile[] = rows.map((row) => toPublic(row));
     return { people };
@@ -920,8 +935,8 @@ export const getPerson = createServerFn({ method: "POST" })
     await touchProfile(sql, context.userId, data.seed);
     if (!data.userId) return { profile: null, posts: [], isSelf: false };
     const found = await sql.query<ProfileRow>(
-      `select ${PROFILE_COLS} from profiles where user_id = $1`,
-      [data.userId],
+      `select ${PROFILE_COLS} from profiles where user_id = $1 and same_porch(user_id, $2)`,
+      [data.userId, context.userId],
     );
     const row = found[0];
     if (!row) return { profile: null, posts: [], isSelf: data.userId === context.userId };
@@ -941,10 +956,10 @@ export const getPerson = createServerFn({ method: "POST" })
               (select count(*)::int from comments c where c.post_id = p.id) as comment_count,
               (select count(*)::int from reactions r where r.post_id = p.id) as reaction_count
        from posts p
-       where p.author_id = $1
+       where p.author_id = $1 and p.porch_id = my_porch($2)
        order by p.created_at desc
        limit 12`,
-      [data.userId],
+      [data.userId, context.userId],
     );
     return {
       profile: mapProfile(row, isSelf),
@@ -1007,6 +1022,7 @@ async function findConversation(sql: Sql, me: string, other: string): Promise<nu
     select id from conversations
     where low_user_id = least(${me}, ${other})
       and high_user_id = greatest(${me}, ${other})
+      and porch_id = my_porch(${me})
   `;
   const id = rows[0]?.id;
   return id == null ? null : num(id);
@@ -1093,7 +1109,8 @@ export const listThreads = createServerFn({ method: "POST" })
          order by m.created_at desc, m.id desc
          limit 1
        ) lm on true
-       where c.low_user_id = $1 or c.high_user_id = $1
+       where (c.low_user_id = $1 or c.high_user_id = $1)
+         and c.porch_id = my_porch($1)
        order by lm.created_at desc`,
       [context.userId],
     );
@@ -1126,6 +1143,7 @@ export const inboxUnread = createServerFn({ method: "POST" })
        left join conversation_reads r
          on r.conversation_id = c.id and r.user_id = $1
        where (c.low_user_id = $1 or c.high_user_id = $1)
+         and c.porch_id = my_porch($1)
          and m.author_id <> $1
          and m.deleted_at is null
          and m.created_at > coalesce(r.read_at, '1970-01-01'::timestamptz)`,
@@ -1147,9 +1165,10 @@ export const getThread = createServerFn({ method: "POST" })
     const { ensureChat } = await import("@/lib/porch/chat");
     await ensureChat(sql);
     const isSelf = data.userId === context.userId;
+    // Only a conversation with someone in the viewer's own church porch.
     const found = await sql.query<ProfileRow>(
-      `select ${PROFILE_COLS} from profiles where user_id = $1`,
-      [data.userId],
+      `select ${PROFILE_COLS} from profiles where user_id = $1 and same_porch(user_id, $2)`,
+      [data.userId, context.userId],
     );
     const row = found[0];
     if (!row) return { profile: null, messages: [], truncated: false, isSelf, responding: false, pinned: null };
@@ -1262,9 +1281,9 @@ export const sendMessage = createServerFn({ method: "POST" })
     const { ensureChat } = await import("@/lib/porch/chat");
     await ensureChat(sql);
     const people = await sql<{ user_id: string }>`
-      select user_id from profiles where user_id = ${data.userId}
+      select user_id from profiles where user_id = ${data.userId} and same_porch(user_id, ${context.userId})
     `;
-    if (!people.length) return { ok: false as const, error: "That person hasn't joined Porchbook." };
+    if (!people.length) return { ok: false as const, error: "You can only message people in your porch." };
     const conversationId = await ensureConversation(sql, context.userId, data.userId);
     let replyTo: number | null = null;
     if (data.replyTo) {
@@ -1399,7 +1418,7 @@ export const sendToAll = createServerFn({ method: "POST" })
     const { ensureChat } = await import("@/lib/porch/chat");
     await ensureChat(sql);
     const people = await sql.query<{ user_id: string }>(
-      "select user_id from profiles where user_id <> $1",
+      "select user_id from profiles where user_id <> $1 and porch_id = my_porch($1)",
       [context.userId],
     );
     let sent = 0;

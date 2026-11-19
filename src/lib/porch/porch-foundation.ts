@@ -77,6 +77,100 @@ const SETUP: string[] = [
   `create or replace function is_platform_owner(uid text) returns boolean language sql stable as $$
      select exists (select 1 from platform_owners where user_id = uid)
    $$`,
+  /** The church porch a person belongs to (null when unknown). */
+  `create or replace function my_porch(uid text) returns integer language sql stable as $$
+     select porch_id from profiles where user_id = uid
+   $$`,
+  /** Two people in the same church porch (used for profiles, chat and calls). */
+  `create or replace function same_porch(a text, b text) returns boolean language sql stable as $$
+     select exists (
+       select 1 from profiles x join profiles y on y.porch_id = x.porch_id
+       where x.user_id = a and y.user_id = b and x.porch_id is not null
+     )
+   $$`,
+
+  // ---- Stage 3a: the feed. Posts carry their church porch; comments and reactions carry their post's. ----
+  `alter table posts add column if not exists porch_id integer references porches (id)`,
+  `alter table comments add column if not exists porch_id integer references porches (id)`,
+  `alter table reactions add column if not exists porch_id integer references porches (id)`,
+  `update posts p set porch_id = coalesce((select porch_id from profiles where user_id = p.author_id), 1) where p.porch_id is null`,
+  `update comments c set porch_id = (select porch_id from posts where id = c.post_id) where c.porch_id is null`,
+  `update reactions r set porch_id = (select porch_id from posts where id = r.post_id) where r.porch_id is null`,
+  `create index if not exists posts_porch_idx on posts (porch_id, created_at desc)`,
+  // Every new post is stamped with its author's church porch, automatically, however it is saved.
+  `create or replace function porch_stamp_post() returns trigger language plpgsql as $$
+   begin
+     if new.porch_id is null then new.porch_id := my_porch(new.author_id); end if;
+     return new;
+   end $$`,
+  `create or replace function porch_stamp_from_post() returns trigger language plpgsql as $$
+   begin
+     if new.porch_id is null then new.porch_id := (select porch_id from posts where id = new.post_id); end if;
+     return new;
+   end $$`,
+  `drop trigger if exists posts_porch_stamp on posts`,
+  `create trigger posts_porch_stamp before insert on posts for each row execute function porch_stamp_post()`,
+  `drop trigger if exists comments_porch_stamp on comments`,
+  `create trigger comments_porch_stamp before insert on comments for each row execute function porch_stamp_from_post()`,
+  `drop trigger if exists reactions_porch_stamp on reactions`,
+  `create trigger reactions_porch_stamp before insert on reactions for each row execute function porch_stamp_from_post()`,
+  // ---- Stage 3a: chat. A conversation belongs to the church porch it started in; its messages follow it. ----
+  `alter table conversations add column if not exists porch_id integer references porches (id)`,
+  `alter table messages add column if not exists porch_id integer references porches (id)`,
+  `update conversations c set porch_id = coalesce(my_porch(c.low_user_id), my_porch(c.high_user_id), 1) where c.porch_id is null`,
+  `update messages m set porch_id = (select porch_id from conversations where id = m.conversation_id) where m.porch_id is null`,
+  `create or replace function porch_stamp_conversation() returns trigger language plpgsql as $$
+   begin
+     if new.porch_id is null then new.porch_id := coalesce(my_porch(new.low_user_id), my_porch(new.high_user_id)); end if;
+     return new;
+   end $$`,
+  `create or replace function porch_stamp_message() returns trigger language plpgsql as $$
+   begin
+     if new.porch_id is null then new.porch_id := (select porch_id from conversations where id = new.conversation_id); end if;
+     return new;
+   end $$`,
+  `drop trigger if exists conversations_porch_stamp on conversations`,
+  `create trigger conversations_porch_stamp before insert on conversations for each row execute function porch_stamp_conversation()`,
+  `drop trigger if exists messages_porch_stamp on messages`,
+  `create trigger messages_porch_stamp before insert on messages for each row execute function porch_stamp_message()`,
+
+  // ---- Stage 3a: groups (group chats, and the private pairs one-to-one calls use). A group belongs to its maker's porch. ----
+  `alter table groups add column if not exists porch_id integer references porches (id)`,
+  `alter table group_notes add column if not exists porch_id integer references porches (id)`,
+  `update groups g set porch_id = coalesce(my_porch(g.owner_id), 1) where g.porch_id is null`,
+  `update group_notes n set porch_id = (select porch_id from groups where id = n.group_id) where n.porch_id is null`,
+  `create or replace function porch_stamp_group() returns trigger language plpgsql as $$
+   begin
+     if new.porch_id is null then new.porch_id := my_porch(new.owner_id); end if;
+     return new;
+   end $$`,
+  `create or replace function porch_stamp_group_note() returns trigger language plpgsql as $$
+   begin
+     if new.porch_id is null then new.porch_id := (select porch_id from groups where id = new.group_id); end if;
+     return new;
+   end $$`,
+  `drop trigger if exists groups_porch_stamp on groups`,
+  `create trigger groups_porch_stamp before insert on groups for each row execute function porch_stamp_group()`,
+  `drop trigger if exists group_notes_porch_stamp on group_notes`,
+  `create trigger group_notes_porch_stamp before insert on group_notes for each row execute function porch_stamp_group_note()`,
+  // Nobody can be put into a group (or a call pair) from another church porch, whatever the code path.
+  `create or replace function porch_check_group_member() returns trigger language plpgsql as $$
+   begin
+     if exists (select 1 from groups g where g.id = new.group_id and g.kind <> 'porch' and g.porch_id is distinct from my_porch(new.user_id)) then
+       raise exception 'That person is in another porch.';
+     end if;
+     return new;
+   end $$`,
+  `drop trigger if exists group_members_porch_check on group_members`,
+  `create trigger group_members_porch_check before insert on group_members for each row execute function porch_check_group_member()`,
+
+  /** A post (or a reply's post) in the viewer's own church porch. */
+  `create or replace function post_in_my_porch(uid text, pid integer) returns boolean language sql stable as $$
+     select exists (select 1 from posts where id = pid and porch_id = my_porch(uid))
+   $$`,
+  `create or replace function comment_in_my_porch(uid text, cid integer) returns boolean language sql stable as $$
+     select exists (select 1 from comments c join posts p on p.id = c.post_id where c.id = cid and p.porch_id = my_porch(uid))
+   $$`,
 ];
 
 /** Once only: today's founder becomes Phaneroo's first admin. */

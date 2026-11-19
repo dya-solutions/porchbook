@@ -101,8 +101,10 @@ export const listRoll = createServerFn({ method: "POST" })
               to_char(p.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as joined_at
        from profiles p
        left join offices o on o.head_user_id = p.user_id
+       where p.porch_id = my_porch($1)
        group by p.user_id, p.display_name, p.image_url, p.role, p.team, p.created_at
        order by is_porch_admin(p.user_id) desc, lower(p.display_name) asc`,
+      [context.userId],
     );
     const people: RollPerson[] = rows.map((row) => ({
       userId: row.user_id,
@@ -133,8 +135,10 @@ export const listPorch = createServerFn({ method: "POST" })
               coalesce(string_agg(o.name, ', ' order by o.sort), '') as offices
        from profiles p
        left join offices o on o.head_user_id = p.user_id
+       where p.porch_id = my_porch($1)
        group by p.user_id, p.display_name, p.image_url
        order by lower(p.display_name) asc`,
+      [context.userId],
     );
     return {
       people: rows.map((row) => ({

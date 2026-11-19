@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { shown } from "@/lib/porch/on-hold";
 import { getSql, type Sql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
@@ -162,7 +163,7 @@ async function membership(sql: Sql, groupId: number, userId: string) {
     select g.id, g.name, g.owner_id
     from groups g
     join group_members m on m.group_id = g.id and m.user_id = ${userId} and coalesce(m.status, 'active') = 'active'
-    where g.id = ${groupId}
+    where g.id = ${groupId} and g.porch_id = my_porch(${userId})
   `;
   return rows[0] ?? null;
 }
@@ -195,7 +196,7 @@ export const listGroups = createServerFn({ method: "POST" })
              ) as joined
       from groups g
       join profiles p on p.user_id = g.owner_id
-      where g.kind = 'personal'
+      where g.kind = 'personal' and g.porch_id = my_porch(${context.userId})
       order by g.created_at desc
     `;
     const groups: GroupSummary[] = rows.map((row) => ({
@@ -281,6 +282,7 @@ export const getGroup = createServerFn({ method: "POST" })
             select p.user_id, p.display_name, p.image_url, p.role
             from profiles p
             where p.user_id <> ${context.userId}
+              and same_porch(p.user_id, ${context.userId})
               and p.user_id not in (select user_id from group_members where group_id = ${data.id})
             order by lower(p.display_name)
           `
@@ -341,7 +343,7 @@ export const addMember = createServerFn({ method: "POST" })
     if (!group || group.owner_id !== context.userId) {
       return { ok: false as const, error: "Only the person who made the group can add people." };
     }
-    const found = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${data.userId}`;
+    const found = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${data.userId} and same_porch(user_id, ${context.userId})`;
     if (!found.length) return { ok: false as const, error: "That person hasn't joined." };
     await sql`
       insert into group_members (group_id, user_id) values (${data.groupId}, ${data.userId})
@@ -448,10 +450,10 @@ export const openPersonCall = createServerFn({ method: "POST" })
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
     const other = await sql<{ user_id: string; display_name: string }>`
-      select user_id, display_name from profiles where user_id = ${data.userId}
+      select user_id, display_name from profiles where user_id = ${data.userId} and same_porch(user_id, ${context.userId})
     `;
     const person = other[0];
-    if (!person) return { ok: false as const, error: "That person hasn't joined Porchbook." };
+    if (!person) return { ok: false as const, error: "You can only call people in your porch." };
     await ensureCallAsk(sql);
     await ensureCallRing(sql);
     const groupId = await ensurePair(sql, context.userId, person.user_id);
@@ -509,6 +511,8 @@ export const openPorchCall = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parseSeed(input))
   .handler(async ({ context, data: seed }) => {
+    // Group calls are on hold (BUILD-BRIEF.md section 4), and this one call was shared by everyone.
+    if (!shown("groupCalls")) return { groupId: 0, onCall: 0 };
     const sql = await getSql();
     await touchProfile(sql, context.userId, seed);
     const groupId = await ensurePorch(sql, context.userId);
@@ -846,7 +850,7 @@ export const browseGroups = createServerFn({ method: "POST" })
              exists (select 1 from group_follows f where f.group_id = g.id and f.user_id = ${me}) as followed
       from groups g
       join profiles p on p.user_id = g.owner_id
-      where g.kind = 'personal'
+      where g.kind = 'personal' and g.porch_id = my_porch(${me})
       order by g.created_at desc
     `;
     const groups: GroupCard[] = rows.map((row) => ({
@@ -892,7 +896,7 @@ export const openGroup = createServerFn({ method: "POST" })
       owner_id: string;
     }>`
       select id, name, purpose, category, privacy, join_mode, post_mode, rules, where_at, cover_url, owner_id
-      from groups where id = ${data.id} and kind = 'personal'
+      from groups where id = ${data.id} and kind = 'personal' and porch_id = my_porch(${context.userId})
     `;
     const group = rows[0];
     if (!group) return null;
@@ -1055,7 +1059,7 @@ export const joinGroup = createServerFn({ method: "POST" })
     if (id) return { ok: false as const, error: "Your leader adds you to a group." };
     const sql = await getSql();
     await ensureGroups(sql);
-    const group = await sql<{ join_mode: string | null; kind: string | null }>`select join_mode, kind from groups where id = ${id}`;
+    const group = await sql<{ join_mode: string | null; kind: string | null }>`select join_mode, kind from groups where id = ${id} and porch_id = my_porch(${context.userId})`;
     if (group[0]?.kind !== "personal") return { ok: false as const, error: "That group is not here." };
     const held = await sql<{ status: string | null }>`select status from group_members where group_id = ${id} and user_id = ${context.userId}`;
     if (held[0]?.status === "banned") return { ok: false as const, error: "You cannot join this group." };
@@ -1077,6 +1081,8 @@ export const followGroup = createServerFn({ method: "POST" })
     if (!id) return { ok: false as const, error: "That group is not here." };
     const sql = await getSql();
     await ensureGroups(sql);
+    const inPorch = await sql<{ id: number }>`select id from groups where id = ${id} and kind = 'personal' and porch_id = my_porch(${context.userId})`;
+    if (!inPorch.length) return { ok: false as const, error: "That group is not here." };
     const held = await sql<{ user_id: string }>`select user_id from group_follows where group_id = ${id} and user_id = ${context.userId}`;
     if (held.length) {
       await sql`delete from group_follows where group_id = ${id} and user_id = ${context.userId}`;
@@ -1272,7 +1278,7 @@ export const groupsOnPassage = createServerFn({ method: "POST" })
              (select count(*)::text from group_members m where m.group_id = g.id and coalesce(m.status, 'active') = 'active') as members,
              (select count(*)::text from group_notes n where n.group_id = g.id and n.scripture ilike ${like} and n.hidden = false) as posts
       from groups g
-      where g.kind = 'personal' and g.privacy = 'public'
+      where g.kind = 'personal' and g.privacy = 'public' and g.porch_id = my_porch(${context.userId})
         and exists (select 1 from group_notes n where n.group_id = g.id and n.scripture ilike ${like} and n.hidden = false)
       order by posts desc
       limit 8
@@ -1322,6 +1328,7 @@ export const myGroups = createServerFn({ method: "POST" })
        from groups g
        join profiles p on p.user_id = g.owner_id
        where g.kind = 'personal'
+         and g.porch_id = my_porch($1)
          and ($2::boolean or g.owner_id = $1 or exists (
            select 1 from group_members m where m.group_id = g.id and m.user_id = $1 and coalesce(m.status, 'active') = 'active'))
        order by g.created_at desc`,
@@ -1385,7 +1392,7 @@ export const openPlainGroup = createServerFn({ method: "POST" })
     const groups = await sql<{ id: number; name: string; purpose: string | null; owner_id: string; owner_name: string }>`
       select g.id, g.name, g.purpose, g.owner_id, p.display_name as owner_name
       from groups g join profiles p on p.user_id = g.owner_id
-      where g.id = ${data.id} and g.kind = 'personal'
+      where g.id = ${data.id} and g.kind = 'personal' and g.porch_id = my_porch(${context.userId})
     `;
     const group = groups[0];
     if (!group) return { ok: false as const, error: "That group is not here." };
@@ -1427,12 +1434,12 @@ export const addToGroup = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ensureLeaders(sql);
     const me = await leaderFlags(sql, context.userId);
-    const group = await sql<{ owner_id: string }>`select owner_id from groups where id = ${data.groupId} and kind = 'personal'`;
+    const group = await sql<{ owner_id: string }>`select owner_id from groups where id = ${data.groupId} and kind = 'personal' and porch_id = my_porch(${context.userId})`;
     if (!group[0] || (group[0].owner_id !== context.userId && !me.founder)) {
       noteAttempt(context.userId, "group-add", "Tried to add someone to a group they don't lead.");
       return { ok: false as const, error: "Only the group's leader can add people." };
     }
-    const found = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${data.userId}`;
+    const found = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${data.userId} and same_porch(user_id, ${context.userId})`;
     if (!found.length) return { ok: false as const, error: "That person hasn't joined Porchbook." };
     await sql`
       insert into group_members (group_id, user_id, member_role, status) values (${data.groupId}, ${data.userId}, 'member', 'active')
@@ -1454,7 +1461,7 @@ export const removeFromGroup = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ensureLeaders(sql);
     const me = await leaderFlags(sql, context.userId);
-    const group = await sql<{ owner_id: string }>`select owner_id from groups where id = ${data.groupId} and kind = 'personal'`;
+    const group = await sql<{ owner_id: string }>`select owner_id from groups where id = ${data.groupId} and kind = 'personal' and porch_id = my_porch(${context.userId})`;
     if (!group[0]) return { ok: false as const, error: "That group is not here." };
     if (target === group[0].owner_id) return { ok: false as const, error: "The leader stays with the group." };
     if (target !== context.userId && group[0].owner_id !== context.userId && !me.founder) {
@@ -1474,7 +1481,7 @@ export const listLeaders = createServerFn({ method: "POST" })
     await ensureLeaders(sql);
     const me = await leaderFlags(sql, context.userId);
     if (!me.founder) return { ok: false as const, leaderIds: [] as string[] };
-    const rows = await sql<{ user_id: string }>`select user_id from profiles where is_leader = true`;
+    const rows = await sql<{ user_id: string }>`select user_id from profiles where is_leader = true and porch_id = my_porch(${context.userId})`;
     return { ok: true as const, leaderIds: rows.map((row) => row.user_id) };
   });
 
@@ -1492,7 +1499,7 @@ export const setLeader = createServerFn({ method: "POST" })
       noteAttempt(context.userId, "set-leader", "Tried to mark a leader.");
       return { ok: false as const, error: "Only the founder can mark leaders." };
     }
-    await sql`update profiles set is_leader = ${data.on} where user_id = ${data.userId}`;
+    await sql`update profiles set is_leader = ${data.on} where user_id = ${data.userId} and same_porch(user_id, ${context.userId})`;
     return { ok: true as const };
   });
 
@@ -1511,7 +1518,7 @@ async function ensureAccounts(sql: Sql) {
 /** The group's leader, or the founder: the only ones who see and write its accounts. */
 async function accountGate(sql: Sql, userId: string, groupId: number | null) {
   if (!groupId) return null;
-  const rows = await sql<{ owner_id: string }>`select owner_id from groups where id = ${groupId} and kind = 'personal'`;
+  const rows = await sql<{ owner_id: string }>`select owner_id from groups where id = ${groupId} and kind = 'personal' and porch_id = my_porch(${userId})`;
   if (!rows[0]) return null;
   const me = await leaderFlags(sql, userId);
   return rows[0].owner_id === userId || me.founder ? { founder: me.founder } : null;

@@ -3,10 +3,12 @@
  * (Bible Gateway, or the YouVersion Bible App for TPT). Porchbook never stores these texts.
  */
 
+import { shown } from "@/lib/porch/on-hold";
+
 // Book codes the YouVersion Bible App uses, in Bible order (Genesis = 1).
 const USFM = "GEN EXO LEV NUM DEU JOS JDG RUT 1SA 2SA 1KI 2KI 1CH 2CH EZR NEH EST JOB PSA PRO ECC SNG ISA JER LAM EZK DAN HOS JOL AMO OBA JON MIC NAM HAB ZEP HAG ZEC MAL MAT MRK LUK JHN ACT ROM 1CO 2CO GAL EPH PHP COL 1TH 2TH 1TI 2TI TIT PHM HEB JAS 1PE 2PE 1JN 2JN 3JN JUD REV".split(" ");
 
-export const READ_IN = [
+const ALL_READ_IN = [
   { code: "NKJV", name: "New King James Version" },
   { code: "AMPC", name: "Amplified Bible, Classic Edition" },
   { code: "MSG", name: "The Message" },
@@ -15,7 +17,11 @@ export const READ_IN = [
   { code: "TLB", name: "The Living Bible" },
 ] as const;
 
-export type ReadInCode = (typeof READ_IN)[number]["code"];
+export type ReadInCode = (typeof ALL_READ_IN)[number]["code"];
+
+/** MSG and AMPC are hidden until permission is confirmed (BUILD-BRIEF.md decision 5). */
+const NEEDS_PERMISSION: readonly ReadInCode[] = ["AMPC", "MSG"];
+export const READ_IN = ALL_READ_IN.filter((item) => shown("permissionBibles") || !NEEDS_PERMISSION.includes(item.code));
 
 export function readInLink(code: ReadInCode, bookNumber: number, bookName: string, chapter: number, verse?: number | null) {
   if (code === "TPT") {

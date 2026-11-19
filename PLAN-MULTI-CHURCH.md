@@ -41,6 +41,8 @@ Any **church, ministry, gospel artist or organisation** starts its own **porch**
 | Old plan **Step 1**: porch tables, Phaneroo as porch 1 | ✅ Done in Stage 2 |
 | Old plan **Step 2**: admins instead of the founder | ✅ Done in Stage 2 |
 | **Stage 2:** the foundation | ✅ Done (19 Nov). Two-church test: 14 passed, 0 failed, 5 not private yet (feed, people, chat) |
+| **Stage 3a:** MSG/AMPC hidden; feed, chat, group chats, people, "on the porch now" and one-to-one calls private per porch | ✅ Done (19 Nov). Two-church test: 46 passed, 0 failed, 0 not private yet |
+| **Stage 3b:** offices, tour doors, read shelf, notifications | ❌ Not started |
 | Stages 3–8 | ❌ Not started |
 
 ---
@@ -218,7 +220,9 @@ After every stage: git undo point, CHANGES.md, "after" pictures where screens ch
    - Add `porches` (with porch type), `porch_settings`, `porch_admins`, `platform_owners` and each person's church (`profiles.porch_id`). Phaneroo becomes porch 1, and every existing account joins it.
    - **Admins instead of the founder**, and remove "first account becomes founder".
    - Test: Phaneroo looks identical (pictures), the admin keeps every tool, a member gets none, and a second admin can be added.
-3. **Porch tags, one area at a time.** First, hide the MSG and AMPC Bibles (decision 5). Then: feed → chat → people and "on the porch now" → offices → tour doors → read shelf → notifications. Two-church test after each area.
+3. **Porch tags, one area at a time**, in two halves.
+   - **3a** ✅ Done (19 Nov): MSG and AMPC hidden; feed, chat (with group chats), people and profiles, "on the porch now", and one-to-one calls only within a porch.
+   - **3b**: offices (and the office-head and report pickers), tour doors (Events, Serve, Transport, My 20 and its SMS, Pray, Feedback), read shelf and devotional, notifications and alerts ("send to everyone" becomes "everyone in this porch"), and per-porch wording and sounds. Two-church test after each area.
 4. **Themes and the new design**, one screen at a time, following `design-reference/`. Hide the old photo and texture settings and the old Themes menu (decisions 2 and 3), and make Dawn / Dusk / Night a gentle dimmer (decision 4). The colour settings come first, then Porch, Tour, Offices (with its new tab and office actions), Chat, Read, Presence, Conversation and profile. Phaneroo uses Porch Evening.
 5. **Joining, leaving and starting a porch**, with invite codes, the 3-step Start a porch screen, and platform-owner approval.
 6. **Public porch**: porch pages, following, public posts and reactions (separate tables).

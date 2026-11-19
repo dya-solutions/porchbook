@@ -48,6 +48,7 @@ async function readPorch(sql: Sql, userId: string) {
             (p.last_touch is null or p.last_touch < now() - interval '5 minutes') as idle, p.status
        from presence p join profiles pr on pr.user_id = p.user_id
       where p.status <> 'hidden' and p.last_beat > now() - interval '75 seconds' and p.user_id <> $1
+        and pr.porch_id = my_porch($1)
       order by (p.last_touch is null or p.last_touch < now() - interval '5 minutes'), p.last_touch desc nulls last
       limit 60`,
     [userId],

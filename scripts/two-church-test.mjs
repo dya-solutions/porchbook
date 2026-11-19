@@ -26,7 +26,7 @@ const require = createRequire(join(ROOT, "package.json"));
 const { chromium } = require("playwright");
 
 /** Areas already made private (Stage 3 adds to this list, one area at a time). */
-const AREAS_DONE = [];
+const AREAS_DONE = ["feed", "people", "chat", "groups", "presence", "calls"];
 
 const PORT = 8090;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -189,8 +189,89 @@ try {
   const benSees = await ben.call("lib/porch/api.ts", "getPerson", { userId: ann.userId });
   record("isolation", "people", "Ben can't open Ann's profile", !JSON.stringify(benSees ?? {}).includes("Ann Admin"));
 
+  await helper("makeAdmin", { email: ben.email, porchId: porchB }); // Ben runs Porch B, so his admin tools are tested too
+  const benRoll = await ben.call("lib/porch/roll.ts", "listRoll");
+  record("isolation", "people", "Ben's roll (as Porch B's admin) does not list Ann", !JSON.stringify(benRoll ?? {}).includes("Ann Admin"));
+
+  // ---- Feed: Ben must be refused, not just kept from seeing ----
+  const abeReply = await abe.call("lib/porch/api.ts", "addComment", { postId, body: "Amen from Abe" });
+  record("sanity", "feed", "Abe (same porch) can reply to Ann's post", abeReply?.ok === true);
+  const afterAbe = await abe.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  const annPost = (afterAbe?.posts ?? []).find((p) => p.id === postId);
+  const abeCommentId = annPost?.comments?.find((c) => (c.body ?? "").includes("Amen from Abe"))?.id;
+
+  const benReact = await ben.call("lib/porch/api.ts", "setReaction", { postId, kind: "care" });
+  record("isolation", "feed", "Ben is refused when he reacts to Porch A's post", benReact?.ok === false);
+  const benReply = await ben.call("lib/porch/api.ts", "addComment", { postId, body: "Reply from Porch B" });
+  record("isolation", "feed", "Ben is refused when he replies to Porch A's post", benReply?.ok === false);
+  const benKeep = await ben.call("lib/porch/api.ts", "toggleKeep", { postId });
+  record("isolation", "feed", "Ben is refused when he keeps Porch A's post", benKeep?.ok === false);
+  if (abeCommentId) {
+    const benCommentReact = await ben.call("lib/porch/api.ts", "setCommentReaction", { commentId: abeCommentId, kind: "care" });
+    record("isolation", "feed", "Ben is refused when he reacts to a reply in Porch A", benCommentReact?.ok === false);
+  }
+  const askBen = await ann.call("lib/porch/api.ts", "createPost", { room: "ask", body: "A question for Ben", askedTo: ben.userId });
+  const benFeedAgain = await ben.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  record("isolation", "feed", "Ann can't send a question to Ben in another porch", askBen?.ok === false && !JSON.stringify(benFeedAgain ?? {}).includes("A question for Ben"));
+  const finalPost = ((await abe.call("lib/porch/api.ts", "getFeed", { filter: "all" }))?.posts ?? []).find((p) => p.id === postId);
+  const leftovers = JSON.stringify(finalPost ?? {});
+  record("isolation", "feed", "Nothing of Ben's reached Porch A's post (no reply, no reaction)", Boolean(finalPost) && !leftovers.includes("Reply from Porch B") && !leftovers.includes(ben.userId));
+
+  // ---- Chat (one-to-one) ----
+  const annToAbe = await ann.call("lib/porch/api.ts", "sendMessage", { userId: abe.userId, body: "Private chat inside Porch A" });
+  record("sanity", "chat", "Ann can message Abe (same porch)", annToAbe?.ok === true);
   const sent = await ben.call("lib/porch/api.ts", "sendMessage", { userId: ann.userId, body: "Hello from Porch B" });
-  record("isolation", "chat", "Ben can't message Ann", sent?.ok !== true);
+  record("isolation", "chat", "Ben is refused when he messages Ann", sent?.ok === false);
+  const benThreads = await ben.call("lib/porch/api.ts", "listThreads");
+  record("isolation", "chat", "Ben's chat list shows nothing from Porch A", !JSON.stringify(benThreads ?? {}).match(/Ann Admin|Abe Member|Private chat inside Porch A/));
+  const benOpensAnn = await ben.call("lib/porch/api.ts", "getThread", { userId: ann.userId });
+  record("isolation", "chat", "Ben is refused when he opens a conversation with Ann", benOpensAnn?.profile === null);
+  const abeThread = await abe.call("lib/porch/api.ts", "getThread", { userId: ann.userId });
+  const annMessageId = (abeThread?.messages ?? []).find((m) => m.body === "Private chat inside Porch A")?.id;
+  if (annMessageId) {
+    const benReactsMsg = await ben.call("lib/porch/chat.ts", "reactMessage", { messageId: annMessageId, emoji: "🙏" });
+    record("isolation", "chat", "Ben is refused when he reacts to a Porch A message", benReactsMsg?.ok === false);
+  }
+
+  // ---- Group chats ----
+  const group = await ann.call("lib/porch/groups.ts", "startGroup", { name: "Porch A prayer group", purpose: "Praying together" });
+  record("sanity", "groups", "Ann can start a group in Porch A", group?.ok === true);
+  if (group?.id) {
+    const note = await ann.call("lib/porch/groups.ts", "addGroupNote", { groupId: group.id, body: "Group chat inside Porch A" });
+    record("sanity", "groups", "Ann can write in her group", note?.ok === true);
+    const benGroup = await ben.call("lib/porch/groups.ts", "getGroup", { id: group.id });
+    record("isolation", "groups", "Ben is refused when he opens Porch A's group", benGroup === null);
+    const benPlain = await ben.call("lib/porch/groups.ts", "openPlainGroup", { id: group.id });
+    record("isolation", "groups", "Ben is refused the group page too", !JSON.stringify(benPlain ?? {}).includes("Porch A prayer group"));
+    const benNote = await ben.call("lib/porch/groups.ts", "addGroupNote", { groupId: group.id, body: "Group note from Porch B" });
+    record("isolation", "groups", "Ben is refused when he writes in Porch A's group", benNote?.ok === false);
+    const benJoin = await ben.call("lib/porch/groups.ts", "joinGroup", { id: group.id });
+    record("isolation", "groups", "Ben is refused when he joins Porch A's group", benJoin?.ok === false);
+    const benBrowse = await ben.call("lib/porch/groups.ts", "browseGroups");
+    record("isolation", "groups", "Ben's group list doesn't show Porch A's group", !JSON.stringify(benBrowse ?? {}).includes("Porch A prayer group"));
+    const addBen = await ann.call("lib/porch/groups.ts", "addToGroup", { groupId: group.id, userId: ben.userId });
+    record("isolation", "groups", "Ann can't add Ben (another porch) to her group", addBen?.ok === false);
+  }
+
+  // ---- On the porch now ----
+  await ann.call("lib/porch/presence.ts", "setPresence", { status: "online" });
+  await abe.call("lib/porch/presence.ts", "setPresence", { status: "online" });
+  const benPorch = await ben.call("lib/porch/presence.ts", "setPresence", { status: "online" });
+  record("isolation", "presence", "Ben's \"on the porch now\" doesn't show Ann or Abe", !JSON.stringify(benPorch ?? {}).match(/Ann Admin|Abe Member/));
+  const abePorch = await abe.call("lib/porch/presence.ts", "setPresence", { status: "online" });
+  record("sanity", "presence", "Abe sees Ann on the porch (same porch)", JSON.stringify(abePorch ?? {}).includes("Ann Admin"));
+
+  // ---- One-to-one calls ----
+  const benCalls = await ben.call("lib/porch/groups.ts", "openPersonCall", { userId: ann.userId });
+  record("isolation", "calls", "Ben is refused when he calls Ann", benCalls?.ok === false);
+  const benRings = await ben.call("lib/porch/call-ask.ts", "ringPerson", { userId: ann.userId, video: false });
+  record("isolation", "calls", "Ben is refused when he rings Ann", benRings?.ok === false);
+  const benAsks = await ben.call("lib/porch/call-ask.ts", "askToCall", { userId: ann.userId });
+  record("isolation", "calls", "Ben is refused when he asks to call Ann", benAsks?.ok === false);
+  const benOffline = await ben.call("lib/porch/line-ring.ts", "ringOffline", { to: ann.userId });
+  record("isolation", "calls", "Ben is refused when he rings Ann's phone", benOffline?.ok === false);
+  const abeCalls = await abe.call("lib/porch/groups.ts", "openPersonCall", { userId: ann.userId });
+  record("sanity", "calls", "Abe can call Ann (same porch)", abeCalls?.ok === true);
 
   // ---------------- Summary ----------------
   const failed = results.filter((r) => !r.pass && (r.kind !== "isolation" || AREAS_DONE.includes(r.area)));

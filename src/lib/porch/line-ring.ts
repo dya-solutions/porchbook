@@ -18,7 +18,8 @@ export const ringOffline = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if (!data.to || data.to === context.userId) return { ok: false as const, reached: 0 };
     const sql = await getSql();
-    const person = await sql.query<{ user_id: string }>("select user_id from profiles where user_id = $1", [data.to]);
+    // Calls only between members of the same church porch.
+    const person = await sql.query<{ user_id: string }>("select user_id from profiles where user_id = $1 and same_porch(user_id, $2)", [data.to, context.userId]);
     if (!person.length) return { ok: false as const, reached: 0 };
     await sql.query(
       `create table if not exists line_rings (

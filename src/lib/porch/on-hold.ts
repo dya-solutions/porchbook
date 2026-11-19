@@ -17,6 +17,8 @@ export const ON_HOLD = {
   devotionVoice: true,
   /** Machine translation of the devotional (Sunbird). Phaneroo's own Runyankore and Luganda still show. */
   machineTranslation: true,
+  /** The Message (MSG) and Amplified Classic (AMPC) Bibles (uploaded versions and "Read in…" links), until JT confirms permission (decision 5). */
+  permissionBibles: true,
 } as const;
 
 export type OnHoldFeature = keyof typeof ON_HOLD;

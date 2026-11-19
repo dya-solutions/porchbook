@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getSql, type Sql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
+import { shown } from "@/lib/porch/on-hold";
 
 /**
  * Founder-only demo Bibles (proof of concept). Copyrighted translations are kept here, compressed,
@@ -24,6 +25,11 @@ async function ensure(sql: Sql) {
   `;
 }
 
+/** MSG and AMPC stay hidden for everyone until JT confirms permission (BUILD-BRIEF.md decision 5). */
+function hiddenVersions(): string[] {
+  return shown("permissionBibles") ? [] : ["MSG", "AMPC"];
+}
+
 async function isFounder(sql: Sql, userId: string) {
   const rows = await sql.query<{ is_founder: unknown }>("select is_platform_owner($1) as is_founder", [userId]);
   return truthy(rows[0]?.is_founder);
@@ -35,7 +41,7 @@ export const listDemoBibles = createServerFn({ method: "POST" })
     const sql = await getSql();
     if (!(await isFounder(sql, context.userId))) return { founder: false, bibles: [] as { id: string; abbreviation: string; name: string }[] };
     await ensure(sql);
-    const rows = await sql.query<{ id: string; abbreviation: string; name: string }>("select id, abbreviation, name from demo_bibles order by added_at");
+    const rows = await sql.query<{ id: string; abbreviation: string; name: string }>("select id, abbreviation, name from demo_bibles where not (upper(abbreviation) = any($1::text[])) order by added_at", [hiddenVersions()]);
     return { founder: true, bibles: rows };
   });
 
@@ -46,7 +52,7 @@ export const getDemoBible = createServerFn({ method: "POST" })
     const sql = await getSql();
     if (!(await isFounder(sql, context.userId))) return { ok: false as const };
     await ensure(sql);
-    const rows = await sql.query<{ data: string }>("select data from demo_bibles where id = $1", [data.id]);
+    const rows = await sql.query<{ data: string }>("select data from demo_bibles where id = $1 and not (upper(abbreviation) = any($2::text[]))", [data.id, hiddenVersions()]);
     return rows[0] ? { ok: true as const, data: rows[0].data } : { ok: false as const };
   });
 

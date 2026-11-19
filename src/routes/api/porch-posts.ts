@@ -22,8 +22,8 @@ export const Route = createFileRoute("/api/porch-posts")({
         const id = Number(url.searchParams.get("id"));
         if (Number.isInteger(id) && id > 0) {
           const rows = await sql.query<{ photo: string; photo_mime: string }>(
-            "select photo, photo_mime from posts where id = $1",
-            [id],
+            "select photo, photo_mime from posts where id = $1 and porch_id = my_porch($2)",
+            [id, session.user.id],
           );
           const row = rows[0];
           const stored = asText(row?.photo);
@@ -42,8 +42,10 @@ export const Route = createFileRoute("/api/porch-posts")({
                   (p.photo is not null and p.photo <> '') as has_photo
            from posts p
            join profiles a on a.user_id = p.author_id
+           where p.porch_id = my_porch($1)
            order by p.created_at desc
            limit 30`,
+          [session.user.id],
         );
         return Response.json({
           ok: true,

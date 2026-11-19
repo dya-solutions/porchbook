@@ -84,8 +84,8 @@ export const askToCall = createServerFn({ method: "POST" })
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
     await ensureCallAsk(sql);
-    const found = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${data.userId}`;
-    if (!found.length) return { ok: false as const, error: "That person hasn't joined Porchbook." };
+    const found = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${data.userId} and same_porch(user_id, ${context.userId})`;
+    if (!found.length) return { ok: false as const, error: "You can only call people in your porch." };
     const existing = await sql<{ status: string }>`
       select status from call_permissions
       where owner_id = ${data.userId} and caller_id = ${context.userId}
@@ -225,6 +225,9 @@ export const ringPerson = createServerFn({ method: "POST" })
     if (!data.userId || data.userId === context.userId) return { ok: false as const };
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
+    // Calls only between members of the same church porch.
+    const same = await sql<{ ok: unknown }>`select same_porch(${context.userId}, ${data.userId}) as ok`;
+    if (!(same[0]?.ok === true || same[0]?.ok === "t")) return { ok: false as const };
     await ensureCallAsk(sql);
     await ensureCallRing(sql);
     const pairKey = [context.userId, data.userId].sort().join("\n");
