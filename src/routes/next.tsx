@@ -1,5 +1,5 @@
 import { PeepHole } from "@/components/porch/peep-hole";
-import { W, WHint, useWord } from "@/components/porch/words";
+import { W, WHint, useWord, useWordsState } from "@/components/porch/words";
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { tuneIn } from "@/lib/porch/fm-player";
@@ -228,6 +228,7 @@ function DoorButton({ mode, label }: { mode: Extract<TourMode, "groups" | "offic
 }
 
 function TransportButton() {
+  const { words: venueWords } = useWordsState();
   const { user } = useCurrentUserState();
   const [down, setDown] = useState(false);
   const open = useTourMode() === "transport";
@@ -454,13 +455,16 @@ function TransportButton() {
             <div className="mt-2 grid gap-2">
               {(
                 [
-                  ["pmi", "Phaneroo Grounds"],
-                  ["pmm", "Phaneroo Mbarara"],
+                  ["pmi", <W key="pmi" k="transport.venue-pmi">Phaneroo Grounds</W>],
+                  ["pmm", <W key="pmm" k="transport.venue-pmm">Phaneroo Mbarara</W>],
                   ["anniversary", eventInfo?.name || "The event"],
-                  ["manifest", "Manifest"],
+                  ["manifest", <W key="manifest" k="transport.venue-manifest">Manifest</W>],
                   ["other", "Other"],
                 ] as const
-              ).map(([key, label]) => (
+              )
+                // A place with no name (other churches, until they name it) isn't offered.
+                .filter(([key]) => key === "anniversary" || key === "other" || (venueWords[`transport.venue-${key}`] ?? "x") !== "")
+                .map(([key, label]) => (
                 <button
                   key={key}
                   type="button"

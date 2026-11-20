@@ -22,6 +22,9 @@ async function ensure(sql: Sql) {
   ready = true;
 }
 
+/** Wording that names Phaneroo or its events; blank for other churches until they write their own. */
+export const PHANEROO_ONLY_WORDS = ["serve.subtitle", "serve.intro", "my20.event", "transport.venue-pmi", "transport.venue-pmm", "transport.venue-manifest"];
+
 export const getWords = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -29,7 +32,11 @@ export const getWords = createServerFn({ method: "POST" })
     const porch = await myPorchId(sql, context.userId);
     await ensure(sql);
     const rows = await sql.query<{ key: string; text: string }>(`select key, text from porch_words where porch_id = ${porch}`);
-    return { words: Object.fromEntries(rows.map((r) => [r.key, r.text])) as Record<string, string> };
+    const words = Object.fromEntries(rows.map((r) => [r.key, r.text])) as Record<string, string>;
+    // Stage 5a: Phaneroo's own wording on the Serve, My 20 and Transport sheets is Phaneroo's only.
+    // Other churches start with these blank (their admins can write their own with Edit words).
+    if (porch !== 1) for (const key of PHANEROO_ONLY_WORDS) if (!(key in words)) words[key] = "";
+    return { words };
   });
 
 export const setWord = createServerFn({ method: "POST" })

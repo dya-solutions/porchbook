@@ -34,13 +34,19 @@ export const Route = createFileRoute("/api/porch-test")({
               const rows = await sql.query("select id, name, kind, status, verified from porches where id = $1", [Number(body.porchId)]);
               return json({ ok: true, porch: rows[0] ?? null });
             }
+            case "porchInfo": {
+              const rows = await sql.query("select id, name, kind, status, verified, invite_code, main_porch_id, created_by from porches where name = $1 order by id desc limit 1", [String(body.name ?? "")]);
+              return json({ ok: true, porch: rows[0] ?? null });
+            }
             case "createPorch": {
               const rows = await sql.query<{ id: number }>(
                 "insert into porches (name, kind, status) values ($1, $2, 'approved') returning id",
                 [String(body.name ?? "Test porch"), String(body.kind ?? "church")],
               );
               await sql.query("insert into porch_settings (porch_id) values ($1) on conflict do nothing", [rows[0].id]);
-              return json({ ok: true, id: rows[0].id });
+              // Church porches have an invite code (Stage 5a).
+              if (String(body.kind ?? "church") === "church") await sql.query("update porches set invite_code = $2 where id = $1", [rows[0].id, `TEST${rows[0].id}-CODE`]);
+              return json({ ok: true, id: rows[0].id, code: String(body.kind ?? "church") === "church" ? `TEST${rows[0].id}-CODE` : null });
             }
             case "person": {
               const userId = await userIdOf(body.email);

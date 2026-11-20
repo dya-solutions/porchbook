@@ -67,8 +67,10 @@ const SETUP: string[] = [
    on conflict (id) do nothing`,
   `select setval(pg_get_serial_sequence('porches', 'id'), greatest((select max(id) from porches), 1))`,
   `insert into porch_settings (porch_id) values (1) on conflict (porch_id) do nothing`,
-  // Everyone without a church porch belongs to Phaneroo (until invite codes arrive in Stage 5).
-  `update profiles set porch_id = 1 where porch_id is null`,
+  // Before Stage 5a everyone without a church porch was put in Phaneroo. That happens once, for
+  // the accounts made before invite codes; new accounts now join the church whose code they use.
+  `with done as (insert into porch_steps (step) values ('legacy-everyone-phaneroo') on conflict (step) do nothing returning step)
+   update profiles set porch_id = 1 where porch_id is null and exists (select 1 from done)`,
   `create or replace function is_porch_admin(uid text) returns boolean language sql stable as $$
      select exists (
        select 1 from porch_admins a
@@ -299,7 +301,7 @@ export async function myPorchId(sql: Sql, userId: string): Promise<number> {
 
 /** A newly signed-up person joins Phaneroo for now, and gets any role porch-local.json gives them. */
 export async function placeNewProfile(sql: Sql, userId: string): Promise<void> {
-  await sql.query("update profiles set porch_id = $2 where user_id = $1 and porch_id is null", [userId, PHANEROO_PORCH_ID]);
+  // Stage 5a: a new account joins no church by itself. It joins with an invite code, or starts a porch.
   await applyLocalSetup(sql, userId);
 }
 

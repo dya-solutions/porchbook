@@ -20,11 +20,13 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as NextRouteImport } from './routes/next'
 import { Route as PorchSettingsRouteImport } from './routes/porch-settings'
+import { Route as PorchesWaitingRouteImport } from './routes/porches-waiting'
 import { Route as PorchguyRouteImport } from './routes/porchguy'
 import { Route as PresenceRouteImport } from './routes/presence'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ReadRouteImport } from './routes/read'
 import { Route as RollRouteImport } from './routes/roll'
+import { Route as StartRouteImport } from './routes/start'
 import { Route as TourOfficesRouteImport } from './routes/tour-offices'
 import { Route as ApiBibleWorkerRouteImport } from './routes/api/bible-worker'
 import { Route as ApiBrowseRouteImport } from './routes/api/browse'
@@ -53,6 +55,7 @@ import { Route as ApiYtLiveRouteImport } from './routes/api/yt-live'
 import { Route as ApiYtThumbRouteImport } from './routes/api/yt-thumb'
 import { Route as GroupsIndexRouteImport } from './routes/groups/index'
 import { Route as GroupsGroupIdRouteImport } from './routes/groups/$groupId'
+import { Route as JoinCodeRouteImport } from './routes/join/$code'
 import { Route as MessagesIndexRouteImport } from './routes/messages/index'
 import { Route as MessagesUserIdRouteImport } from './routes/messages/$userId'
 import { Route as OfficesIndexRouteImport } from './routes/offices/index'
@@ -118,6 +121,11 @@ const PorchSettingsRoute = PorchSettingsRouteImport.update({
   path: '/porch-settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PorchesWaitingRoute = PorchesWaitingRouteImport.update({
+  id: '/porches-waiting',
+  path: '/porches-waiting',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PorchguyRoute = PorchguyRouteImport.update({
   id: '/porchguy',
   path: '/porchguy',
@@ -141,6 +149,11 @@ const ReadRoute = ReadRouteImport.update({
 const RollRoute = RollRouteImport.update({
   id: '/roll',
   path: '/roll',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StartRoute = StartRouteImport.update({
+  id: '/start',
+  path: '/start',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TourOfficesRoute = TourOfficesRouteImport.update({
@@ -283,6 +296,11 @@ const GroupsGroupIdRoute = GroupsGroupIdRouteImport.update({
   path: '/groups/$groupId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JoinCodeRoute = JoinCodeRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MessagesIndexRoute = MessagesIndexRouteImport.update({
   id: '/messages/',
   path: '/messages/',
@@ -341,11 +359,13 @@ export interface FileRoutesByFullPath {
   '/manual': typeof ManualRoute
   '/next': typeof NextRoute
   '/porch-settings': typeof PorchSettingsRoute
+  '/porches-waiting': typeof PorchesWaitingRoute
   '/porchguy': typeof PorchguyRoute
   '/presence': typeof PresenceRoute
   '/privacy': typeof PrivacyRoute
   '/read': typeof ReadRoute
   '/roll': typeof RollRoute
+  '/start': typeof StartRoute
   '/tour-offices': typeof TourOfficesRoute
   '/api/bible-worker': typeof ApiBibleWorkerRoute
   '/api/browse': typeof ApiBrowseRoute
@@ -373,6 +393,7 @@ export interface FileRoutesByFullPath {
   '/api/yt-live': typeof ApiYtLiveRoute
   '/api/yt-thumb': typeof ApiYtThumbRoute
   '/groups/$groupId': typeof GroupsGroupIdRoute
+  '/join/$code': typeof JoinCodeRoute
   '/messages/$userId': typeof MessagesUserIdRoute
   '/offices/$officeKey': typeof OfficesOfficeKeyRoute
   '/people/$userId': typeof PeopleUserIdRoute
@@ -396,11 +417,13 @@ export interface FileRoutesByTo {
   '/manual': typeof ManualRoute
   '/next': typeof NextRoute
   '/porch-settings': typeof PorchSettingsRoute
+  '/porches-waiting': typeof PorchesWaitingRoute
   '/porchguy': typeof PorchguyRoute
   '/presence': typeof PresenceRoute
   '/privacy': typeof PrivacyRoute
   '/read': typeof ReadRoute
   '/roll': typeof RollRoute
+  '/start': typeof StartRoute
   '/tour-offices': typeof TourOfficesRoute
   '/api/bible-worker': typeof ApiBibleWorkerRoute
   '/api/browse': typeof ApiBrowseRoute
@@ -428,6 +451,7 @@ export interface FileRoutesByTo {
   '/api/yt-live': typeof ApiYtLiveRoute
   '/api/yt-thumb': typeof ApiYtThumbRoute
   '/groups/$groupId': typeof GroupsGroupIdRoute
+  '/join/$code': typeof JoinCodeRoute
   '/messages/$userId': typeof MessagesUserIdRoute
   '/offices/$officeKey': typeof OfficesOfficeKeyRoute
   '/people/$userId': typeof PeopleUserIdRoute
@@ -452,11 +476,13 @@ export interface FileRoutesById {
   '/manual': typeof ManualRoute
   '/next': typeof NextRoute
   '/porch-settings': typeof PorchSettingsRoute
+  '/porches-waiting': typeof PorchesWaitingRoute
   '/porchguy': typeof PorchguyRoute
   '/presence': typeof PresenceRoute
   '/privacy': typeof PrivacyRoute
   '/read': typeof ReadRoute
   '/roll': typeof RollRoute
+  '/start': typeof StartRoute
   '/tour-offices': typeof TourOfficesRoute
   '/api/bible-worker': typeof ApiBibleWorkerRoute
   '/api/browse': typeof ApiBrowseRoute
@@ -484,6 +510,7 @@ export interface FileRoutesById {
   '/api/yt-live': typeof ApiYtLiveRoute
   '/api/yt-thumb': typeof ApiYtThumbRoute
   '/groups/$groupId': typeof GroupsGroupIdRoute
+  '/join/$code': typeof JoinCodeRoute
   '/messages/$userId': typeof MessagesUserIdRoute
   '/offices/$officeKey': typeof OfficesOfficeKeyRoute
   '/people/$userId': typeof PeopleUserIdRoute
@@ -509,11 +536,13 @@ export interface FileRouteTypes {
     | '/manual'
     | '/next'
     | '/porch-settings'
+    | '/porches-waiting'
     | '/porchguy'
     | '/presence'
     | '/privacy'
     | '/read'
     | '/roll'
+    | '/start'
     | '/tour-offices'
     | '/api/bible-worker'
     | '/api/browse'
@@ -541,6 +570,7 @@ export interface FileRouteTypes {
     | '/api/yt-live'
     | '/api/yt-thumb'
     | '/groups/$groupId'
+    | '/join/$code'
     | '/messages/$userId'
     | '/offices/$officeKey'
     | '/people/$userId'
@@ -564,11 +594,13 @@ export interface FileRouteTypes {
     | '/manual'
     | '/next'
     | '/porch-settings'
+    | '/porches-waiting'
     | '/porchguy'
     | '/presence'
     | '/privacy'
     | '/read'
     | '/roll'
+    | '/start'
     | '/tour-offices'
     | '/api/bible-worker'
     | '/api/browse'
@@ -596,6 +628,7 @@ export interface FileRouteTypes {
     | '/api/yt-live'
     | '/api/yt-thumb'
     | '/groups/$groupId'
+    | '/join/$code'
     | '/messages/$userId'
     | '/offices/$officeKey'
     | '/people/$userId'
@@ -619,11 +652,13 @@ export interface FileRouteTypes {
     | '/manual'
     | '/next'
     | '/porch-settings'
+    | '/porches-waiting'
     | '/porchguy'
     | '/presence'
     | '/privacy'
     | '/read'
     | '/roll'
+    | '/start'
     | '/tour-offices'
     | '/api/bible-worker'
     | '/api/browse'
@@ -651,6 +686,7 @@ export interface FileRouteTypes {
     | '/api/yt-live'
     | '/api/yt-thumb'
     | '/groups/$groupId'
+    | '/join/$code'
     | '/messages/$userId'
     | '/offices/$officeKey'
     | '/people/$userId'
@@ -675,11 +711,13 @@ export interface RootRouteChildren {
   ManualRoute: typeof ManualRoute
   NextRoute: typeof NextRoute
   PorchSettingsRoute: typeof PorchSettingsRoute
+  PorchesWaitingRoute: typeof PorchesWaitingRoute
   PorchguyRoute: typeof PorchguyRoute
   PresenceRoute: typeof PresenceRoute
   PrivacyRoute: typeof PrivacyRoute
   ReadRoute: typeof ReadRoute
   RollRoute: typeof RollRoute
+  StartRoute: typeof StartRoute
   TourOfficesRoute: typeof TourOfficesRoute
   ApiBibleWorkerRoute: typeof ApiBibleWorkerRoute
   ApiBrowseRoute: typeof ApiBrowseRoute
@@ -707,6 +745,7 @@ export interface RootRouteChildren {
   ApiYtLiveRoute: typeof ApiYtLiveRoute
   ApiYtThumbRoute: typeof ApiYtThumbRoute
   GroupsGroupIdRoute: typeof GroupsGroupIdRoute
+  JoinCodeRoute: typeof JoinCodeRoute
   MessagesUserIdRoute: typeof MessagesUserIdRoute
   OfficesOfficeKeyRoute: typeof OfficesOfficeKeyRoute
   PeopleUserIdRoute: typeof PeopleUserIdRoute
@@ -798,6 +837,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PorchSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/porches-waiting': {
+      id: '/porches-waiting'
+      path: '/porches-waiting'
+      fullPath: '/porches-waiting'
+      preLoaderRoute: typeof PorchesWaitingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/porchguy': {
       id: '/porchguy'
       path: '/porchguy'
@@ -831,6 +877,13 @@ declare module '@tanstack/react-router' {
       path: '/roll'
       fullPath: '/roll'
       preLoaderRoute: typeof RollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/start': {
+      id: '/start'
+      path: '/start'
+      fullPath: '/start'
+      preLoaderRoute: typeof StartRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tour-offices': {
@@ -1029,6 +1082,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GroupsGroupIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/join/$code': {
+      id: '/join/$code'
+      path: '/join/$code'
+      fullPath: '/join/$code'
+      preLoaderRoute: typeof JoinCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/messages/': {
       id: '/messages/'
       path: '/messages'
@@ -1107,11 +1167,13 @@ const rootRouteChildren: RootRouteChildren = {
   ManualRoute: ManualRoute,
   NextRoute: NextRoute,
   PorchSettingsRoute: PorchSettingsRoute,
+  PorchesWaitingRoute: PorchesWaitingRoute,
   PorchguyRoute: PorchguyRoute,
   PresenceRoute: PresenceRoute,
   PrivacyRoute: PrivacyRoute,
   ReadRoute: ReadRoute,
   RollRoute: RollRoute,
+  StartRoute: StartRoute,
   TourOfficesRoute: TourOfficesRoute,
   ApiBibleWorkerRoute: ApiBibleWorkerRoute,
   ApiBrowseRoute: ApiBrowseRoute,
@@ -1139,6 +1201,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiYtLiveRoute: ApiYtLiveRoute,
   ApiYtThumbRoute: ApiYtThumbRoute,
   GroupsGroupIdRoute: GroupsGroupIdRoute,
+  JoinCodeRoute: JoinCodeRoute,
   MessagesUserIdRoute: MessagesUserIdRoute,
   OfficesOfficeKeyRoute: OfficesOfficeKeyRoute,
   PeopleUserIdRoute: PeopleUserIdRoute,

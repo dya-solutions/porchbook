@@ -4,7 +4,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { DEFAULT_THEME, THEMES, type ThemeId } from "@/lib/porch/themes";
 
 /** The viewer's church porch as the top bar shows it: its name, initials and theme (Stage 4a). */
-export type PorchLook = { name: string; shortName: string; initials: string; theme: ThemeId; admin: boolean; tourOff: string[] };
+export type PorchLook = { name: string; shortName: string; initials: string; theme: ThemeId; admin: boolean; tourOff: string[]; member: boolean; owner: boolean; waiting: boolean };
 
 /** The Tour doors a porch can switch on or off in Porch settings (Stage 4c). */
 export const TOUR_DOORS = [
@@ -34,8 +34,8 @@ export const myPorchLook = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<PorchLook> => {
     const sql = await getSql();
-    const rows = await sql.query<{ name: string; short_name: string; theme: string | null; admin: unknown; tour_off: unknown }>(
-      `select p.name, p.short_name, s.theme, s.tour_off, is_porch_admin($1) as admin
+    const rows = await sql.query<{ name: string; short_name: string; theme: string | null; admin: unknown; tour_off: unknown; status: string }>(
+      `select p.name, p.short_name, p.status, s.theme, s.tour_off, is_porch_admin($1) as admin
          from porches p left join porch_settings s on s.porch_id = p.id
         where p.id = my_porch($1)`,
       [context.userId],
@@ -45,7 +45,19 @@ export const myPorchLook = createServerFn({ method: "POST" })
     const shortName = row?.short_name || name;
     const theme = (THEMES.some((t) => t.id === row?.theme) ? row?.theme : DEFAULT_THEME) as ThemeId;
     const admin = row?.admin === true || row?.admin === "t";
-    return { name, shortName, initials: initialsOf(shortName), theme, admin, tourOff: doorList(row?.tour_off) };
+    const owner = await sql.query<{ owner: unknown }>("select is_platform_owner($1) as owner", [context.userId]);
+    return {
+      name,
+      shortName,
+      initials: initialsOf(shortName),
+      theme,
+      admin,
+      tourOff: doorList(row?.tour_off),
+      // Stage 5a: not in a church yet (joins with an invite code), and the platform owner.
+      member: Boolean(row),
+      owner: isTrue(owner[0]?.owner),
+      waiting: row?.status === "waiting",
+    };
   });
 
 /** A porch admin chooses the porch's theme (Porch settings, Stage 4c). */

@@ -391,6 +391,57 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
     - `../after-stage4d/morning-light/` (phone)
   - **New helper:** `../set-theme.mjs` sets the test porch's theme for pictures.
 
+### 10. Stage 5a (20 Nov 2026): joining and starting a porch
+- **Follow-up from 4d:** new churches start with **blank wording** on the Serve, My 20 and Transport sheets: Serve's subtitle and welcome, My 20's "31st Night of Prayer", and Transport's "Phaneroo Grounds", "Phaneroo Mbarara" and "Manifest" places.
+  - Phaneroo keeps its own wording.
+  - Another church's admin can write theirs with Edit words.
+  - A place with no name isn't offered on Transport.
+- **Welcome screen** (Main.dc.html, `welcome-screen.tsx`): "Your church, on one porch." with **Join your church's porch** (invite code), **Start a porch**, and **Already a member? Sign in**.
+  - After a right code, it shows "Joining Phaneroo Ministries Mbarara · Mbarara, Uganda" above the account form.
+  - The earlier "tap the phone" welcome is kept in the code, unused.
+- **No more "everyone joins Phaneroo".** A new account joins the church **whose invite code it uses**.
+  - Someone signed in but not in a church yet sees the same screen to type a code (or start a porch).
+  - Accounts made before today were already placed. That was done once and doesn't repeat.
+- **Invite codes and links:**
+  - Every church porch has an invite code, e.g. Phaneroo's is PHANEROO-MBARARA. Other codes look like GRACE-7K2PQ, with no 0/O or 1/I/L, so they're easy to read aloud.
+  - The **Invite** page shows the church's code and its **invite link** (`/join/CODE`). The WhatsApp, Instagram, Facebook and SMS buttons now send "Join [church] on Porchbook. Our invite code is …" with the link.
+  - Admins have **Reset the code**: a new code is made, and the old code and link stop working.
+  - Opening an invite link keeps the code on the phone, so the person joins right after making their account.
+- **Start a porch** (StartPorch.dc.html, new page `/start`), in 3 steps:
+  1. **The porch:**
+     - what kind: Church, Ministry, Gospel artist or Organisation;
+     - its name, and its town and country;
+     - **This is a branch**, with "Find the main porch". It searches approved church porches, and the main porch is recorded. Linking branches is Stage 7.
+  2. **Your account** (skipped if you're signed in).
+  3. **Done:** "waiting for approval", and for a church, its new invite code.
+- **Who belongs where** (decision of 19 Nov):
+  - The person who starts a **church** becomes its first member and admin.
+  - A **ministry, gospel artist or organisation** porch has only a small team of admins and no members, and no invite code. The person who starts it stays a member of their own church, and running it doesn't make them an admin of their church.
+  - A church member can't start a second church (one church each). Moving church is Stage 5b.
+  - **Your porches**, on your profile, lists the porches you run and where each stands (Waiting for approval, Approved, Declined). **Start a porch** is in Your account.
+- **New porches wait for your approval** (new page `/porches-waiting`, in Your account → **Porches waiting for approval**, platform owner only).
+  - Each one shows its kind, place, who started it, and the main porch if it says it's a branch, with **Approve** and **Decline**.
+  - A waiting porch works privately (feed, chat, offices) but can't post publicly. Public posting is Stage 6.
+  - Declining a church frees its people to join another church, and its admins step down.
+  - Only three porches per person can wait at once.
+- **Checked:**
+  - Type check passes.
+  - **Two-church test: 181 passed, 0 failed, 0 not private yet** (it was 157). New checks:
+    - a new account joins no church by itself;
+    - a wrong code joins nothing;
+    - Phaneroo's code joins Phaneroo, and Porch B's code joins B;
+    - **someone in Porch B can't hop into Porch A with A's code**;
+    - only churches take members by code;
+    - a member can't reset the code, but an admin can (the old code stops working), and **resetting B's code leaves A's alone**;
+    - starting a church (waiting, private, first member and admin) **sees none of Porch A's or Phaneroo's posts**;
+    - starting a ministry keeps the person in their church and doesn't make them a church admin;
+    - a member can't start a second church;
+    - a branch must name an approved main porch, and a branch sees none of the main porch's private posts;
+    - only the platform owner sees the waiting list and can approve, and declining frees the church's people.
+  - "After" pictures: `../after-stage5a/` (phone and computer), including the Welcome, joining with a code, Start a porch and the waiting list.
+- **Fixed during this stage:** the Decline button failed with a database error. Two lines had lost their "$1" when I wrote them. The test caught it before saving.
+- **Test data on this computer:** while checking Decline, I started and declined a ministry porch called "Decline Check Ministry" with the test account. It shows as Declined under the test account's Your porches.
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).

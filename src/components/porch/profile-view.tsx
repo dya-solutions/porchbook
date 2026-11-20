@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { YourPorches } from "@/components/porch/porch-approvals";
 import { onlineState, usePorch } from "@/lib/porch/presence-store";
 import { useEffect, useState, type FormEvent } from "react";
 import { Mail } from "lucide-react";
@@ -120,6 +121,7 @@ export function ProfileView({ userId }: { userId: string }) {
         ) : null}
       </section>
       {page.isSelf && user ? <AccountCard user={user} /> : null}
+      {page.isSelf ? <YourPorches /> : null}
       <section>
         <h2 className="pb-ttl" style={{ fontSize: 20, margin: "8px 4px 0" }}>Recent posts</h2>
         {page.posts.length === 0 ? <p className="mt-2 text-muted">Nothing posted yet.</p> : null}

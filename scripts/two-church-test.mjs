@@ -26,7 +26,7 @@ const require = createRequire(join(ROOT, "package.json"));
 const { chromium } = require("playwright");
 
 /** Areas already made private (Stage 3 adds to this list, one area at a time). */
-const AREAS_DONE = ["feed", "people", "chat", "groups", "presence", "calls", "offices", "events", "serve", "transport", "my20", "pray", "feedback", "read", "notifications", "settings"];
+const AREAS_DONE = ["joining", "starting", "approval", "feed", "people", "chat", "groups", "presence", "calls", "offices", "events", "serve", "transport", "my20", "pray", "feedback", "read", "notifications", "settings"];
 
 const PORT = 8090;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -129,7 +129,12 @@ try {
 
   const ann = await person("Ann Admin", "ann@two-church.test"); // the very first account in this database
   const annState = await helper("person", { email: ann.email });
-  record("foundation", "porches", "A new account joins Phaneroo (porch 1)", annState.porch_id === 1, `porch ${annState.porch_id}`);
+  record("foundation", "joining", "A new account joins no church by itself (no more \"everyone joins Phaneroo\")", annState.porch_id === null || annState.porch_id === undefined, `porch ${annState.porch_id}`);
+  const wrongCode = await ann.call("lib/porch/porch-join.ts", "joinWithCode", { code: "NOT-A-CODE" });
+  record("foundation", "joining", "A wrong invite code joins nothing", wrongCode?.ok === false);
+  const annJoins = await ann.call("lib/porch/porch-join.ts", "joinWithCode", { code: "phaneroo-mbarara" });
+  const annAfterJoin = await helper("person", { email: ann.email });
+  record("foundation", "joining", "With Phaneroo's invite code, Ann joins Phaneroo (porch 1)", annJoins?.ok === true && annAfterJoin.porch_id === 1);
   record("foundation", "admins", "The first account ever is NOT made admin automatically", annState.admin === false);
   const annDesk = await ann.call("lib/porch/api.ts", "founderDesk");
   record("foundation", "admins", "…and the app gives them no admin tools", annDesk?.isFounder === false);
@@ -161,11 +166,80 @@ try {
   const annStorage = await ann.call("lib/porch/storage-settings.ts", "storageInfo");
   record("foundation", "owners", "A porch admin is not a platform owner (shared settings stay closed)", annStorage?.ok === false);
   const olive = await person("Olive Owner", "olive@two-church.test");
+  await olive.call("lib/porch/porch-join.ts", "joinWithCode", { code: "PHANEROO-MBARARA" });
   await helper("makeOwner", { email: olive.email });
   const oliveStorage = await olive.call("lib/porch/storage-settings.ts", "storageInfo");
   record("foundation", "owners", "The platform owner can open the shared settings", oliveStorage?.ok === true);
   const oliveDesk = await olive.call("lib/porch/api.ts", "founderDesk");
   record("foundation", "owners", "Being platform owner does not make you a porch admin", oliveDesk?.isFounder === false);
+
+  const has = (value, text) => JSON.stringify(value ?? {}).includes(text);
+  // ---------------- Joining and starting a porch (Stage 5a) ----------------
+  console.log("\nJoining and starting a porch");
+  await helper("makeAdmin", { email: ben.email, porchId: porchB }); // Ben runs Porch B
+  const codeA = (await helper("porchInfo", { name: "Porch A" })).porch?.invite_code;
+  const codeB = (await helper("porchInfo", { name: "Porch B" })).porch?.invite_code;
+  const checkA = await ann.call("lib/porch/porch-join.ts", "checkInvite", { code: codeA });
+  record("sanity", "joining", "An invite code shows which church it belongs to", checkA?.ok === true && checkA?.name === "Porch A");
+  const cara = await person("Cara New", "cara@two-church.test");
+  const caraJoins = await cara.call("lib/porch/porch-join.ts", "joinWithCode", { code: codeB });
+  const caraState = await helper("person", { email: cara.email });
+  record("sanity", "joining", "Cara joins Porch B with Porch B's code", caraJoins?.ok === true && caraState.porch_id === porchB);
+  const caraTwice = await cara.call("lib/porch/porch-join.ts", "joinWithCode", { code: codeA });
+  const caraStill = await helper("person", { email: cara.email });
+  record("isolation", "joining", "Cara can't hop into Porch A with A's code while she's in Porch B", caraTwice?.ok === false && caraStill.porch_id === porchB);
+  const ministryCode = await cara.call("lib/porch/porch-join.ts", "checkInvite", { code: "MINISTRY-CODE" });
+  record("sanity", "joining", "Only church porches take members by code", ministryCode?.ok === false);
+  const abeInvite = await abe.call("lib/porch/porch-join.ts", "myInvite");
+  const abeReset = await abe.call("lib/porch/porch-join.ts", "resetInvite");
+  record("sanity", "joining", "A member sees the invite code but can't reset it", abeInvite?.ok === true && abeInvite?.code === codeA && abeReset?.ok === false);
+  const benReset = await ben.call("lib/porch/porch-join.ts", "resetInvite");
+  const oldB = await cara.call("lib/porch/porch-join.ts", "checkInvite", { code: codeB });
+  const newB = await cara.call("lib/porch/porch-join.ts", "checkInvite", { code: benReset?.code });
+  const annCodeAfter = await abe.call("lib/porch/porch-join.ts", "myInvite");
+  record("sanity", "joining", "Ben (B's admin) resets B's code: the old code stops working, the new one works", benReset?.ok === true && oldB?.ok === false && newB?.ok === true && newB?.name === "Porch B");
+  record("isolation", "joining", "Resetting Porch B's code leaves Porch A's code alone", annCodeAfter?.code === codeA);
+
+  const dee = await person("Dee Starter", "dee@two-church.test");
+  const deeStarts = await dee.call("lib/porch/porch-join.ts", "startPorch", { kind: "church", name: "Porch D", place: "Gulu, Uganda" });
+  const deeState = await helper("person", { email: dee.email });
+  const porchD = (await helper("porchInfo", { name: "Porch D" })).porch;
+  record("sanity", "starting", "Dee starts a church porch: it waits for approval, Dee is its first member and admin", deeStarts?.ok === true && porchD?.status === "waiting" && deeState.porch_id === porchD?.id && deeState.admin === true);
+  const deeLook = await dee.call("lib/porch/porch-look.ts", "myPorchLook");
+  record("sanity", "starting", "Dee's porch works privately while it waits", deeLook?.member === true && deeLook?.waiting === true && deeLook?.name === "Porch D");
+  const deeFeed = await dee.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  record("isolation", "starting", "Dee's new church sees none of Porch A's or Phaneroo's posts", !has(deeFeed, "A private post in Porch A") && !has(deeFeed, "Porch B"));
+  const abeMinistry = await abe.call("lib/porch/porch-join.ts", "startPorch", { kind: "ministry", name: "Abe Ministry", place: "Mbarara, Uganda" });
+  const abeAfterMinistry = await helper("person", { email: abe.email });
+  const ministry = (await helper("porchInfo", { name: "Abe Ministry" })).porch;
+  record("sanity", "starting", "Abe starts a ministry porch and stays a member of Porch A", abeMinistry?.ok === true && ministry?.kind === "ministry" && ministry?.status === "waiting" && abeAfterMinistry.porch_id === porchA && !ministry?.invite_code);
+  record("isolation", "starting", "Running a ministry porch doesn't make Abe an admin of his church", abeAfterMinistry.admin === false);
+  const abeChurch = await abe.call("lib/porch/porch-join.ts", "startPorch", { kind: "church", name: "Abe's Church", place: "Mbarara, Uganda" });
+  record("sanity", "starting", "A church member can't start a second church (one church each)", abeChurch?.ok === false);
+  const abePorches = await abe.call("lib/porch/porch-join.ts", "myPorches");
+  record("sanity", "starting", "Abe sees his ministry under Your porches", Array.isArray(abePorches) && abePorches.some((p) => p.name === "Abe Ministry" && p.status === "waiting"));
+  const eve = await person("Eve Branch", "eve@two-church.test");
+  const badBranch = await eve.call("lib/porch/porch-join.ts", "startPorch", { kind: "church", name: "Porch E", place: "Kabale, Uganda", branch: true, mainPorchId: porchD?.id });
+  record("sanity", "starting", "A branch can only name an approved main porch", badBranch?.ok === false);
+  const eveStarts = await eve.call("lib/porch/porch-join.ts", "startPorch", { kind: "church", name: "Porch E", place: "Kabale, Uganda", branch: true, mainPorchId: 1 });
+  const porchE = (await helper("porchInfo", { name: "Porch E" })).porch;
+  record("sanity", "starting", "Eve starts a branch: the main porch (Phaneroo) is recorded", eveStarts?.ok === true && porchE?.main_porch_id === 1);
+  const eveFeed = await eve.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  record("isolation", "starting", "A branch's members see none of the main porch's private posts", !has(eveFeed, "Phaneroo") && (eveFeed?.posts ?? []).length === 0);
+
+  const annList = await ann.call("lib/porch/porch-join.ts", "waitingPorches");
+  record("sanity", "approval", "Only the platform owner sees the waiting list", annList?.ok === false);
+  const oliveList = await olive.call("lib/porch/porch-join.ts", "waitingPorches");
+  record("sanity", "approval", "The platform owner sees the new porches waiting", oliveList?.ok === true && ["Porch D", "Abe Ministry", "Porch E"].every((name) => has(oliveList, name)));
+  const annApproves = await ann.call("lib/porch/porch-join.ts", "decidePorch", { id: porchD?.id, approve: true });
+  record("sanity", "approval", "A porch admin can't approve porches", annApproves?.ok === false);
+  const oliveApproves = await olive.call("lib/porch/porch-join.ts", "decidePorch", { id: porchD?.id, approve: true });
+  const porchDNow = (await helper("porchInfo", { name: "Porch D" })).porch;
+  record("sanity", "approval", "The platform owner approves Porch D", oliveApproves?.ok === true && porchDNow?.status === "approved" && porchDNow?.verified === true);
+  const oliveDeclines = await olive.call("lib/porch/porch-join.ts", "decidePorch", { id: porchE?.id, approve: false });
+  const eveNow = await helper("person", { email: eve.email });
+  const porchENow = (await helper("porchInfo", { name: "Porch E" })).porch;
+  record("sanity", "approval", "Declining a church frees its people to join another church", oliveDeclines?.ok === true && porchENow?.status === "declined" && (eveNow.porch_id === null || eveNow.porch_id === undefined));
 
   // ---------------- Isolation (made private in Stage 3) ----------------
   console.log("\nIsolation between Porch A and Porch B");
@@ -274,7 +348,6 @@ try {
   record("sanity", "calls", "Abe can call Ann (same porch)", abeCalls?.ok === true);
 
   // ================ Stage 3b ================
-  const has = (value, text) => JSON.stringify(value ?? {}).includes(text);
   /** A PDF the app hands back (as base64 inside its answer), as plain text to search. */
   const pdfText = (value) => {
     const b64 = value?.pdf ?? value?.file ?? "";

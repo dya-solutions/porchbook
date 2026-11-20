@@ -833,3 +833,14 @@ html.pb-on .tool-key svg { color: var(--pb-main); filter: none; }
 html.pb-on .tool-key.is-on { background: var(--pb-main) !important; color: var(--pb-on-main) !important; }
 html.pb-on .tool-key.is-on svg { color: var(--pb-on-main); }
 html.pb-on .tool-key.is-danger { background: #b3261e !important; color: #fff !important; }
+
+/* ---- Welcome and Start a porch (Stage 5a: Main.dc, StartPorch.dc) ---- */
+.welcome { min-height: 100dvh; background: var(--pb-bg); color: var(--pb-text); display: flex; justify-content: center; }
+.welcome-in { width: 100%; max-width: 440px; box-sizing: border-box; padding: 48px 24px 32px; display: flex; flex-direction: column; gap: 20px; min-height: 100dvh; }
+.welcome-card { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.welcome-link { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: var(--pb-main); cursor: pointer; min-height: 32px; }
+.welcome-joining { margin: 8px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--pb-second-soft); color: var(--pb-text); font-size: 15px; }
+.start-kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.start-kinds .pb-chip { height: 48px; justify-content: center; }
+.start-code { margin: 8px 0; font: 700 26px/1.2 "Source Sans 3", monospace; letter-spacing: 0.08em; color: var(--pb-main); user-select: all; }
+.welcome .rounded-3xl.glass-edge { border: 1px solid var(--pb-line-2); box-shadow: none; }

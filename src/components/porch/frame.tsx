@@ -12,6 +12,7 @@ import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-ro
 import { warmDevotion } from "@/lib/porch/devotion-cache";
 import { LiteKey, LiteOffer } from "@/components/porch/lite-bits";
 import { NoteBell } from "@/components/porch/note-bell";
+import { WelcomeScreen } from "@/components/porch/welcome-screen";
 import { BottomNav, PbIcon, TopBar, usePorchLook } from "@/components/porch/pb-shell";
 import { NuggetLink } from "@/components/porch/nugget-bits";
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
@@ -54,7 +55,13 @@ import { firebaseReady, watchFirebaseMember } from "@/lib/porch/firebase-call";
 import { FILTERS, ROOM_META, ROOMS, type FeedFilter } from "@/lib/porch/model";
 
 export function Welcome() {
-  // The phone on the block: tap it to stand it up and sign up on its screen.
+  // Stage 5a: the Welcome screen from design-reference/Main.dc.html (join with an invite code,
+  // start a porch, or sign in). The earlier phone-on-the-block welcome (WelcomePhone) is kept, unused.
+  return <WelcomeScreen account={(mode, note) => <AuthCard key={mode} startMode={mode} note={note} />} />;
+}
+
+/** The phone-on-the-block welcome used before Stage 5a (kept for reference). */
+export function WelcomeOnTheBlock() {
   return <WelcomePhone form={(mode) => <AuthCard key={mode} startMode={mode} />} />;
 }
 
@@ -104,7 +111,7 @@ export function WelcomeClassic() {
   );
 }
 
-function AuthCard({ startMode = "join" }: { startMode?: "join" | "enter" }) {
+export function AuthCard({ startMode = "join", note }: { startMode?: "join" | "enter"; note?: ReactNode }) {
   const [mode, setMode] = useState<"join" | "enter">(startMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -156,11 +163,14 @@ function AuthCard({ startMode = "join" }: { startMode?: "join" | "enter" }) {
 
   return (
     <div className="rounded-3xl glass-edge bg-card p-5 shadow-sm sm:p-6">
-      <h2 className="font-display text-2xl text-ink">{mode === "join" ? "Join Porchbook" : "Welcome back"}</h2>
+      <h2 className="font-display text-2xl text-ink">{mode === "join" ? "Create your account" : "Welcome back"}</h2>
+      {note}
       <p className="mt-1 text-sm text-muted">
         {GROK_PROVIDERS.length > 0
           ? "Sign in with work Google, X, or an email just for this team."
-          : "Sign in with your email and password."}
+          : mode === "join"
+            ? "Your email and a password you choose."
+            : "Sign in with your email and password."}
       </p>
       {GROK_PROVIDERS.length > 0 && (
       <>
@@ -947,6 +957,11 @@ export function AppFrame({
     return <Welcome />;
   }
 
+  // Stage 5a: signed in but not in a church yet: join one with an invite code (or start a porch).
+  if (look?.member === false && pathname !== "/start" && pathname !== "/porches-waiting") {
+    return <WelcomeScreen signedIn />;
+  }
+
   if (removed) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 text-center">
@@ -1051,6 +1066,7 @@ function screenName(pathname: string) {
   if (pathname.startsWith("/groups")) return "Groups";
   if (pathname === "/invite") return "Invite";
   if (pathname === "/porch-settings") return "Porch settings";
+  if (pathname === "/porches-waiting") return "Waiting for approval";
   if (pathname === "/presence") return "On the porch now";
   if (pathname === "/roll") return "The roll";
   if (pathname.startsWith("/calls")) return "Calls";
@@ -1106,6 +1122,7 @@ export function AccountCard({ user }: { user: AppUser }) {
   const [alertNote, setAlertNote] = useState("");
   const [admin, setAdmin] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const accountLook = usePorchLook();
   const navigate = useNavigate();
   const seed = { displayName: user.displayName ?? "", email: user.primaryEmail ?? null, imageUrl: user.profileImageUrl ?? null };
   useEffect(() => {
@@ -1160,6 +1177,18 @@ export function AccountCard({ user }: { user: AppUser }) {
             Keep Porchbook running
           </button>
         ) : null}
+        {accountLook?.owner ? (
+          <Link to="/porches-waiting">
+            <Landmark className="size-5" aria-hidden="true" />
+            Porches waiting for approval
+            <small>Approve or decline new porches</small>
+          </Link>
+        ) : null}
+        <Link to="/start">
+          <Users className="size-5" aria-hidden="true" />
+          Start a porch
+          <small>A ministry, artist or organisation porch</small>
+        </Link>
         {admin ? (
           <Link to="/porch-settings">
             <Palette className="size-5" aria-hidden="true" />
