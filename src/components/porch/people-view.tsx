@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PbAvatar } from "@/components/porch/pb-shell";
 import { Link } from "@tanstack/react-router";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { listPorch } from "@/lib/porch/roll";
@@ -45,21 +46,16 @@ export function PeopleView() {
     : people;
 
   return (
-    <div>
-      <h1 className="font-display text-3xl text-ink">People</h1>
-      <p className="mt-1 text-muted">Everyone on the porch. A name opens their page.</p>
-      <label className="mt-4 block">
+    <div className="pb">
+      <h1 className="pb-ttl" style={{ fontSize: 28 }}>People</h1>
+      <p className="pb-quiet" style={{ margin: "4px 0 0", fontSize: 15 }}>Everyone on the porch. A name opens their page.</p>
+      <label className="pb-search" style={{ marginTop: 14 }}>
         <span className="sr-only">Search people</span>
-        <input
-          className={fieldClass}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by name"
-        />
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by name" style={{ paddingLeft: 16 }} />
       </label>
       {status === "error" ? <p className="mt-4 text-danger">Couldn't load the people.</p> : null}
       {status === "ready" && shown.length === 0 ? <p className="mt-6 text-muted">No one matches that.</p> : null}
-      <ul className="mt-4 divide-y divide-line overflow-hidden rounded-3xl glass-edge bg-card">
+      <ul className="pb-card mt-4 divide-y divide-line overflow-hidden">
         {shown.map((person) => (
           <li key={person.userId} className="flex items-stretch">
             <Link
@@ -67,7 +63,7 @@ export function PeopleView() {
               params={{ userId: person.userId }}
               className="flex min-h-16 min-w-0 flex-1 items-center gap-3 px-4 py-3 hover:bg-paper"
             >
-              <Avatar name={person.displayName} imageUrl={person.imageUrl} />
+              <PbAvatar name={person.displayName} imageUrl={person.imageUrl} id={person.userId} />
               <span className="min-w-0">
                 <span className="block truncate font-semibold text-ink">
                   {person.displayName}
@@ -78,8 +74,8 @@ export function PeopleView() {
             </Link>
             {person.userId === userId ? null : (
               <span className="flex shrink-0">
-                <CallLink userId={person.userId} name={person.displayName} />
-                <CallLink video userId={person.userId} name={person.displayName} />
+                <CallLink userId={person.userId} name={person.displayName} className="grid min-h-11 min-w-11 place-items-center" />
+                <CallLink video userId={person.userId} name={person.displayName} className="grid min-h-11 min-w-11 place-items-center" />
               </span>
             )}
           </li>

@@ -6,6 +6,7 @@ import { ChevronLeft, Maximize2, Send, SquareCheck, Trash2 } from "lucide-react"
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { actionName, listOffices, listOfficeHolders, openOffice, OFFICE_ACTIONS, OFFICE_PARTS, OFFICES, postAnnouncement, saveCalendar, setOfficeDoor, setOfficeHead, sendOfficeNote, sendOfficial, setPrayerStatus, statusName, type OfficeCard } from "@/lib/porch/offices";
 import { ActionIcon, ActionTile, StatusTag, YourRequests } from "@/components/porch/office-screens";
+import { useConversationOpen } from "@/components/porch/pb-shell";
 import { Avatar, LinkText, fieldClass, primaryButtonClass, quietButtonClass } from "@/components/porch/bits";
 import { playOfficeBell } from "@/lib/porch/button-sound-play";
 import { BookHide } from "@/components/porch/hide";
@@ -772,6 +773,8 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
   const [officialNote, setOfficialNote] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
   const stickRef = useRef(true);
+  // A conversation with the office is open (phones hide the bottom bar meanwhile).
+  useConversationOpen(Boolean(member) || (Boolean(room) && room !== "calendar" && !!page && page.ok && !page.isHead && !page.isFounder));
 
   useEffect(() => {
     if (!seed.id) return;

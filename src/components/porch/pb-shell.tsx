@@ -345,3 +345,15 @@ export function LightRow() {
     </div>
   );
 }
+
+/**
+ * While a conversation is open on a phone, the bottom bar steps aside so the message box sits at
+ * the bottom of the screen (Conversation.dc.html has no bottom bar). Computers keep it.
+ */
+export function useConversationOpen(open = true) {
+  useEffect(() => {
+    if (!open) return;
+    document.body.classList.add("pb-in-convo");
+    return () => document.body.classList.remove("pb-in-convo");
+  }, [open]);
+}

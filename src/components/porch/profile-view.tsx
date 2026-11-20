@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { onlineState, usePorch } from "@/lib/porch/presence-store";
 import { useEffect, useState, type FormEvent } from "react";
 import { Mail } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
@@ -12,6 +13,7 @@ import { Avatar, CallLink, LinkText, PostWindow, KeptPhoto, fieldClass, primaryB
 
 export function ProfileView({ userId }: { userId: string }) {
   const user = useCurrentUser();
+  usePorch(); // re-draws "On the porch now"
   const [page, setPage] = useState<PersonPage | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [editing, setEditing] = useState(false);
@@ -59,8 +61,8 @@ export function ProfileView({ userId }: { userId: string }) {
   const profile = page.profile;
 
   return (
-    <div className="space-y-4">
-      <section className="rounded-3xl glass-edge bg-card p-5">
+    <div className="pb pb-profile space-y-4">
+      <section className="pb-card" style={{ padding: 20 }}>
         <div className="flex items-start gap-4">
           {page.isSelf ? (
             <FacePicker name={profile.displayName} imageUrl={profile.imageUrl} onChanged={() => setTick((value) => value + 1)} />
@@ -69,30 +71,37 @@ export function ProfileView({ userId }: { userId: string }) {
           )}
           <div className="min-w-0 flex-1">
             <div className="flex items-start gap-2">
-              <h1 className="min-w-0 flex-1 font-display text-3xl text-ink">{profile.displayName}</h1>
+              <h1 className="pb-ttl min-w-0 flex-1" style={{ fontSize: 26, lineHeight: 1.15 }}>{profile.displayName}</h1>
               {page.isSelf ? null : (
-                <span className="flex shrink-0">
-                  <CallLink userId={profile.userId} name={profile.displayName} />
-                  <CallLink video userId={profile.userId} name={profile.displayName} />
+                <span className="flex shrink-0" style={{ gap: 8 }}>
+                  <CallLink userId={profile.userId} name={profile.displayName} className="pb-iconbtn is-green" />
+                  <CallLink video userId={profile.userId} name={profile.displayName} className="pb-iconbtn is-green" />
                 </span>
               )}
             </div>
-            <p className="text-muted">
+            <p className="pb-quiet" style={{ margin: "4px 0 0", fontSize: 15 }}>
               {[profile.role, profile.team].filter(Boolean).join(" · ") || "No role yet"}
             </p>
+            {!page.isSelf && onlineState(profile.userId) ? (
+              <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--pb-second)" }}>
+                <span className="pb-dot" />
+                On the porch now
+              </p>
+            ) : null}
           </div>
         </div>
         <Detail label="Spiritual identity" text={profile.spiritualIdentity} />
         <Detail label="Spiritual responsibility" text={profile.spiritualResponsibility} />
         {page.isSelf ? (
-          <button type="button" className={`${quietButtonClass} mt-3 px-0`} onClick={() => setEditing((open) => !open)}>
+          <button type="button" className="pb-btn2" style={{ marginTop: 16, minHeight: 44, fontSize: 15 }} onClick={() => setEditing((open) => !open)}>
             {editing ? "Close" : "Edit profile"}
           </button>
         ) : (
           <Link
             to="/messages/$userId"
             params={{ userId: profile.userId }}
-            className={`${primaryButtonClass} mt-4 gap-2`}
+            className="pb-btn"
+            style={{ marginTop: 16, width: "100%" }}
           >
             <Mail className="size-4" aria-hidden="true" />
             Message
@@ -112,12 +121,12 @@ export function ProfileView({ userId }: { userId: string }) {
       </section>
       {page.isSelf && user ? <AccountCard user={user} /> : null}
       <section>
-        <h2 className="font-display text-xl text-ink">Recent posts</h2>
+        <h2 className="pb-ttl" style={{ fontSize: 20, margin: "8px 4px 0" }}>Recent posts</h2>
         {page.posts.length === 0 ? <p className="mt-2 text-muted">Nothing posted yet.</p> : null}
         <ul className="mt-3 space-y-3">
           {page.posts.map((post) => (
             <li key={post.id}>
-              <PostWindow className="post-glass rim rounded-3xl bg-card p-4">
+              <PostWindow className="pb-card p-4">
               <p className="text-sm text-muted">
                 <span className={`font-semibold ${ROOM_META[post.room].mark}`}>{ROOM_META[post.room].label}</span>
                 {" · "}
@@ -167,7 +176,7 @@ function EditForm({ profile, onSaved }: { profile: Profile; onSaved: () => void 
       <WordField label="Spiritual identity" value={identity} onChange={setIdentity} />
       <WordField label="Spiritual responsibility" value={responsibility} onChange={setResponsibility} />
       {error ? <p className="text-sm text-danger">{error}</p> : null}
-      <button type="submit" className={primaryButtonClass} disabled={pending || !displayName.trim()}>
+      <button type="submit" className="pb-btn" disabled={pending || !displayName.trim()}>
         {pending ? "Saving…" : "Save profile"}
       </button>
     </form>

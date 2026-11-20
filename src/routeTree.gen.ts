@@ -19,6 +19,7 @@ import { Route as InviteRouteImport } from './routes/invite'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as NextRouteImport } from './routes/next'
+import { Route as PorchSettingsRouteImport } from './routes/porch-settings'
 import { Route as PorchguyRouteImport } from './routes/porchguy'
 import { Route as PresenceRouteImport } from './routes/presence'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -110,6 +111,11 @@ const ManualRoute = ManualRouteImport.update({
 const NextRoute = NextRouteImport.update({
   id: '/next',
   path: '/next',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PorchSettingsRoute = PorchSettingsRouteImport.update({
+  id: '/porch-settings',
+  path: '/porch-settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PorchguyRoute = PorchguyRouteImport.update({
@@ -334,6 +340,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
   '/next': typeof NextRoute
+  '/porch-settings': typeof PorchSettingsRoute
   '/porchguy': typeof PorchguyRoute
   '/presence': typeof PresenceRoute
   '/privacy': typeof PrivacyRoute
@@ -388,6 +395,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
   '/next': typeof NextRoute
+  '/porch-settings': typeof PorchSettingsRoute
   '/porchguy': typeof PorchguyRoute
   '/presence': typeof PresenceRoute
   '/privacy': typeof PrivacyRoute
@@ -443,6 +451,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
   '/next': typeof NextRoute
+  '/porch-settings': typeof PorchSettingsRoute
   '/porchguy': typeof PorchguyRoute
   '/presence': typeof PresenceRoute
   '/privacy': typeof PrivacyRoute
@@ -499,6 +508,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/manual'
     | '/next'
+    | '/porch-settings'
     | '/porchguy'
     | '/presence'
     | '/privacy'
@@ -553,6 +563,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/manual'
     | '/next'
+    | '/porch-settings'
     | '/porchguy'
     | '/presence'
     | '/privacy'
@@ -607,6 +618,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/manual'
     | '/next'
+    | '/porch-settings'
     | '/porchguy'
     | '/presence'
     | '/privacy'
@@ -662,6 +674,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ManualRoute: typeof ManualRoute
   NextRoute: typeof NextRoute
+  PorchSettingsRoute: typeof PorchSettingsRoute
   PorchguyRoute: typeof PorchguyRoute
   PresenceRoute: typeof PresenceRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -776,6 +789,13 @@ declare module '@tanstack/react-router' {
       path: '/next'
       fullPath: '/next'
       preLoaderRoute: typeof NextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/porch-settings': {
+      id: '/porch-settings'
+      path: '/porch-settings'
+      fullPath: '/porch-settings'
+      preLoaderRoute: typeof PorchSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/porchguy': {
@@ -1086,6 +1106,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ManualRoute: ManualRoute,
   NextRoute: NextRoute,
+  PorchSettingsRoute: PorchSettingsRoute,
   PorchguyRoute: PorchguyRoute,
   PresenceRoute: PresenceRoute,
   PrivacyRoute: PrivacyRoute,

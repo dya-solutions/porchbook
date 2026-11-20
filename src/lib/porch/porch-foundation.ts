@@ -43,6 +43,8 @@ const SETUP: string[] = [
      country_code text not null default '+256',
      updated_at timestamptz not null default now()
    )`,
+  // Stage 4c: the Tour doors a porch has switched off (Porch settings).
+  `alter table porch_settings add column if not exists tour_off text[] not null default '{}'`,
   `alter table profiles add column if not exists porch_id integer references porches (id)`,
   `create index if not exists profiles_porch_idx on profiles (porch_id)`,
   `create table if not exists porch_admins (

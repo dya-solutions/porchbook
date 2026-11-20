@@ -1098,3 +1098,71 @@ export const removeAnnouncement = createServerFn({ method: "POST" })
     await sql`update office_announcements set removed_at = now() where id = ${data.id}`;
     return { ok: true as const };
   });
+
+export type OfficeChat = {
+  officeKey: string;
+  officeName: string;
+  room: string;
+  roomName: string;
+  memberId: string;
+  /** Who the conversation is with: the office (for a member) or the member (for the head). */
+  title: string;
+  lastBody: string;
+  lastAt: string;
+  status: PrayerStatus;
+  /** True when the other side wrote last (the conversation is waiting for you). */
+  waiting: boolean;
+  asHead: boolean;
+};
+
+/** Office conversations for the Chat list (Stage 4c): your own, and those sent to offices you head. */
+export const myOfficeChats = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await getSql();
+    await ensureOffices(sql, context.userId);
+    const rows = await sql.query<{
+      office_key: string;
+      office_name: string;
+      room: string;
+      member_id: string;
+      member_name: string;
+      head_user_id: string | null;
+      status: string | null;
+      last_body: string | null;
+      last_author: string | null;
+      last_at: string | null;
+    }>(
+      `select t.office_key, o.name as office_name, t.room, t.member_id, p.display_name as member_name, o.head_user_id, t.status,
+              last.body as last_body, last.author_id as last_author,
+              to_char(last.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as last_at
+       from office_threads t
+       join offices o on o.key = t.office_key and o.porch_id = t.porch_id and o.removed_at is null
+       join profiles p on p.user_id = t.member_id
+       join lateral (
+         select body, author_id, created_at from office_messages
+         where thread_id = t.id and (not held or author_id = $1)
+         order by created_at desc, id desc limit 1
+       ) last on true
+       where t.porch_id = my_porch($1) and (t.member_id = $1 or o.head_user_id = $1)
+       order by last.created_at desc
+       limit 40`,
+      [context.userId],
+    );
+    return rows.map((row): OfficeChat => {
+      const asHead = row.head_user_id === context.userId && row.member_id !== context.userId;
+      return {
+        officeKey: row.office_key,
+        officeName: row.office_name,
+        room: row.room,
+        roomName: actionName(row.room, row.office_key, row.office_name),
+        memberId: row.member_id,
+        title: asHead ? row.member_name : row.office_name,
+        lastBody: row.last_body ?? "",
+        lastAt: row.last_at ?? "",
+        status: parseStatus(row.status),
+        waiting: Boolean(row.last_author) && row.last_author !== context.userId,
+        asHead,
+      };
+    });
+  });

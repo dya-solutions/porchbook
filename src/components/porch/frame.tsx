@@ -15,7 +15,7 @@ import { NoteBell } from "@/components/porch/note-bell";
 import { BottomNav, PbIcon, TopBar, usePorchLook } from "@/components/porch/pb-shell";
 import { NuggetLink } from "@/components/porch/nugget-bits";
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { CircleHelp, House, Landmark, Mail, Megaphone, MessageCircle, Share2, Users, Bell, AudioLines, RefreshCw, Eye, EyeOff } from "lucide-react";
+import { CircleHelp, House, Landmark, Mail, Megaphone, MessageCircle, Share2, Users, Bell, AudioLines, RefreshCw, Eye, EyeOff, Palette } from "lucide-react";
 import { HomeTourSwitch, ThemePlate, fieldClass, primaryButtonClass, quietButtonClass } from "@/components/porch/bits";
 import { ButtonSoundSetter, useButtonSound } from "@/components/porch/button-sound";
 import { MessageSoundSetter } from "@/components/porch/message-sound";
@@ -1050,6 +1050,8 @@ function screenName(pathname: string) {
   if (pathname.startsWith("/people")) return "People";
   if (pathname.startsWith("/groups")) return "Groups";
   if (pathname === "/invite") return "Invite";
+  if (pathname === "/porch-settings") return "Porch settings";
+  if (pathname === "/presence") return "On the porch now";
   return "Your porch";
 }
 
@@ -1154,6 +1156,13 @@ export function AccountCard({ user }: { user: AppUser }) {
             <AudioLines className="size-5" aria-hidden="true" />
             Keep Porchbook running
           </button>
+        ) : null}
+        {admin ? (
+          <Link to="/porch-settings">
+            <Palette className="size-5" aria-hidden="true" />
+            Porch settings
+            <small>Theme and Tour doors</small>
+          </Link>
         ) : null}
         {admin ? (
           <button

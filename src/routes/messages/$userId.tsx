@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppFrame } from "@/components/porch/frame";
-import { MessagesRail, MessagesView } from "@/components/porch/messages-view";
+import { MessagesRail } from "@/components/porch/messages-view";
+import { ChatList } from "@/components/porch/chat-screens";
 import { ThreadView } from "@/components/porch/thread-view";
 
 export const Route = createFileRoute("/messages/$userId")({
@@ -14,7 +15,7 @@ function ThreadRoute() {
       {/* On computers the conversation list stays on the left, like WhatsApp on a PC. */}
       <div className="pc-chat">
         <div className="pc-chat-list">
-          <MessagesView />
+          <ChatList />
         </div>
         <div className="pc-chat-open">
           <ThreadView userId={userId} />

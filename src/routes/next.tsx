@@ -13,7 +13,7 @@ import { downloadMyTwenty, downloadOwnTwenty, loadMyTwenty, resetMyTwenty, saveM
 import { playButtonSound } from "@/lib/porch/button-sound-play";
 import { ServeButton } from "@/components/porch/serve-form";
 import { FmButton } from "@/components/porch/fm";
-import { LightRow } from "@/components/porch/pb-shell";
+import { LightRow, usePorchLook } from "@/components/porch/pb-shell";
 import { DoorFace, TourTitle } from "@/components/porch/tour-door";
 import { shown } from "@/lib/porch/on-hold";
 import { EventsHome } from "@/components/porch/events-home";
@@ -684,6 +684,10 @@ function TwentyGauge({ count }: { count: number }) {
 function MyTwenty() {
   const { user } = useCurrentUserState();
   const mode = useTourMode();
+  // Doors the porch switched off in Porch settings (Stage 4c).
+  const look = usePorchLook();
+  const doorOff = new Set(look?.tourOff ?? []);
+  const door = (key: string) => !doorOff.has(key);
   // Radio: the buttons fold away and the radio sits right under the header, all in view.
   useEffect(() => {
     if (mode === "worship") window.scrollTo({ top: 0, behavior: "smooth" });
@@ -919,7 +923,8 @@ function MyTwenty() {
   return (
     <div className={`pb-tour tour-stage${mode ? " is-open" : ""}${mode === "worship" ? " is-radio" : ""}`}>
       <div className="tour-doors">
-          <PrayButton />
+          {door("pray") ? <PrayButton /> : null}
+          {door("my20") ? (
           <button
             type="button"
             aria-expanded={open}
@@ -942,12 +947,13 @@ function MyTwenty() {
               )} of 20`}
             />
           </button>
-          <EventsDoor />
-          <DoorButton mode="groups" label="Groups" />
+          ) : null}
+          {door("events") ? <EventsDoor /> : null}
+          {door("groups") ? <DoorButton mode="groups" label="Groups" /> : null}
           {shown("radio") ? <FmButton /> : null}
-          <ServeButton />
-          <TransportButton />
-          <ClinicOrFeedback />
+          {door("serve") ? <ServeButton /> : null}
+          {door("transport") ? <TransportButton /> : null}
+          {door("feedback") ? <ClinicOrFeedback /> : null}
           {shown("groupCalls") ? <CallButton /> : null}
         </div>
       <div className="pb">

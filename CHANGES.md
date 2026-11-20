@@ -289,6 +289,53 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
   - "After" pictures: `../after-stage4b/`.
 - **Not yet in the new look:** Read, Chat, profiles and the older pages (Stage 4c). What opens inside a Tour door (Events, Groups, Serve, Transport, My 20) keeps its old look until then.
 
+### 8. Stage 4c (20 Nov 2026): Chat, conversations, Read, profiles and Porch settings
+- **Chat** (Chat.dc.html, `chat-screens.tsx`): "Chat", a **New message** button, "Search your porch", and **All / People / Groups / Offices**.
+  - **One list** for the people you message, your groups, and your **office conversations, marked "Office"**. Each office conversation also shows its status (Sent / Confirmed / Answered).
+  - A **green dot** shows who is on the porch now. The old rule stays: while you're hidden, you don't see others.
+  - Unread messages show a count. My Space (notes only you can read) is at the top.
+  - **New message** shows everyone on your porch to pick from.
+  - **For an office's head:** the people who wrote to that office appear in the head's Chat too.
+  - Groups open their group page, as before. Groups have no messages inside yet.
+- **A conversation** (Conversation.dc.html):
+  - **Header:** the person's face with the online dot, "On the porch now" in green when they are, and the voice and video call buttons.
+  - **Messages:** yours on the right, theirs on the left, and "Message Esther…" at the bottom.
+  - **On phones** the bottom bar steps aside while a conversation is open, so the message box sits at the bottom.
+  - **Fixed:** since Stage 4a the bottom bar covered the message box on phones, in both chats and office conversations.
+  - The old green photo behind conversations is gone.
+  - Everything else is kept: reply, edit, star, pin, delete, reactions and search.
+- **Read** (Read.dc.html, `read-home.tsx`):
+  - **The Bible** card: "Holy Bible · KJV", where you stopped (e.g. "John 3 · Continue where you stopped · verse 16") and **Continue reading**.
+  - **From your church:** today's devotional and the church's books and PDFs, as covers.
+  - **Mine:** My notebook.
+
+  Each opens the same reader as before. The wooden shelf now only appears while an admin uses a **Shelf tools** button (add or remove books, sizes, covers, titles), so nothing was lost.
+- **Profiles and People** (no design file, so they follow the same look):
+  - Profiles use theme cards, the title font, a full-width **Message** button, green call buttons, and "On the porch now" when the person is.
+  - **Your account** stays on your own profile.
+  - People has the new search box and faces.
+- **Porch settings** (new screen `/porch-settings`, opened from **Your account → Porch settings**, admins only):
+  - **Theme:** the six themes as colour cards. Tap one and everyone in the porch gets it. Each member can still use Dawn / Dusk / Night.
+  - **Tour doors:** switch Pray, My 20, Events, Groups, Serve, Transport or Feedback on or off for the whole porch (as PLAN-MULTI-CHURCH.md section 6 describes). Nothing is deleted, and at least one door must stay on.
+  - A link to Offices, where admins create offices.
+- **The top bar** now names Porch settings and "On the porch now" too.
+- **Rules changed (BUILD-BRIEF.md wins over porchbook-state.md):**
+  - The Read library is no longer a wooden shelf for members.
+  - The chat background photo is gone.
+  - The bottom bar hides during a conversation on phones.
+- **Checked:**
+  - Type check passes.
+  - **Two-church test: 149 passed, 0 failed, 0 not private yet** (it was 139). New checks:
+    - Office conversations show in Chat for the member and for the office's head, and **none of Porch A's show in Ben's Chat**.
+    - A member can't change the theme or the Tour doors.
+    - **Porch B's theme doesn't change Porch A's or Phaneroo's.**
+    - **Porch B's switched-off doors don't change Porch A's or Phaneroo's Tour.**
+    - A porch must keep at least one door.
+  - Design vs app: `../compare-design.html` now also has Conversation, and Read and Porch settings in each theme (Porch Evening, Morning Light, Royal Night). Phaneroo was set back to Porch Evening afterwards.
+  - "After" pictures: `../after-stage4c/`.
+- **Test data:** while checking the conversation screen I wrote one note in the test account's own My Space on this computer ("Sermon note: John 15:5"). It's only on the local test database.
+- **Not yet in the new look:** what opens inside the Tour doors (Events, Groups, Serve, Transport, My 20), the Bible and book readers themselves, the admins' Shelf tools, Admin tools, and the older pages (invite, calls, roll). These keep their old look and could be a short "Stage 4d" if you want them redesigned.
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).

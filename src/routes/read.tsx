@@ -32,6 +32,7 @@ import shelfWood from "@/assets/shelf-wood.jpg";
 import bibleLeather from "@/assets/bible-leather.jpg";
 import bookHide from "@/assets/book-hide.jpg";
 import { PorchLoader } from "@/components/porch/porch-loader";
+import { ReadHome } from "@/components/porch/read-home";
 
 const BibleReader = lazy(() => import("@/components/porch/bible-reader").then((mod) => ({ default: mod.BibleReader })));
 const NotebookList = lazy(() => import("@/components/porch/notebook-page").then((mod) => ({ default: mod.NotebookList })));
@@ -944,11 +945,11 @@ function ReadPage() {
 
   return (
     <AppFrame>
-      <h1 className="font-display text-3xl text-ink">Read</h1>
-      <p className="text-sm text-muted">The library.</p>
+      {/* Stage 4c: the Read screen in the new design. The wooden shelf only shows while an admin uses a shelf tool. */}
+      <ReadHome books={library} onOpen={(key) => void openBook(key)} devotionTitle={kept[2]?.title && kept[2].title !== "Devotional" ? kept[2].title : ""} />
       {note && !open ? <p className="text-sm text-muted">{note}</p> : null}
       <TitleCtx.Provider value={titleTools}>
-      <BookShelf onRenamePick={renameMode ? (key) => { if (key === "notebook") { setRenameNote("Notes keeps its name."); return; } const book = [...kept, ...library].find((item) => item.key === key); setRenaming(key); setRenameDraft(book?.title ?? ""); setRenameNote(""); } : undefined} renamePicked={renameMode ? renaming : ""} flyMode={flyMode} flyOf={covers.flyOf} flyPicked={flyPicked} onFlySelect={setFlyPicked} onFlyPlace={(key, spot) => changeFly(key, spot)} coverMode={coverMode} coverOf={covers.coverOf} hasCover={covers.hasCover} onCoverFile={(key, file) => { setCoverNote("Putting on the new cover…"); void covers.choose(key, file).then(setCoverNote); }} onCoverReset={(key) => void covers.reset(key).then(setCoverNote)} books={[...kept, ...library]} picking={picking} chosen={chosen} standing={standing} adjusting={adjusting} sizes={sizes} onOpen={(key) => void openBook(key)} onChoose={setChosen} onKeep={() => setNote("The Bible, the notebook, and the devotional stay.")} onSize={keepSize} onReset={resetSize} />
+      {picking || adjusting || coverMode || flyMode || titleMode || renameMode ? <BookShelf onRenamePick={renameMode ? (key) => { if (key === "notebook") { setRenameNote("Notes keeps its name."); return; } const book = [...kept, ...library].find((item) => item.key === key); setRenaming(key); setRenameDraft(book?.title ?? ""); setRenameNote(""); } : undefined} renamePicked={renameMode ? renaming : ""} flyMode={flyMode} flyOf={covers.flyOf} flyPicked={flyPicked} onFlySelect={setFlyPicked} onFlyPlace={(key, spot) => changeFly(key, spot)} coverMode={coverMode} coverOf={covers.coverOf} hasCover={covers.hasCover} onCoverFile={(key, file) => { setCoverNote("Putting on the new cover…"); void covers.choose(key, file).then(setCoverNote); }} onCoverReset={(key) => void covers.reset(key).then(setCoverNote)} books={[...kept, ...library]} picking={picking} chosen={chosen} standing={standing} adjusting={adjusting} sizes={sizes} onOpen={(key) => void openBook(key)} onChoose={setChosen} onKeep={() => setNote("The Bible, the notebook, and the devotional stay.")} onSize={keepSize} onReset={resetSize} /> : null}
       </TitleCtx.Provider>
       {/* One shelf only: the books roll side to side. */}
       {shelfSizes.founder || founder ? (

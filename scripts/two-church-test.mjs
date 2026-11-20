@@ -389,6 +389,35 @@ try {
   const abeNewest = await abe.call("lib/porch/offices.ts", "listAnnouncements");
   record("sanity", "offices", "A new announcement replaces the office's last one", has(abeNewest, "A newer word for Porch A") && !has(abeNewest, "A pinned word for Porch A"));
 
+  // ---- Office conversations in Chat (Stage 4c) ----
+  const abeChats = await abe.call("lib/porch/offices.ts", "myOfficeChats");
+  record("sanity", "chat", "Abe's Chat list shows his conversation with A's Office of the Pastor", Array.isArray(abeChats) && abeChats.some((c) => c.officeKey === "pastor" && c.lastBody === "Ann's reply" && c.waiting === true));
+  const annChats = await ann.call("lib/porch/offices.ts", "myOfficeChats");
+  record("sanity", "chat", "Ann (the head) sees Abe's office conversation in her Chat list", Array.isArray(annChats) && annChats.some((c) => c.asHead && c.title === "Abe Member"));
+  const benChats = await ben.call("lib/porch/offices.ts", "myOfficeChats");
+  record("isolation", "chat", "Ben's Chat list has none of Porch A's office conversations", !has(benChats, "Abe Member") && !has(benChats, "Ann's reply") && !has(benChats, "Office note in Porch A"));
+
+  // ---- Porch settings: theme and Tour doors (Stage 4c) ----
+  const abeTheme = await abe.call("lib/porch/porch-look.ts", "setPorchTheme", { theme: "royal-night" });
+  record("sanity", "settings", "A member (Abe) can't change the porch's theme", abeTheme?.ok === false);
+  const annTheme = await ann.call("lib/porch/porch-look.ts", "setPorchTheme", { theme: "living-water" });
+  const benTheme = await ben.call("lib/porch/porch-look.ts", "setPorchTheme", { theme: "crimson-grace" });
+  const abeLook = await abe.call("lib/porch/porch-look.ts", "myPorchLook");
+  const benLook = await ben.call("lib/porch/porch-look.ts", "myPorchLook");
+  const oliveLook = await olive.call("lib/porch/porch-look.ts", "myPorchLook");
+  record("sanity", "settings", "Ann (A's admin) sets Porch A's theme and Abe sees it", annTheme?.ok === true && abeLook?.theme === "living-water");
+  record("isolation", "settings", "Ben's theme for Porch B doesn't change Porch A's or Phaneroo's", benTheme?.ok === true && benLook?.theme === "crimson-grace" && abeLook?.theme === "living-water" && oliveLook?.theme === "porch-evening");
+  const abeDoors = await abe.call("lib/porch/porch-look.ts", "setTourDoors", { off: ["my20"] });
+  record("sanity", "settings", "A member (Abe) can't switch Tour doors off", abeDoors?.ok === false);
+  const allOff = await ben.call("lib/porch/porch-look.ts", "setTourDoors", { off: ["pray", "my20", "events", "groups", "serve", "transport", "feedback"] });
+  record("sanity", "settings", "A porch must keep at least one Tour door", allOff?.ok === false);
+  const benDoors = await ben.call("lib/porch/porch-look.ts", "setTourDoors", { off: ["my20", "transport"] });
+  const benDoorLook = await ben.call("lib/porch/porch-look.ts", "myPorchLook");
+  const abeDoorLook = await abe.call("lib/porch/porch-look.ts", "myPorchLook");
+  const oliveDoorLook = await olive.call("lib/porch/porch-look.ts", "myPorchLook");
+  record("sanity", "settings", "Ben switches off My 20 and Transport for Porch B", benDoors?.ok === true && (benDoorLook?.tourOff ?? []).join(",") === "my20,transport");
+  record("isolation", "settings", "Porch B's switched-off Tour doors don't change Porch A's or Phaneroo's Tour", (abeDoorLook?.tourOff ?? []).length === 0 && (oliveDoorLook?.tourOff ?? []).length === 0);
+
   // ---- Events (with hotels and travel) ----
   const annEvent = await ann.call("lib/porch/events.ts", "saveEvent", { title: "Porch A retreat", startsOn: future });
   record("sanity", "events", "Ann can add an event in Porch A", annEvent?.ok === true);

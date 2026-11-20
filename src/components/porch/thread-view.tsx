@@ -6,7 +6,9 @@ import { getThread, sendMessage, setResponding } from "@/lib/porch/api";
 import { deleteMessage, editMessage, pinMessage, reactMessage, starMessage } from "@/lib/porch/chat";
 import { pingInbox } from "@/lib/porch/inbox-events";
 import { CHAT_REACTS, type DirectMessage, type ThreadPage } from "@/lib/porch/model";
-import { Avatar, CallLink, LinkText, quietButtonClass } from "@/components/porch/bits";
+import { CallLink, LinkText, quietButtonClass } from "@/components/porch/bits";
+import { PbAvatar, useConversationOpen } from "@/components/porch/pb-shell";
+import { onlineState, usePorch } from "@/lib/porch/presence-store";
 import { Fault } from "@/components/porch/trouble";
 
 function dayLabel(iso: string) {
@@ -47,6 +49,8 @@ function sameThread(current: ThreadPage, next: ThreadPage) {
 
 export function ThreadView({ userId }: { userId: string }) {
   const user = useCurrentUser();
+  useConversationOpen();
+  usePorch(); // re-draws the "on the porch now" dot
   const [page, setPage] = useState<ThreadPage | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [draft, setDraft] = useState("");
@@ -128,6 +132,7 @@ export function ThreadView({ userId }: { userId: string }) {
   }
   const profile = page.profile;
   const mineSpace = page.isSelf;
+  const here = !mineSpace && onlineState(profile.userId) !== null;
   const meta = mineSpace ? "Only you can read this" : [profile.role, profile.team].filter(Boolean).join(" · ");
   const seed = { displayName, email, imageUrl };
   const needle = find.trim().toLowerCase();
@@ -245,15 +250,9 @@ export function ThreadView({ userId }: { userId: string }) {
   let lastDay = "";
 
   return (
-    <div className="pc-thread fixed inset-x-0 top-[var(--porch-head,7.25rem)] bottom-0 z-10 flex flex-col bg-[#07140c] lg:relative lg:z-auto lg:h-[calc(100dvh-8.5rem)] lg:overflow-hidden lg:rounded-3xl">
-      <img
-        src="/chat-ground.png?v=1"
-        alt=""
-        className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-top opacity-40"
-      />
-      <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-[#07140c]/35 via-[#07140c]/50 to-[#07140c]/78" />
-      <header className="relative z-10 flex items-center gap-2 border-b border-white/10 bg-[#07140c]/80 px-2 py-2 backdrop-blur-sm">
-        <Link to="/messages" aria-label="All messages" className={`${quietButtonClass} px-2`}>
+    <div className="pb pb-convo pc-thread fixed inset-x-0 top-[var(--porch-head,7.25rem)] bottom-0 z-10 flex flex-col lg:relative lg:z-auto lg:h-[calc(100dvh-8.5rem)] lg:overflow-hidden lg:rounded-3xl">
+      <header className="pb-convo-head">
+        <Link to="/messages" aria-label="Back" className="pb-iconbtn">
           <ChevronLeft className="size-5" aria-hidden="true" />
         </Link>
         {mineSpace ? (
@@ -267,11 +266,14 @@ export function ThreadView({ userId }: { userId: string }) {
             params={{ userId: profile.userId }}
             className="flex min-w-0 flex-1 items-center gap-3 rounded-lg"
           >
-            <Avatar name={profile.displayName} imageUrl={profile.imageUrl} />
+            <span className="pb-face">
+              <PbAvatar name={profile.displayName} imageUrl={profile.imageUrl} id={profile.userId} size={40} />
+              {here ? <span className="pb-face-dot" aria-hidden="true" /> : null}
+            </span>
             <span className="min-w-0">
-              <span className="block truncate font-semibold text-ink">{profile.displayName}</span>
-              <span className="block truncate text-xs text-muted">
-                {page.responding ? `${profile.displayName} is responding…` : meta || "Private"}
+              <span className="block truncate" style={{ fontWeight: 700, fontSize: 16 }}>{profile.displayName}</span>
+              <span className="block truncate" style={{ fontSize: 13, color: here && !page.responding ? "var(--pb-second)" : "var(--pb-quiet)" }}>
+                {page.responding ? `${profile.displayName} is responding…` : here ? "On the porch now" : meta || "Private"}
               </span>
             </span>
           </Link>
@@ -279,25 +281,25 @@ export function ThreadView({ userId }: { userId: string }) {
         <button
           type="button"
           aria-label="Search this chat"
-          className={`${quietButtonClass} px-2`}
+          className="pb-iconbtn pb-iconbtn-plain"
           onClick={() => setSearchOpen((value) => !value)}
         >
           <Search className="size-5" />
         </button>
         {mineSpace ? null : (
           <>
-            <CallLink userId={profile.userId} name={profile.displayName} />
-            <CallLink video userId={profile.userId} name={profile.displayName} />
+            <CallLink userId={profile.userId} name={profile.displayName} className="pb-iconbtn is-green" />
+            <CallLink video userId={profile.userId} name={profile.displayName} className="pb-iconbtn is-green" />
           </>
         )}
       </header>
       {searchOpen ? (
-        <div className="relative z-10 flex items-center gap-2 border-b border-white/10 bg-[#07140c]/75 px-3 py-2 backdrop-blur-sm">
+        <div className="pb-convo-bar">
           <input
             value={find}
             onChange={(event) => setFind(event.target.value)}
             placeholder="Search this chat"
-            className="min-h-10 flex-1 rounded-full border border-white/15 bg-black px-4 text-sm text-white outline-none"
+            className="ofc-compose-box" style={{ minHeight: 40, padding: "8px 16px", fontSize: 15 }}
           />
           <button
             type="button"
@@ -311,7 +313,7 @@ export function ThreadView({ userId }: { userId: string }) {
       {page.pinned ? (
         <button
           type="button"
-          className="relative z-10 border-b border-white/10 bg-[#07140c]/70 px-4 py-2 text-left text-sm text-white/80"
+          className="pb-convo-bar pb-convo-pinned"
           onClick={() => {
             document.getElementById(`msg-${page.pinned?.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
           }}
@@ -319,9 +321,9 @@ export function ThreadView({ userId }: { userId: string }) {
           Pinned · {page.pinned.body}
         </button>
       ) : null}
-      <div ref={scroller} onScroll={onScroll} className="relative z-10 min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3">
+      <div ref={scroller} onScroll={onScroll} className="pb-convo-notes">
         {shown.length === 0 ? (
-          <p className="pt-10 text-center text-sm text-muted">
+          <p className="pb-quiet" style={{ paddingTop: 40, textAlign: "center", fontSize: 14 }}>
             {needle || starsOnly ? "Nothing matches." : mineSpace ? "A note just for you." : "Say hello. Swipe a message to reply."}
           </p>
         ) : (
@@ -332,7 +334,7 @@ export function ThreadView({ userId }: { userId: string }) {
             return (
               <div key={message.id} id={`msg-${message.id}`}>
                 {showDay ? (
-                  <p className="mx-auto my-2 w-fit rounded-full bg-black/50 px-3 py-1 text-xs text-muted">{day}</p>
+                  <p className="pb-quiet" style={{ margin: "10px auto", width: "fit-content", fontSize: 12 }}>{day}</p>
                 ) : null}
                 <div className={`flex ${message.mine ? "justify-end" : "justify-start"}`}>
                   <div
@@ -344,9 +346,7 @@ export function ThreadView({ userId }: { userId: string }) {
                       event.preventDefault();
                       if (!message.deleted) setMenu(message);
                     }}
-                    className={`max-w-[78%] rounded-2xl px-3 py-1.5 ${
-                      message.mine ? "rounded-br-md bg-[#f8a018] text-black" : "rounded-bl-md bg-[#1a1a1a] text-white"
-                    }`}
+                    className={`ofc-bubble${message.mine ? " is-mine" : ""}`}
                   >
                     {message.replyTo ? (
                       <p className={`mb-1 truncate rounded-lg px-2 py-1 text-xs ${message.mine ? "bg-black/10" : "bg-white/10"}`}>
@@ -358,11 +358,7 @@ export function ThreadView({ userId }: { userId: string }) {
                     ) : (
                       <LinkText
                         text={message.body}
-                        linkClass={
-                          message.mine
-                            ? "text-black underline decoration-black underline-offset-2"
-                            : "text-white underline decoration-white underline-offset-2"
-                        }
+                        linkClass="underline underline-offset-2"
                       />
                     )}
                     {message.reactions.length > 0 ? (
@@ -380,7 +376,7 @@ export function ThreadView({ userId }: { userId: string }) {
                         ))}
                       </p>
                     ) : null}
-                    <p className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${message.mine ? "text-black/70" : "text-white/60"}`}>
+                    <p className="ofc-bubble-meta" style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: message.mine ? "flex-end" : "flex-start" }}>
                       {message.starred ? <Star className="size-3 fill-current" /> : null}
                       {message.edited ? <span>Edited</span> : null}
                       <time dateTime={message.createdAt}>{clock(message.createdAt)}</time>
@@ -393,20 +389,20 @@ export function ThreadView({ userId }: { userId: string }) {
         )}
         {page.responding ? (
           <div className="flex justify-start">
-            <p className="rounded-2xl rounded-bl-md bg-[#1a1a1a] px-3 py-2 text-sm text-white/80">
+            <p className="ofc-bubble pb-quiet" style={{ fontSize: 14 }}>
               {profile.displayName} is responding…
             </p>
           </div>
         ) : null}
       </div>
       {menu ? (
-        <div className="relative z-10 border-t border-white/10 bg-[#102016] px-3 py-2">
+        <div className="pb-convo-bar pb-convo-menu">
           <div className="flex gap-2">
             {CHAT_REACTS.map((emoji) => (
               <button
                 key={emoji}
                 type="button"
-                className="grid size-10 place-items-center rounded-full bg-black text-lg"
+                className="pb-react-btn"
                 onClick={() => void act(() => reactMessage({ data: { messageId: menu.id, emoji, ...seed } }))}
               >
                 {emoji}
@@ -452,7 +448,7 @@ export function ThreadView({ userId }: { userId: string }) {
         </div>
       ) : null}
       {reply ? (
-        <div className="relative z-10 flex items-center gap-2 border-t border-white/10 bg-[#07140c]/80 px-3 py-2 text-sm text-white/80">
+        <div className="pb-convo-bar pb-convo-note">
           <p className="min-w-0 flex-1 truncate">Reply · {reply.body}</p>
           <button type="button" aria-label="Cancel reply" onClick={() => setReply(null)}>
             <X className="size-4" />
@@ -460,7 +456,7 @@ export function ThreadView({ userId }: { userId: string }) {
         </div>
       ) : null}
       {editing ? (
-        <div className="relative z-10 flex items-center gap-2 border-t border-white/10 bg-[#07140c]/80 px-3 py-2 text-sm text-white/80">
+        <div className="pb-convo-bar pb-convo-note">
           <p className="min-w-0 flex-1 truncate">Editing</p>
           <button
             type="button"
@@ -474,24 +470,24 @@ export function ThreadView({ userId }: { userId: string }) {
           </button>
         </div>
       ) : null}
-      <form onSubmit={onSubmit} className="safe-bottom relative z-10 flex items-end gap-2 border-t border-white/10 bg-[#07140c] py-2 pl-3" style={{ paddingRight: "0.75rem" }}>
+      <form onSubmit={onSubmit} className="ofc-compose">
         <label className="sr-only" htmlFor="private-note">
           Message
         </label>
         <textarea
           id="private-note"
-          className="max-h-32 min-h-11 flex-1 resize-none rounded-3xl border border-white/15 bg-black px-4 py-2.5 text-base text-white outline-none placeholder:text-white/40"
+          className="ofc-compose-box"
           rows={1}
           maxLength={2000}
           value={draft}
-          placeholder={editing ? "Edit message" : mineSpace ? "Note to yourself" : "Message"}
+          placeholder={editing ? "Edit message" : mineSpace ? "Note to yourself" : `Message ${profile.displayName.split(/\s+/)[0] || ""}…`}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={onKeyDown}
         />
         <button
           type="submit"
           aria-label="Send"
-          className="grid size-11 shrink-0 place-items-center rounded-full bg-[#f8a018] text-black disabled:opacity-40"
+          className="ofc-send"
           disabled={pending || !draft.trim()}
         >
           <Send className="size-5" aria-hidden="true" />
