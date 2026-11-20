@@ -989,11 +989,11 @@ export function AppFrame({
             ? "relative mx-auto min-h-0 w-full max-w-none flex-1 overflow-hidden"
             : newScreen
               ? "min-h-0 w-full flex-1 overflow-hidden"
-              : `mx-auto grid min-h-0 w-full flex-1 gap-4 overflow-hidden ${pathname === "/next" ? "tour-page-shell max-w-none px-2 pt-2" : `max-w-6xl px-4 py-3 lg:px-6 lg:grid-cols-[minmax(0,1fr)_16rem]${pathname === "/read" ? " pc-read" : ""}${pathname.startsWith("/messages") ? " pc-wide" : ""}`}`
+              : `mx-auto grid min-h-0 w-full flex-1 gap-4 overflow-hidden ${pathname === "/next" ? "tour-page-shell max-w-6xl px-4 py-3 lg:px-6" : `max-w-6xl px-4 py-3 lg:px-6 lg:grid-cols-[minmax(0,1fr)_16rem]${pathname === "/read" ? " pc-read" : ""}${pathname.startsWith("/messages") ? " pc-wide" : ""}`}`
         }
       >
         <main className="min-h-0 overflow-hidden">
-          <div key={`${pathname}#${refreshKey}`} className="rise h-full min-h-0 overflow-y-auto">
+          <div key={`${pathname}#${refreshKey}`} className="pb pb-legacy rise h-full min-h-0 overflow-y-auto">
             <div className={newScreen ? "pb pb-column" : undefined}>
               <FounderDesk user={user} home={pathname === "/"} />
               {children}
@@ -1052,6 +1052,9 @@ function screenName(pathname: string) {
   if (pathname === "/invite") return "Invite";
   if (pathname === "/porch-settings") return "Porch settings";
   if (pathname === "/presence") return "On the porch now";
+  if (pathname === "/roll") return "The roll";
+  if (pathname.startsWith("/calls")) return "Calls";
+  if (pathname === "/privacy") return "Privacy";
   return "Your porch";
 }
 

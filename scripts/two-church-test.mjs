@@ -418,6 +418,30 @@ try {
   record("sanity", "settings", "Ben switches off My 20 and Transport for Porch B", benDoors?.ok === true && (benDoorLook?.tourOff ?? []).join(",") === "my20,transport");
   record("isolation", "settings", "Porch B's switched-off Tour doors don't change Porch A's or Phaneroo's Tour", (abeDoorLook?.tourOff ?? []).length === 0 && (oliveDoorLook?.tourOff ?? []).length === 0);
 
+  // ---- Devotional (Stage 4d): new churches start with none; Phaneroo keeps phaneroo.org ----
+  const oliveDevShelf = await olive.call("lib/porch/read.ts", "loadReadShelf");
+  record("sanity", "read", "Phaneroo keeps phaneroo.org's daily devotional", oliveDevShelf?.devotion?.source === "phaneroo");
+  const benDevShelf = await ben.call("lib/porch/read.ts", "loadReadShelf");
+  const benDevotion = await ben.call("lib/porch/read.ts", "loadReadDoc", { key: "devotion" });
+  record("isolation", "read", "Porch B starts with no devotional and never gets Phaneroo's", benDevShelf?.devotion?.source === "none" && benDevotion?.ok === false && !has(benDevotion, "phaneroo.org"));
+  const benTakesPhaneroo = await ben.call("lib/porch/read.ts", "saveDevotionSetting", { source: "phaneroo" });
+  record("isolation", "read", "Porch B can't switch on Phaneroo's devotional", benTakesPhaneroo?.ok === false);
+  const benAfterTry = await ben.call("lib/porch/read.ts", "loadReadDoc", { key: "devotion" });
+  record("isolation", "read", "…and still sees no Phaneroo devotional afterwards", !has(benAfterTry, "phaneroo.org"));
+  const abeSetsDevotion = await abe.call("lib/porch/read.ts", "saveDevotionSetting", { source: "own", title: "Abe's", text: "Not allowed" });
+  record("sanity", "read", "A member (Abe) can't change the devotional", abeSetsDevotion?.ok === false);
+  const benOwn = await ben.call("lib/porch/read.ts", "saveDevotionSetting", { source: "own", title: "B's word for today", text: "Porch B's own devotional text" });
+  const benReads = await ben.call("lib/porch/read.ts", "loadReadDoc", { key: "devotion" });
+  record("sanity", "read", "Ben writes Porch B's own devotional and B reads it", benOwn?.ok === true && benReads?.ok === true && benReads?.title === "B's word for today" && has(benReads, "Porch B's own devotional text"));
+  const abeReads = await abe.call("lib/porch/read.ts", "loadReadDoc", { key: "devotion" });
+  const abeDevShelf = await abe.call("lib/porch/read.ts", "loadReadShelf");
+  const oliveShelfAfter = await olive.call("lib/porch/read.ts", "loadReadShelf");
+  record("isolation", "read", "Porch B's own devotional doesn't reach Porch A or Phaneroo", !has(abeReads, "Porch B's own devotional") && abeDevShelf?.devotion?.source === "none" && oliveShelfAfter?.devotion?.source === "phaneroo" && !has(oliveShelfAfter, "B's word"));
+  const annLink = await ann.call("lib/porch/read.ts", "saveDevotionSetting", { source: "link", link: "https://example.org/porch-a-devotional" });
+  const abeLink = await abe.call("lib/porch/read.ts", "loadReadDoc", { key: "devotion" });
+  const benLinkCheck = await ben.call("lib/porch/read.ts", "loadReadDoc", { key: "devotion" });
+  record("isolation", "read", "Porch A's devotional website reaches A only", annLink?.ok === true && abeLink?.link === "https://example.org/porch-a-devotional" && !has(benLinkCheck, "porch-a-devotional"));
+
   // ---- Events (with hotels and travel) ----
   const annEvent = await ann.call("lib/porch/events.ts", "saveEvent", { title: "Porch A retreat", startsOn: future });
   record("sanity", "events", "Ann can add an event in Porch A", annEvent?.ok === true);

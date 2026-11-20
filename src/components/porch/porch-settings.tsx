@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { setPorchTheme, setTourDoors, TOUR_DOORS } from "@/lib/porch/porch-look";
 import { THEMES, type Theme, type ThemeId } from "@/lib/porch/themes";
 import { applyTheme, reloadPorchLook, usePorchLook } from "@/components/porch/pb-shell";
+import { DevotionSetting } from "@/components/porch/devotion-setting";
 
 function Swatch({ theme }: { theme: Theme }) {
   return (
@@ -128,6 +129,14 @@ export function PorchSettings() {
             );
           })}
         </div>
+      </section>
+
+      <section>
+        <p className="ofc-sec">Devotional</p>
+        <p className="pb-quiet" style={{ margin: "0 4px 10px", fontSize: 14 }}>
+          What members read as "Today's devotional" on the Read screen.
+        </p>
+        <DevotionSetting />
       </section>
 
       <section>

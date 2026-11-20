@@ -469,6 +469,14 @@ const standingBooks: ReadBook[] = [
 function ReadPage() {
   const { user } = useCurrentUserState();
   const [books, setBooks] = useState<ReadBook[]>(standingBooks);
+  // The porch's devotional (Stage 4d): none, its own typed one, a website, or (Phaneroo) phaneroo.org.
+  const [devotion, setDevotion] = useState<{ source: string; title: string }>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("porch-devotion-source") || "null") ?? { source: "", title: "" };
+    } catch {
+      return { source: "", title: "" };
+    }
+  });
   const [founder, setFounder] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   // On a laptop the open book sits beside the shelf.
@@ -531,6 +539,12 @@ function ReadPage() {
     return loadReadShelf({ data: seed }).then((result) => {
       setFounder(result.isFounder);
       setBooks(result.books);
+      setDevotion(result.devotion);
+      try {
+        localStorage.setItem("porch-devotion-source", JSON.stringify(result.devotion));
+      } catch {
+        /* fine */
+      }
       try {
         sessionStorage.setItem("porch-read-shelf", JSON.stringify(result.books));
         localStorage.setItem("porch-read-shelf", JSON.stringify(result.books)); // the shelf without data too
@@ -627,7 +641,7 @@ function ReadPage() {
     }
     if (key === "devotion") {
       setPastDay("");
-      const kept = storedDevotion();
+      const kept = devotion.source === "phaneroo" || devotion.source === "link" ? storedDevotion() : null;
       if (kept) {
         // Instant: the copy kept on the phone. A quiet check follows.
         setLink(kept.link);
@@ -669,6 +683,12 @@ function ReadPage() {
       return;
     }
     if (key === "devotion") {
+      if ("source" in result && result.source === "own") {
+        // The porch's own devotional, typed in Porch settings.
+        setSheets([{ name: "English", html: ownDevotionHtml(result.title, result.body) }]);
+        setLink("");
+        return;
+      }
       if (!result.link && !founder) {
         setOpen(null);
         setNote("The devotional is not ready.");
@@ -946,7 +966,7 @@ function ReadPage() {
   return (
     <AppFrame>
       {/* Stage 4c: the Read screen in the new design. The wooden shelf only shows while an admin uses a shelf tool. */}
-      <ReadHome books={library} onOpen={(key) => void openBook(key)} devotionTitle={kept[2]?.title && kept[2].title !== "Devotional" ? kept[2].title : ""} />
+      <ReadHome books={library} onOpen={(key) => void openBook(key)} devotion={devotion} admin={founder} seed={seed} />
       {note && !open ? <p className="text-sm text-muted">{note}</p> : null}
       <TitleCtx.Provider value={titleTools}>
       {picking || adjusting || coverMode || flyMode || titleMode || renameMode ? <BookShelf onRenamePick={renameMode ? (key) => { if (key === "notebook") { setRenameNote("Notes keeps its name."); return; } const book = [...kept, ...library].find((item) => item.key === key); setRenaming(key); setRenameDraft(book?.title ?? ""); setRenameNote(""); } : undefined} renamePicked={renameMode ? renaming : ""} flyMode={flyMode} flyOf={covers.flyOf} flyPicked={flyPicked} onFlySelect={setFlyPicked} onFlyPlace={(key, spot) => changeFly(key, spot)} coverMode={coverMode} coverOf={covers.coverOf} hasCover={covers.hasCover} onCoverFile={(key, file) => { setCoverNote("Putting on the new cover…"); void covers.choose(key, file).then(setCoverNote); }} onCoverReset={(key) => void covers.reset(key).then(setCoverNote)} books={[...kept, ...library]} picking={picking} chosen={chosen} standing={standing} adjusting={adjusting} sizes={sizes} onOpen={(key) => void openBook(key)} onChoose={setChosen} onKeep={() => setNote("The Bible, the notebook, and the devotional stay.")} onSize={keepSize} onReset={resetSize} /> : null}
@@ -1188,7 +1208,7 @@ function ReadPage() {
               <StudyTrio current="devotion" onPick={(to) => void switchTo(to)} />
               <DevotionDays day={pastDay} onDay={setPastDay} />
               {pastDay || !shown("devotionVoice") ? null : <DevotionListen />}
-              {founder && (!link || changeLink) ? (
+              {founder && devotion.source !== "own" && (!link || changeLink) ? (
                 <form
                   className="flex gap-2 px-3 py-2"
                   onSubmit={(event) => {
@@ -1213,7 +1233,7 @@ function ReadPage() {
                 <DevotionRead sheets={sheets} link={link} founder={founder} seed={seed} />
               ) : link ? (
                 <iframe title="Devotional" src={`/api/browse?url=${encodeURIComponent(link)}${getBearerToken() ? `&t=${encodeURIComponent(getBearerToken() ?? "")}` : ""}`} className="min-h-0 w-full flex-1 border-0 bg-white" />
-              ) : waiting ? (
+              ) : waiting || devotion.source === "own" ? (
                 <PorchLoader className="is-card" label="Opening the devotional" />
               ) : (
                 <p className="px-4 text-sm text-[#f6edd8]">Paste the page address, then save.</p>
@@ -1367,4 +1387,16 @@ function DevotionDays({ day, onDay }: { day: string; onDay: (day: string) => voi
       })}
     </div>
   );
+}
+
+/** A porch's own typed devotional, as a page for the devotional reader. */
+function ownDevotionHtml(title: string, text: string) {
+  const safe = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const paragraphs = text
+    .split(/\n\s*\n|\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `<p>${safe(line)}</p>`)
+    .join("");
+  return `<h1>${safe(title)}</h1>${paragraphs}`;
 }

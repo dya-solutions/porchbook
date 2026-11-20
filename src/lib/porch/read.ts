@@ -83,6 +83,31 @@ async function prepare(sql: Awaited<ReturnType<typeof getSql>>) {
   await sql`alter table read_docs add column if not exists pdf text not null default ''`;
   await sql`alter table read_docs add column if not exists link_set_at timestamptz`;
   await sql`alter table read_docs add column if not exists auto_checked_at timestamptz`;
+  // Stage 4d: each porch chooses its devotional. New churches start with none; Phaneroo keeps
+  // following phaneroo.org ("phaneroo"). The others: "own" (typed in the app) or "link" (a website).
+  await sql`alter table porch_settings add column if not exists devotion_source text not null default 'none'`;
+  const first = await sql<{ step: string }>`insert into porch_steps (step) values ('devotion-source-v1') on conflict do nothing returning step`;
+  if (first.length) {
+    await sql`update porch_settings set devotion_source = 'phaneroo' where porch_id = 1`;
+    // Before this, every church was given Phaneroo's newest devotional automatically. Take it back.
+    await sql`update read_docs set link = '', link_set_at = null where key = 'devotion' and porch_id <> 1 and link ilike '%phaneroo.org%'`;
+  }
+}
+
+export type DevotionSource = "none" | "own" | "link" | "phaneroo";
+
+async function devotionSource(sql: Awaited<ReturnType<typeof getSql>>, porch: number): Promise<DevotionSource> {
+  const rows = await sql.query<{ source: string }>("select devotion_source as source from porch_settings where porch_id = $1", [porch]);
+  const source = rows[0]?.source;
+  // Only Phaneroo itself follows phaneroo.org automatically.
+  if (source === "phaneroo") return porch === 1 ? "phaneroo" : "none";
+  return source === "own" || source === "link" ? source : "none";
+}
+
+/** The porch's own typed devotional: the first line is its title. */
+function ownDevotion(body: string) {
+  const [title = "", ...rest] = body.split("\n");
+  return { title: title.trim(), text: rest.join("\n").trim() };
 }
 
 // The devotional switches to Phaneroo's newest devotion as soon as it's posted: from midnight
@@ -301,10 +326,13 @@ export const loadReadShelf = createServerFn({ method: "POST" })
         [porch],
       ),
     ]);
+    const source = await devotionSource(sql, porch);
+    const own = source === "own" ? ownDevotion(rows.find((row) => row.key === "devotion") ? (await sql.query<{ body: string }>("select body from read_docs where key = 'devotion' and porch_id = $1", [porch]))[0]?.body ?? "" : "") : null;
     return {
       ok: true as const,
       isFounder,
       books: rows.map((row) => ({ key: row.key, title: row.title, link: row.link, hasPdf: boolish(row.has_pdf) })) satisfies ReadBook[],
+      devotion: { source, title: own?.title ?? "" },
     };
   });
 
@@ -338,11 +366,31 @@ export const loadReadDoc = createServerFn({ method: "POST" })
         scan: null as string | null,
       };
     }
+    let source: DevotionSource = "none";
     if (data.key === "devotion") {
-      try {
-        await refreshDevotion(sql, porch);
-      } catch {
-        /* keep the current devotional */
+      source = await devotionSource(sql, porch);
+      if (source === "none") return { ok: false as const, error: "Your church hasn't set up a devotional yet." };
+      if (source === "phaneroo") {
+        try {
+          await refreshDevotion(sql, porch);
+        } catch {
+          /* keep the current devotional */
+        }
+      }
+      if (source === "own") {
+        const own = await sql.query<{ body: string }>("select body from read_docs where key = 'devotion' and porch_id = $1", [porch]);
+        const typed = ownDevotion(own[0]?.body ?? "");
+        return {
+          ok: true as const,
+          title: typed.title || "Devotional",
+          body: typed.text,
+          link: "",
+          hasPdf: false,
+          canEdit: false,
+          library: null as LibraryPages | null,
+          scan: null as string | null,
+          source,
+        };
       }
     }
     const rows = await sql.query<{ title: string; body: string; link: string; has_pdf: boolean }>(
@@ -375,6 +423,7 @@ export const loadReadDoc = createServerFn({ method: "POST" })
       canEdit: isFounder && data.key !== "devotion" && data.key !== "bible",
       library,
       scan,
+      source,
     };
   });
 
@@ -409,6 +458,7 @@ export const saveReadDoc = createServerFn({ method: "POST" })
     const porch = await shelfPorch(sql, context.userId);
     if (data.key === "devotion" || data.key === "bible") {
       if (!data.link) return { ok: false as const, error: "Paste the page address. It must begin with https://" };
+      if (data.key === "devotion" && (await devotionSource(sql, porch)) === "none") return { ok: false as const, error: "Choose the devotional in Porch settings first." };
       await sql`update read_docs set link = ${data.link}, link_set_at = now() where key = ${data.key} and porch_id = ${porch}`;
       return { ok: true as const };
     }
@@ -510,6 +560,66 @@ export const dropReadBooks = createServerFn({ method: "POST" })
     if (!(await founder(sql, context.userId))) return { ok: false as const, error: "Only the pastor can delete a book." };
     for (const key of keys) {
       await sql`delete from read_docs where key = ${key} and porch_id = my_porch(${context.userId})`;
+    }
+    return { ok: true as const };
+  });
+
+/** Porch settings (Stage 4d): what the porch's devotional is, for its admins. */
+export const loadDevotionSetting = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await getSql();
+    await ready(sql);
+    const porch = await shelfPorch(sql, context.userId);
+    const source = await devotionSource(sql, porch);
+    const rows = await sql.query<{ link: string; body: string }>("select link, body from read_docs where key = 'devotion' and porch_id = $1", [porch]);
+    const own = ownDevotion(rows[0]?.body ?? "");
+    return {
+      source,
+      link: source === "link" ? (rows[0]?.link ?? "") : "",
+      title: own.title,
+      text: own.text,
+      // Only Phaneroo can follow phaneroo.org's daily devotional automatically.
+      canFollowPhaneroo: porch === 1,
+    };
+  });
+
+export const saveDevotionSetting = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => {
+    const raw = asRecord(input);
+    const source = raw.source === "own" || raw.source === "link" || raw.source === "phaneroo" ? raw.source : "none";
+    return {
+      source: source as DevotionSource,
+      link: linkOf(raw.link),
+      title: typeof raw.title === "string" ? clip(raw.title.replace(/\n/g, " ").trim(), 120) : "",
+      text: typeof raw.text === "string" ? clip(raw.text.trim(), 5000) : "",
+    };
+  })
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ready(sql);
+    if (!(await founder(sql, context.userId))) {
+      noteAttempt(context.userId, "devotion-source", "Tried to change the porch's devotional.");
+      return { ok: false as const, error: "Only a porch admin can change the devotional." };
+    }
+    const porch = await shelfPorch(sql, context.userId);
+    if (data.source === "phaneroo" && porch !== 1) return { ok: false as const, error: "Choose your own devotional or a website." };
+    if (data.source === "link" && !data.link) return { ok: false as const, error: "Type the website address. It must begin with https://" };
+    if (data.source === "own" && (!data.title || !data.text)) return { ok: false as const, error: "Give today's devotional a title and its words." };
+    await sql.query(
+      `insert into porch_settings (porch_id, devotion_source, updated_at) values ($1, $2, now())
+       on conflict (porch_id) do update set devotion_source = excluded.devotion_source, updated_at = now()`,
+      [porch, data.source],
+    );
+    if (data.source === "link") {
+      await sql`update read_docs set link = ${data.link}, link_set_at = now() where key = 'devotion' and porch_id = ${porch}`;
+    }
+    if (data.source === "own") {
+      await sql`update read_docs set body = ${data.title + "\n" + data.text}, link = '' where key = 'devotion' and porch_id = ${porch}`;
+    }
+    if (data.source === "none") {
+      await sql`update read_docs set link = '' where key = 'devotion' and porch_id = ${porch}`;
     }
     return { ok: true as const };
   });

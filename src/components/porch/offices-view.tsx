@@ -771,6 +771,8 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
   const [officialText, setOfficialText] = useState("");
   const [officialWho, setOfficialWho] = useState("");
   const [officialNote, setOfficialNote] = useState("");
+  // Admins change the head behind a small "Edit" (Stage 4d).
+  const [editHead, setEditHead] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
   const stickRef = useRef(true);
   // A conversation with the office is open (phones hide the bottom bar meanwhile).
@@ -997,6 +999,11 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
             <h1 className="pb-ttl" style={{ fontSize: 26, lineHeight: 1.1 }}>{page.name}</h1>
             <p className="pb-quiet" style={{ margin: "4px 0 0", fontSize: 14 }}>
               {page.headName ? `Head: ${page.headName}` : "No head yet"}
+              {page.isFounder ? (
+                <button type="button" className="pb-link" style={{ minHeight: 32, padding: "0 0 0 10px", color: "var(--pb-main)" }} onClick={() => setEditHead((value) => !value)}>
+                  {editHead ? "Done" : "Edit"}
+                </button>
+              ) : null}
             </p>
           </div>
         </div>
@@ -1015,14 +1022,14 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
         />
       ) : null}
 
-      {page.isFounder && page.kind === "rooms" ? (
-        <label className="mt-4 block text-sm text-muted">
-          Head
+      {page.isFounder && page.kind === "rooms" && editHead ? (
+        <label className="ofc-lbl pb-card" style={{ marginTop: 14, padding: 14 }}>
+          Who heads this office
           <select
-            className={`${fieldClass} mt-1`}
+            className="ofc-input"
             value={page.headUserId ?? ""}
             onChange={(event) => {
-              if (event.target.value) void chooseHead(event.target.value);
+              if (event.target.value) void chooseHead(event.target.value).then(() => setEditHead(false));
             }}
           >
             <option value="">Choose a head</option>

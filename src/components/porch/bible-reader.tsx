@@ -141,9 +141,10 @@ export function BibleReader({ onBack, passage, onSwitch }: { onBack: () => void;
   useEffect(() => setQuick(null), [place.book, place.chapter, place.translation]);
   const [night, setNight] = useState(() => {
     try {
-      return localStorage.getItem("porch-bible-night") === "1";
+      // Stage 4d: the theme's own page unless this member chose the paper page.
+      return localStorage.getItem("porch-bible-night") !== "0";
     } catch {
-      return false;
+      return true;
     }
   });
   const [study, setStudy] = useState(() => {

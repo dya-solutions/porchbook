@@ -4,6 +4,25 @@
 import { useEffect, useState } from "react";
 import { bookByNumber, readPlace } from "@/lib/porch/bible-engine";
 import type { ReadBook } from "@/lib/porch/read";
+import { refreshDevotion, storedDevotion } from "@/lib/porch/devotion-cache";
+import { Link } from "@tanstack/react-router";
+
+/** Today's devotional title and picture, from the copy kept on this phone. */
+function keptDevotionFace(): { title: string; picture: string } {
+  const kept = storedDevotion();
+  if (!kept?.html || typeof DOMParser === "undefined") return { title: "", picture: "" };
+  try {
+    const doc = new DOMParser().parseFromString(kept.html, "text/html");
+    const heading = doc.querySelector("h1, h2, .entry-title, title");
+    const title = (heading?.textContent ?? "").replace(/s+/g, " ").trim();
+    const img = doc.querySelector("img[src]");
+    const src = img?.getAttribute("src") ?? "";
+    const picture = src.startsWith("/api/") || src.startsWith("https://") || src.startsWith("data:image/") ? src : "";
+    return { title: title.slice(0, 90), picture };
+  } catch {
+    return { title: "", picture: "" };
+  }
+}
 
 const STROKE = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
@@ -56,7 +75,30 @@ function coverOf(key: string) {
   return COVERS[sum % COVERS.length];
 }
 
-export function ReadHome({ books, onOpen, devotionTitle }: { books: ReadBook[]; onOpen: (key: string) => void; devotionTitle: string }) {
+export function ReadHome({
+  books,
+  onOpen,
+  devotion,
+  admin,
+  seed,
+}: {
+  books: ReadBook[];
+  onOpen: (key: string) => void;
+  devotion: { source: string; title: string };
+  admin: boolean;
+  seed?: { displayName: string; email: string | null; imageUrl: string | null };
+}) {
+  const [face, setFace] = useState({ title: "", picture: "" });
+  useEffect(() => {
+    if (devotion.source === "phaneroo" || devotion.source === "link") {
+      const kept = keptDevotionFace();
+      setFace(kept);
+      // A phone that hasn't opened today's devotional yet fetches it, so the card shows its title.
+      if (!kept.title && seed) void refreshDevotion(seed).then(() => setFace(keptDevotionFace())).catch(() => undefined);
+    }
+    else setFace({ title: devotion.source === "own" ? devotion.title : "", picture: "" });
+  }, [devotion.source, devotion.title]);
+  const hasDevotion = devotion.source !== "none" && devotion.source !== "";
   // Where you stopped in the Bible (kept on this phone by the Bible reader).
   const [place, setPlace] = useState<{ book: string; chapter: number; verse: number } | null>(null);
   useEffect(() => {
@@ -87,13 +129,33 @@ export function ReadHome({ books, onOpen, devotionTitle }: { books: ReadBook[]; 
 
       <p className="ofc-sec" style={{ margin: "4px 4px 0" }}>From your church</p>
       <div className="read-shelf">
-        <button type="button" className="read-book" onClick={() => onOpen("devotion")}>
-          <span className="read-cover" style={{ background: COVERS[0] }}>
-            <Icon name="sun" />
-          </span>
-          <span className="read-book-name">{devotionTitle || "Today's devotional"}</span>
-          <span className="read-book-hint">{today}</span>
-        </button>
+        {hasDevotion ? (
+          <button type="button" className="read-book" onClick={() => onOpen("devotion")}>
+            <span
+              className="read-cover read-cover-devotion"
+              style={face.picture ? { backgroundImage: `url("${face.picture}")` } : { background: COVERS[0] }}
+            >
+              {face.picture ? null : (
+                <>
+                  <span className="read-cover-kicker">
+                    <Icon name="sun" size={16} /> Today
+                  </span>
+                  {face.title ? <span className="read-cover-title">{face.title}</span> : null}
+                </>
+              )}
+            </span>
+            <span className="read-book-name read-book-clamp">{face.picture && face.title ? face.title : "Today's devotional"}</span>
+            <span className="read-book-hint">{today}</span>
+          </button>
+        ) : admin ? (
+          <Link to="/porch-settings" className="read-book">
+            <span className="read-cover" style={{ background: "var(--pb-raised)", color: "var(--pb-quiet)" }}>
+              <Icon name="sun" />
+            </span>
+            <span className="read-book-name">Set up a devotional</span>
+            <span className="read-book-hint">In Porch settings</span>
+          </Link>
+        ) : null}
         {books.map((book) => (
           <button key={book.key} type="button" className="read-book" onClick={() => onOpen(book.key)}>
             <span className="read-cover" style={{ background: coverOf(book.key) }}>

@@ -336,6 +336,61 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
 - **Test data:** while checking the conversation screen I wrote one note in the test account's own My Space on this computer ("Sermon note: John 15:5"). It's only on the local test database.
 - **Not yet in the new look:** what opens inside the Tour doors (Events, Groups, Serve, Transport, My 20), the Bible and book readers themselves, the admins' Shelf tools, Admin tools, and the older pages (invite, calls, roll). These keep their old look and could be a short "Stage 4d" if you want them redesigned.
 
+### 9. Stage 4d (20 Nov 2026): the devotional per church, four fixes, and the older screens in the new look
+
+**Fixes**
+1. **Each church chooses its devotional** (Porch settings → Devotional, admins only):
+   - **No devotional**
+   - **Our own**: a title and the words, typed in the app
+   - **A website**: the church's devotional page
+   - **Phaneroo only:** "Phaneroo's daily devotional" from phaneroo.org, which changes by itself each morning
+
+   **New churches start with no devotional. Phaneroo keeps phaneroo.org.**
+   - **A leak this closed:** until now, the app fetched Phaneroo's newest devotional automatically for **every** church porch. Now only Phaneroo follows phaneroo.org.
+   - Any Phaneroo devotional address already given to another porch on a computer was taken back, once.
+   - Other churches can't choose Phaneroo's automatic devotional.
+   - With no devotional, the Read screen doesn't show one. Admins see "Set up a devotional" instead.
+2. **Tour:** it now has the same 16px side spacing as the other pages, scrolls to the end, and shows the Feedback card and the Dawn / Dusk / Night row in full.
+   - **Cause:** the Tour page kept its own narrow edges and a large empty space at the bottom, left over from the old bottom bar.
+   - The old keys' shine on the door cards is gone too.
+3. **Office page:** the "Choose a head" box is gone from the top. Admins see a small **Edit** next to "Head: …", which opens the head picker. Members never see it, and Manage offices still has it.
+4. **Read:** the "Today's devotional" card shows the day's picture as its cover and **the day's title** under it (e.g. "Kingdom Finance Principles: Beyond Transactional Giving"). A church's own devotional shows its typed title.
+   - On a phone that has never opened the devotional, the card fetches it in the background, and the title appears once it arrives. It can take a few seconds, so a few comparison pictures caught the plain "Today's devotional" card.
+
+**Stage 4d: the older screens in the theme**
+- **One change covers every page:** the content of every page now uses the theme's colours.
+  - The old black panels, gold edges, textured orange buttons and photo backgrounds (e.g. the sparkle photo behind Serve) become the theme's cards, lines and main colour.
+  - Headings use the title font, and quiet text the theme's quiet colour.
+  - This also works in **Morning Light**, where older pages used to stay dark.
+- **Inside the Tour doors:** My 20, Events, Groups, Serve, Transport and Feedback now open in theme cards with theme fields and buttons. They work as before.
+  - **Pray** still doesn't open a sheet. It marks you "praying" (and plays the prayer music when set), as before.
+- **The Bible reader:**
+  - **Theme colours:** the top bar, the Bible / Devotional / Notes switch, the book and chapter keys, the search, and the book, chapter and verse menus.
+  - **Theme's page:** the reading page is now the theme's own page by default.
+  - **"Paper page" stays:** a member can still tap it for the parchment page.
+- **The devotional reader and book readers** have theme colours around them. **The notebook list** is in the theme. A note being written keeps its paper page.
+- **Invite, the roll, Groups, a group's page, Calls and Privacy** follow the theme. The top bar names The roll, Calls and Privacy.
+- **Left for later:** Admin tools and the word-study pop-up in the Bible. The admins' Shelf tools on Read got theme colours, since that was quick.
+- **Still Phaneroo-shaped wording (each church can change it with Edit words):**
+  - Serve's subtitle "Phaneroo Ministries Mbarara"
+  - My 20's "31st Night of Prayer"
+  - Transport's "To 31st Night of Prayer… Call +256…"
+
+  They're per-church words, so Porch B's admin can change them without touching Phaneroo's. Starting new churches with blank wording here would be a small follow-up.
+- **Checked:**
+  - Type check passes.
+  - **Two-church test: 157 passed, 0 failed, 0 not private yet** (it was 149). New checks:
+    - Phaneroo keeps phaneroo.org.
+    - **Porch B starts with no devotional and never gets Phaneroo's**, can't switch it on, and still sees none afterwards.
+    - A member can't change the devotional.
+    - B's own devotional stays in B.
+    - A's devotional website reaches A only.
+  - Design vs app: `../compare-design.html` (Porch Evening, Morning Light, Royal Night). Phaneroo was set back to Porch Evening afterwards.
+  - "After" pictures in both themes:
+    - `../after-stage4d/porch-evening/` (phone and computer)
+    - `../after-stage4d/morning-light/` (phone)
+  - **New helper:** `../set-theme.mjs` sets the test porch's theme for pictures.
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).

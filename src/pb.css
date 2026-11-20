@@ -690,3 +690,146 @@ html.pb-on .pb-tour .tour-doors .pb-door-tile svg { color: inherit !important; }
 .pb-switch.is-on { background: var(--pb-second); }
 .pb-switch.is-on::after { left: 25px; background: color-mix(in srgb, var(--pb-second) 12%, #000); }
 .pb-switch > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.read-cover-devotion { flex-direction: column; align-items: flex-start; justify-content: space-between; background-size: cover !important; background-position: center !important; }
+.read-cover-kicker { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #f8c46a; }
+.read-cover-title { font: 600 14px/1.2 Fraunces, Georgia, serif; color: #f4f1e8; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+/* The Tour page uses the same side spacing as the other pages, and nothing hides under the bottom bar (Stage 4d). */
+html.pb-on .tour-page-shell { padding-bottom: 0.75rem; }
+/* The old keys' shine and shading are not part of the new doors. */
+html.pb-on .pb-tour .tour-doors > .pb-door::before,
+html.pb-on .pb-tour .tour-doors > .pb-door::after { content: none !important; display: none !important; }
+
+/* ---- Stage 4d: the older screens in the theme colours ----
+ * Every page's content sits inside .pb-legacy. The old colour names already follow the theme
+ * inside .pb; these rules replace the old look's black panels, gold edges, textured orange
+ * buttons and photo backgrounds with the theme's cards, lines and main colour. */
+.pb-legacy .glass-edge,
+.pb-legacy .rim { border: 1px solid var(--pb-line-2); box-shadow: none; }
+.pb-legacy .bg-black { background-color: var(--pb-card); }
+.pb-legacy .bg-paper { background-color: var(--pb-raised); }
+.pb-legacy .bg-pine,
+.pb-legacy .orange-weave { background-image: none; background-color: var(--pb-main); color: var(--pb-on-main); }
+.pb-legacy .green-weave { background-image: none; background-color: var(--pb-second-soft); color: var(--pb-text); box-shadow: none; }
+.pb-legacy .serve-light { background-image: none; background-color: var(--pb-card); }
+.pb-legacy .tour-sheet { background: var(--pb-card) !important; border: 1px solid var(--pb-line); border-radius: 20px; box-shadow: none; color: var(--pb-text); }
+.pb-legacy .font-display { font-family: Fraunces, Georgia, serif; font-weight: 600; }
+.pb-legacy h1.font-display,
+.pb-legacy h2.font-display { color: var(--pb-text); }
+.pb-legacy input,
+.pb-legacy select,
+.pb-legacy textarea { color: var(--pb-text); }
+.pb-legacy input::placeholder,
+.pb-legacy textarea::placeholder { color: var(--pb-quiet); }
+.pb-legacy select option { background: var(--pb-card); color: var(--pb-text); }
+
+/* ---- Stage 4d: the readers (Bible, devotional, books, notebook) in the theme ----
+ * They open over the whole screen (.pc-book). Their frame, controls and menus follow the theme.
+ * The Bible's "Paper page" stays as a reading choice; its "Night page" is the theme's own page. */
+html.pb-on .pc-book {
+  --color-ink: var(--pb-text);
+  --color-muted: var(--pb-quiet);
+  --color-faint: var(--pb-quiet);
+  --color-post: var(--pb-text);
+  --color-card: var(--pb-card);
+  --color-paper: var(--pb-bg);
+  --color-line: var(--pb-line);
+  --color-pine: var(--pb-main);
+  --color-on-pine: var(--pb-on-main);
+  --color-pine-soft: var(--pb-main-soft);
+  font-family: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+}
+html.pb-on .pc-book[class*="bg-[#070907]"],
+html.pb-on .pc-book[class*="bg-[#07140c]"],
+html.pb-on .pc-book[class*="bg-[#2a1c12]"],
+html.pb-on .pc-book[class*="bg-[#f3e6c8]"] { background: var(--pb-bg) !important; color: var(--pb-text) !important; }
+html.pb-on .pc-book [class*="bg-[#07140c]"],
+html.pb-on .pc-book [class*="bg-[#070907]"] { background-color: var(--pb-bg) !important; }
+html.pb-on .pc-book [class*="bg-[#10140f]"] { background-color: var(--pb-card) !important; border-color: var(--pb-line) !important; }
+html.pb-on .pc-book [class*="text-[#d7ecb0]"],
+html.pb-on .pc-book [class*="text-[#f8a018]"],
+html.pb-on .pc-book [class*="text-[#8a5a12]"] { color: var(--pb-main); }
+html.pb-on .pc-book [class*="text-[#f4efe4]"],
+html.pb-on .pc-book [class*="text-[#f6edd8]"] { color: var(--pb-text); }
+html.pb-on .pc-book [class*="text-white/"] { color: var(--pb-quiet); }
+html.pb-on .pc-book [class*="border-white/"] { border-color: var(--pb-line-2); }
+html.pb-on .pc-book [class~="bg-white/10"] { background-color: var(--pb-raised); }
+html.pb-on .pc-book [class*="bg-[#17300c]"] { background-color: var(--pb-main); color: var(--pb-on-main); }
+html.pb-on .pc-book [class*="bg-black/"] { background-color: var(--pb-card); }
+html.pb-on .pc-book header { border-color: var(--pb-line); }
+
+/* Bible controls */
+html.pb-on .pc-book .bible-desk { background: var(--pb-bg) !important; box-shadow: 0 6px 10px -6px rgba(0, 0, 0, 0.35); }
+html.pb-on .pc-book .bible-tool { background: var(--pb-raised); color: var(--pb-text); }
+html.pb-on .pc-book .bible-tool.is-on { background: var(--pb-main); color: var(--pb-on-main); }
+html.pb-on .pc-book .bible-book-key { color: var(--pb-text); }
+html.pb-on .pc-book .bible-book-key small,
+html.pb-on .pc-book .bible-slim em,
+html.pb-on .pc-book .bible-slim i,
+html.pb-on .pc-book .bible-tuck { color: var(--pb-main); }
+html.pb-on .pc-book .bible-slim { background: var(--pb-card); border-color: var(--pb-line-2); color: var(--pb-text); }
+html.pb-on .pc-book .bible-tuck { background: var(--pb-card); border-color: var(--pb-line-2); box-shadow: none; }
+html.pb-on .pc-book .bible-books-tabs button,
+html.pb-on .pc-book .bible-number-grid button { background: var(--pb-raised); color: var(--pb-text); }
+html.pb-on .pc-book .bible-books-tabs button.is-on,
+html.pb-on .pc-book .bible-number-grid button.is-on { background: var(--pb-main); color: var(--pb-on-main); }
+html.pb-on .pc-book .bible-number-grid.is-verses button.is-on { background: var(--pb-second); color: var(--pb-bg); }
+html.pb-on .pc-book .bible-read-today { color: var(--pb-quiet); }
+html.pb-on .pc-book .bible-read-today b { background: var(--pb-card); border-color: var(--pb-line-2); color: var(--pb-second); }
+html.pb-on .pc-book .study-trio { background: var(--pb-card); box-shadow: none; }
+html.pb-on .pc-book .study-trio button { color: var(--pb-text); background: transparent; box-shadow: none; transform: none; }
+html.pb-on .pc-book .study-trio button.is-on { background: var(--pb-main); color: var(--pb-on-main); box-shadow: none; }
+
+/* The Bible's Night page is the theme's own page */
+html.pb-on .pc-book .bible-paper.is-night { color: var(--pb-text); }
+html.pb-on .pc-book .bible-paper.is-night h2 { color: var(--pb-text) !important; font-family: Fraunces, Georgia, serif; }
+html.pb-on .pc-book .bible-paper.is-night p { color: var(--pb-quiet) !important; }
+html.pb-on .pc-book .bible-paper.is-night .bible-vnum { color: var(--pb-second) !important; }
+html.pb-on .pc-book .bible-paper.is-night ol li.is-picked { background: var(--pb-raised) !important; }
+html.pb-on .pc-book .bible-paper.is-night ol li.is-picked .bible-vnum { color: var(--pb-main) !important; }
+html.pb-on .pc-book .bible-paper.is-night ol li span button,
+html.pb-on .pc-book .bible-paper.is-night .bible-night-key { background: var(--pb-raised) !important; color: var(--pb-text) !important; }
+html.pb-on .pc-book .bible-paper.is-night form button { background: var(--pb-main) !important; color: var(--pb-on-main) !important; }
+html.pb-on .pc-book .bible-paper.is-night input { background: var(--pb-card) !important; border-color: var(--pb-line-2) !important; }
+html.pb-on .pc-book .bible-paper.is-night > button,
+html.pb-on .pc-book .bible-paper.is-night ul button span { color: var(--pb-main) !important; }
+html.pb-on .pc-book .bible-paper.is-night ul span.block.text-sm { color: var(--pb-quiet) !important; }
+.read-book-clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+html.pb-on .pc-book .bible-book-key { background: var(--pb-card) !important; border: 1px solid var(--pb-line-2) !important; box-shadow: none !important; }
+/* The notebook list in the theme (a note being written keeps its paper page) */
+html.pb-on .pc-book[class*="bg-[#f6edd4]"] { background: var(--pb-bg) !important; color: var(--pb-text) !important; }
+html.pb-on .pc-book[class*="bg-[#f6edd4]"] [class*="text-[#2c2416]"],
+html.pb-on .pc-book[class*="bg-[#f6edd4]"] h1,
+html.pb-on .pc-book[class*="bg-[#f6edd4]"] h2 { color: var(--pb-text); }
+html.pb-on .pc-book[class*="bg-[#f6edd4]"] [class*="text-[#"] { color: var(--pb-quiet); }
+html.pb-on .pc-book[class*="bg-[#f6edd4]"] button[class*="text-[#"] { color: var(--pb-main); }
+html.pb-on .pc-book[class*="bg-[#f6edd4]"] [class*="border-[#d9cdb4]"] { border-color: var(--pb-line); }
+
+/* ---- Stage 4d: Calls in the theme ---- */
+html.pb-on .call-stand { background: var(--pb-bg); color: var(--pb-text); }
+html.pb-on .cl-panel { background: var(--pb-card) !important; border-color: var(--pb-line) !important; box-shadow: none !important; color: var(--pb-text); }
+html.pb-on .cl-panel::before { content: none; }
+html.pb-on .cl-head h1 { font: 600 28px Fraunces, Georgia, serif; }
+html.pb-on .cl-back,
+html.pb-on .cl-foot button { background: var(--pb-raised); color: var(--pb-text); }
+html.pb-on .cl-foot button.is-on,
+html.pb-on .cl-me { background: var(--pb-second-soft); color: var(--pb-second); border-color: color-mix(in srgb, var(--pb-second) 35%, transparent); }
+html.pb-on .cl-me i,
+html.pb-on .cl-face::after { background: var(--pb-second); box-shadow: 0 0 0 2px var(--pb-card); }
+html.pb-on .cl-label,
+html.pb-on .cl-name small,
+html.pb-on .cl-empty,
+html.pb-on .cl-note { color: var(--pb-quiet); }
+html.pb-on .cl-person { background: var(--pb-bg); border-color: var(--pb-line); }
+html.pb-on .cl-face { background: var(--pb-main-soft); box-shadow: none; }
+html.pb-on .cl-face b { color: var(--pb-main); }
+html.pb-on .cl-key { background: var(--pb-second-soft); color: var(--pb-second); }
+html.pb-on .cl-key.is-video { background: var(--pb-main-soft); color: var(--pb-main); }
+html.pb-on .cl-invite { background: var(--pb-main); color: var(--pb-on-main); }
+/* Admins' Shelf tools on Read, in the theme (Stage 4d) */
+html.pb-on .tools-panel { background: var(--pb-card); border-color: var(--pb-line); box-shadow: none; }
+html.pb-on .tools-title { color: var(--pb-quiet); }
+html.pb-on .tool-key { background: var(--pb-raised) !important; color: var(--pb-text) !important; box-shadow: none !important; transform: none !important; }
+html.pb-on .tool-key svg { color: var(--pb-main); filter: none; }
+html.pb-on .tool-key.is-on { background: var(--pb-main) !important; color: var(--pb-on-main) !important; }
+html.pb-on .tool-key.is-on svg { color: var(--pb-on-main); }
+html.pb-on .tool-key.is-danger { background: #b3261e !important; color: #fff !important; }

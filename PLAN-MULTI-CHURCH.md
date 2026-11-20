@@ -46,6 +46,7 @@ Any **church, ministry, gospel artist or organisation** starts its own **porch**
 | **Stage 4a:** six themes, Dawn/Dusk/Night dimmer, new top and bottom bars, My porch, Who is on the porch, "founder" → "admin" | ✅ Done (19 Nov) |
 | **Stage 4b:** Tour, Offices tab, offices each church creates, office screens, request status, office announcements | ✅ Done (20 Nov). Two-church test: 139 passed, 0 failed, 0 not private yet |
 | **Stage 4c:** Read, Chat, messaging, profiles, Porch settings screen (theme and Tour doors) | ✅ Done (20 Nov). Two-church test: 149 passed, 0 failed, 0 not private yet |
+| **Stage 4d:** devotional per church (Porch settings), Tour spacing, office head behind Edit, devotional card title, the older screens and readers in the theme | ✅ Done (20 Nov). Two-church test: 157 passed, 0 failed, 0 not private yet |
 | Stages 3–8 | ❌ Not started |
 
 ---
