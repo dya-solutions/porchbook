@@ -1,4 +1,5 @@
 import { W, WHint, useWord } from "@/components/porch/words";
+import { DoorFace } from "@/components/porch/tour-door";
 import { useEffect, useState, type FormEvent } from "react";
 import { Wrench } from "lucide-react";
 import { fieldClass, primaryButtonClass, quietButtonClass } from "@/components/porch/bits";
@@ -102,7 +103,7 @@ export function ServeButton() {
       <button
         type="button"
         aria-expanded={open}
-        className={`tour-key no-sink${down || open ? " is-down" : ""}`}
+        className={`tour-key no-sink pb-door${down || open ? " is-down" : ""}`}
         onPointerDown={() => {
           playButtonSound();
           setDown(true);
@@ -112,8 +113,7 @@ export function ServeButton() {
         onPointerCancel={() => setDown(false)}
         onClick={() => toggleTourMode("serve")}
       >
-        <Wrench className="size-4 text-[#f5a018]" aria-hidden="true" />
-        <W k="tour.serve">Serve</W>
+        <DoorFace icon="serve" name={<W k="tour.serve">Serve</W>} hint="Volunteer in a department" />
       </button>
       {open ? (
         <TourSlot>

@@ -10,6 +10,7 @@ import { EditWordsButton, W, useWord } from "@/components/porch/words";
 
 const OPEN = "porch-trouble";
 const CLOSE = "porch-trouble-close";
+export const COMPLAINTS_EVENT = "porch-complaints";
 
 function pageName(path: string) {
   if (path === "/") return "Home";
@@ -213,6 +214,13 @@ export function TroubleBar() {
     return () => window.removeEventListener(CLOSE, onClose);
   }, []);
 
+  // "User's complaints" from the admin's "Your account" card opens the complaints here.
+  useEffect(() => {
+    const onComplaints = () => setReports((current) => current ?? []);
+    window.addEventListener(COMPLAINTS_EVENT, onComplaints);
+    return () => window.removeEventListener(COMPLAINTS_EVENT, onComplaints);
+  }, []);
+
   useEffect(
     () =>
       subscribeTourMode(() => {
@@ -374,7 +382,8 @@ export function TroubleBar() {
 
   return (
     <>
-      {founder ? (
+      {/* Admins reach these from "Your account" too; they don't sit under "On the porch now". */}
+      {founder && path !== "/presence" ? (
       <div className={`mt-8 flex flex-wrap items-center gap-4${path === "/next" ? " trouble-foot" : ""}`}>
         <button type="button" className="text-xs font-semibold text-ink" onClick={() => setReports(reports ? null : [])}>
           User's complaints

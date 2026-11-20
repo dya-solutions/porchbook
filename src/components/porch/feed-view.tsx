@@ -901,6 +901,17 @@ export function PostCard({
   const [reply, setReply] = useState("");
   const [details, setDetails] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Pin, Edit, Lock and Remove live in a small "⋯" menu so the feed stays calm (Stage 4b).
+  const [menu, setMenu] = useState(false);
+  const menuBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const close = (event: PointerEvent) => {
+      if (!menuBox.current?.contains(event.target as Node)) setMenu(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [menu]);
   const replyRef = useRef<HTMLInputElement>(null);
   const [shattered, setShattered] = useState(false);
   const shatterTimer = useRef(0);
@@ -1055,6 +1066,33 @@ export function PostCard({
             </Link>
           </>
         ) : null}
+        {mine && !editing ? (
+          <div ref={menuBox} className="pb-menu-wrap">
+            <button type="button" className="pb-iconbtn" aria-label="More for this post" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((open) => !open)}>
+              <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>⋯</span>
+            </button>
+            {menu ? (
+              <div className="pb-menu" role="menu">
+                <button type="button" role="menuitem" onClick={() => { setMenu(false); void pin(); }} disabled={busy}>
+                  {post.pinned ? "Unpin" : "Pin"}
+                </button>
+                <button type="button" role="menuitem" onClick={() => { setMenu(false); setEditing(true); }}>
+                  Edit
+                </button>
+                <LockButton postId={post.id} locked={post.locked} onChange={onChange} onError={setError} className="pb-menu-lock" />
+                {confirming ? (
+                  <button type="button" role="menuitem" className="text-danger" onClick={() => { setMenu(false); void remove(); }} disabled={busy}>
+                    Delete for good
+                  </button>
+                ) : (
+                  <button type="button" role="menuitem" onClick={() => setConfirming(true)}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </header>
       {editing ? (
         <form onSubmit={save} className="grid gap-3">
@@ -1185,30 +1223,7 @@ export function PostCard({
             {waiting && owner ? "Answer" : `Reply${others.length > 0 ? ` · ${others.length}` : ""}`}
           </button>
         )}
-        {mine ? (
-          <LockButton postId={post.id} locked={post.locked} onChange={onChange} onError={setError} />
-        ) : post.locked ? (
-          <span className="pb-link">Locked</span>
-        ) : null}
-        {mine && !editing ? (
-          <>
-            <button type="button" className="pb-link" onClick={pin} disabled={busy}>
-              {post.pinned ? "Unpin" : "Pin"}
-            </button>
-            <button type="button" className="pb-link" onClick={() => setEditing(true)}>
-              Edit
-            </button>
-            {confirming ? (
-              <button type="button" className="pb-link text-danger" onClick={remove} disabled={busy}>
-                Delete
-              </button>
-            ) : (
-              <button type="button" className="pb-link" onClick={() => setConfirming(true)}>
-                Remove
-              </button>
-            )}
-          </>
-        ) : null}
+        {post.locked ? <span className="pb-link">Locked</span> : null}
       </div>
       {details && !post.locked && !closedToMe ? (
         <form onSubmit={sendReply} className="flex gap-2">
@@ -1415,11 +1430,13 @@ function LockButton({
   locked,
   onChange,
   onError,
+  className,
 }: {
   postId: number;
   locked: boolean;
   onChange: () => void;
   onError: (message: string) => void;
+  className?: string;
 }) {
   const [on, setOn] = useState(locked);
   const [busy, setBusy] = useState(false);
@@ -1444,11 +1461,12 @@ function LockButton({
     <button
       type="button"
       aria-pressed={on}
-      className={`${quietButtonClass} mt-1 px-0 ${on ? "text-pine" : ""}`}
+      role={className ? "menuitem" : undefined}
+      className={className ?? `${quietButtonClass} mt-1 px-0 ${on ? "text-pine" : ""}`}
       onClick={toggle}
       disabled={busy}
     >
-      {on ? "Locked" : "Lock"}
+      {className ? (on ? "Unlock replies" : "Lock replies") : on ? "Locked" : "Lock"}
     </button>
   );
 }

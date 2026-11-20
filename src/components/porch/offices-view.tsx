@@ -4,7 +4,8 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type UIEvent } from "react";
 import { ChevronLeft, Maximize2, Send, SquareCheck, Trash2 } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
-import { listOffices, listOfficeHolders, openOffice, OFFICE_PARTS, OFFICES, PASTOR_ROOMS, setOfficeDoor, setOfficeHead, sendOfficeNote, sendOfficial, setPrayerStatus, type OfficeCard } from "@/lib/porch/offices";
+import { actionName, listOffices, listOfficeHolders, openOffice, OFFICE_ACTIONS, OFFICE_PARTS, OFFICES, postAnnouncement, saveCalendar, setOfficeDoor, setOfficeHead, sendOfficeNote, sendOfficial, setPrayerStatus, statusName, type OfficeCard } from "@/lib/porch/offices";
+import { ActionIcon, ActionTile, StatusTag, YourRequests } from "@/components/porch/office-screens";
 import { Avatar, LinkText, fieldClass, primaryButtonClass, quietButtonClass } from "@/components/porch/bits";
 import { playOfficeBell } from "@/lib/porch/button-sound-play";
 import { BookHide } from "@/components/porch/hide";
@@ -794,7 +795,7 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
   }, [seed.id, seed.displayName, seed.email, seed.imageUrl, officeKey, member, room, tick]);
 
   useEffect(() => {
-    if (!seed.id || officeKey !== "pastor" || room !== "official" || !page || !page.ok || !page.isHead) return;
+    if (!seed.id || room !== "official" || !page || !page.ok || !page.isHead) return;
     let cancel = false;
     listOfficeHolders({ data: { displayName: seed.displayName, email: seed.email, imageUrl: seed.imageUrl } })
       .then((result) => {
@@ -874,6 +875,8 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
     setError("");
     const result = await setPrayerStatus({
       data: {
+        key: officeKey,
+        room: page.room,
         memberId: page.memberId,
         status,
         displayName: seed.displayName,
@@ -952,33 +955,49 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
   const asker = thanks && !page.isHead && !page.isFounder;
   const showThanksChoice = asker && thanksMode === "choose";
   const showTestimony = asker && thanksMode === "testimony";
-  const shown = page.threads.filter((thread) => !thanks || thread.status === prayerFilter);
+  const shown = page.threads.filter((thread) => page.room === "official" || thread.status === prayerFilter);
   const title = page.roomName || page.name;
   let lastDay = "";
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <header className="flex shrink-0 items-center gap-2">
+    <div className="pb flex h-full min-h-0 flex-col">
+      <header className="ofc-head">
         {page.kind === "rooms" ? (
-          <Link to="/offices" aria-label="All offices" className={`${quietButtonClass} px-2`}>
+          <Link to="/offices" aria-label="Back" className="pb-iconbtn">
             <ChevronLeft className="size-5" aria-hidden="true" />
           </Link>
         ) : (
           <Link
             to="/offices/$officeKey"
             params={{ officeKey }}
-            search={{ member: "", room: member ? page.room : "" }}
+            search={{ member: "", room: member && (page.isHead || page.isFounder) ? page.room : "" }}
             aria-label="Back"
-            className={`${quietButtonClass} px-2`}
+            className="pb-iconbtn"
           >
             <ChevronLeft className="size-5" aria-hidden="true" />
           </Link>
         )}
-        <div className="min-w-0">
-          <h1 className="truncate font-display text-2xl text-ink">{title}</h1>
-          <p className="truncate text-sm text-muted">{page.headName ? page.headName : "No head yet"}</p>
-        </div>
+        {page.kind === "rooms" ? (
+          <p className="pb-quiet" style={{ margin: 0, fontSize: 15, flex: 1 }}>Offices</p>
+        ) : (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p className="ofc-name" style={{ fontSize: 16 }}>{page.name}</p>
+            <p className="ofc-hint">{title}</p>
+          </div>
+        )}
+        {page.kind === "notes" && page.memberId && page.room !== "official" && page.notes.length ? <StatusTag status={page.requestStatus} /> : null}
       </header>
+      {page.kind === "rooms" ? (
+        <div className="pb-row" style={{ gap: 14, marginTop: 10 }}>
+          <ActionTile action="office" size={60} />
+          <div style={{ minWidth: 0 }}>
+            <h1 className="pb-ttl" style={{ fontSize: 26, lineHeight: 1.1 }}>{page.name}</h1>
+            <p className="pb-quiet" style={{ margin: "4px 0 0", fontSize: 14 }}>
+              {page.headName ? `Head: ${page.headName}` : "No head yet"}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8">
       {!member && (page.isHead || page.isFounder) ? (
@@ -993,7 +1012,7 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
         />
       ) : null}
 
-      {page.isFounder && (page.kind === "rooms" || officeKey !== "pastor") ? (
+      {page.isFounder && page.kind === "rooms" ? (
         <label className="mt-4 block text-sm text-muted">
           Head
           <select
@@ -1018,45 +1037,59 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
       {officeKey === "missions" && !member && page.isHead ? <MissionSms /> : null}
 
       {page.kind === "rooms" ? (
-        <ul className="mt-5 space-y-2">
-          {PASTOR_ROOMS.filter((item) => item.key !== "calendar" || page.isHead || page.isFounder).map((item) => {
-            const still =
-              (item.key === "account" || item.key === "official") && !page.holdsOffice && !page.isHead && !page.isFounder;
-            const face = (
-              <>
-                <span className="green-weave m-3 mb-2 inline-block max-w-[calc(100%-1.5rem)] rounded-tl-[1.7rem] rounded-tr-[0.45rem] rounded-br-[1.5rem] rounded-bl-[0.25rem] px-4 py-2.5 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.55),4px_3px_0_#14300a]">
-                  {item.name}
-                </span>
-                <span className="block bg-black px-4 py-2 text-sm text-ink">{item.hint}</span>
-              </>
-            );
-            return (
-              <li key={item.key}>
-                {still ? (
-                  <div className="block overflow-hidden rounded-2xl glass-edge bg-black">{face}</div>
+        <>
+          {page.actions.length ? (
+            <div className="pb-card ofc-list">
+              {OFFICE_ACTIONS.filter((item) => page.actions.includes(item.key)).map((item) => {
+                // Accountability and Official are for office holders.
+                const still =
+                  (item.key === "account" || item.key === "official") && !page.holdsOffice && !page.isHead && !page.isFounder;
+                const face = (
+                  <>
+                    <ActionTile action={item.key} />
+                    <span className="ofc-words">
+                      <span className="ofc-name">{actionName(item.key, officeKey, page.name)}</span>
+                      <span className="ofc-hint">{still ? "For office holders" : item.hint}</span>
+                    </span>
+                    {still ? null : (
+                      <span className="pb-quiet">
+                        <ActionIcon action="arrow" size={18} />
+                      </span>
+                    )}
+                  </>
+                );
+                return still ? (
+                  <div key={item.key} className="ofc-row is-still">{face}</div>
                 ) : (
                   <Link
+                    key={item.key}
                     to="/offices/$officeKey"
                     params={{ officeKey }}
                     search={{ member: "", room: item.key }}
-                    className="block overflow-hidden rounded-2xl glass-edge bg-black"
+                    className="ofc-row"
                   >
                     {face}
                   </Link>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="pb-quiet" style={{ marginTop: 14 }}>This office doesn't offer anything yet.</p>
+          )}
+          {!page.isHead ? <YourRequests officeKey={officeKey} /> : null}
+          {page.isHead ? <AnnounceBox officeKey={officeKey} officeName={page.name} /> : null}
+        </>
       ) : null}
 
-      {page.kind === "calendar" ? <PastorWeek /> : null}
+      {page.kind === "calendar" ? (
+        <WeeklyProgramme officeKey={officeKey} text={page.calendar} canEdit={page.canEditCalendar} phaneroo={page.phanerooWeek} onSaved={() => setTick((value) => value + 1)} />
+      ) : null}
 
       {showThanksChoice ? (
         <div className="mt-6 grid max-w-sm gap-3">
           <button
             type="button"
-            className={primaryButtonClass}
+            className="pb-btn"
             onClick={() => {
               if (!page.hasHead) {
                 setThanksNote("This office has no head yet.");
@@ -1070,7 +1103,7 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
           </button>
           <button
             type="button"
-            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-line bg-white px-4 text-sm font-semibold text-[#1c2430] shadow-md"
+            className="pb-btn2"
             onClick={() => {
               setThanksNote("");
               setThanksMode("testimony");
@@ -1126,7 +1159,7 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
               onChange={(event) => setTestimony(event.target.value)}
             />
           </label>
-          <button type="submit" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-line bg-white px-4 text-sm font-semibold text-[#1c2430] shadow-md" disabled={pending || !testimony.trim()}>
+          <button type="submit" className="pb-btn" disabled={pending || !testimony.trim()}>
             {pending ? "Sending…" : "Submit Testimony"}
           </button>
           <button type="button" className={`${quietButtonClass} px-0`} onClick={() => setThanksMode("choose")}>
@@ -1135,18 +1168,11 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
         </form>
       ) : null}
 
-      {showList && thanks ? (
-        <div className="mt-4 flex gap-2">
+      {showList && page.kind === "notes" && page.room !== "official" && !member ? (
+        <div className="pb-chips" style={{ marginTop: 14 }}>
           {(["open", "received", "answered"] as const).map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setPrayerFilter(item)}
-              className={`min-h-10 rounded-full px-3 text-sm font-medium capitalize ${
-                prayerFilter === item ? "bg-pine text-on-pine" : "text-muted"
-              }`}
-            >
-              {item}
+            <button key={item} type="button" onClick={() => setPrayerFilter(item)} className={`pb-chip${prayerFilter === item ? " is-on" : ""}`}>
+              {statusName(item)}
             </button>
           ))}
         </div>
@@ -1212,16 +1238,16 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
         </form>
       ) : null}
 
-      {showList && page.kind === "notes" ? (
+      {showList && page.kind === "notes" && !member ? (
         <ul className="mt-4 space-y-2">
-          {shown.length === 0 ? <li className="text-sm text-muted">{thanks ? "None here." : "No messages yet."}</li> : null}
+          {shown.length === 0 ? <li className="text-sm text-muted">{page.threads.length ? "None here." : "No messages yet."}</li> : null}
           {shown.map((thread) => (
             <li key={thread.memberId}>
               <Link
                 to="/offices/$officeKey"
                 params={{ officeKey }}
                 search={{ member: thread.memberId, room: page.room }}
-                className="flex items-center gap-3 rounded-2xl glass-edge bg-card px-3 py-3"
+                className="pb-card ofc-row"
               >
                 <Avatar name={thread.memberName} imageUrl={thread.memberImage} size="sm" />
                 <span className="min-w-0 flex-1">
@@ -1231,15 +1257,7 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
                   </span>
                   <span className="block truncate text-sm text-muted">{thread.lastBody || "No message yet"}</span>
                 </span>
-                {thanks ? (
-                  <span
-                    className={`shrink-0 text-xs font-semibold capitalize ${
-                      thread.status === "answered" ? "text-post" : thread.status === "received" ? "text-muted" : "text-ink"
-                    }`}
-                  >
-                    {thread.status}
-                  </span>
-                ) : null}
+                {page.room !== "official" ? <StatusTag status={thread.status} /> : null}
               </Link>
             </li>
           ))}
@@ -1249,18 +1267,11 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
       {page.kind === "notes" && !page.hasHead ? <p className="mt-4 text-sm text-muted">This office has no head yet.</p> : null}
 
       {showThread && page.kind === "notes" && !showThanksChoice && !showTestimony ? (
-        <div className="fixed inset-x-0 top-[var(--porch-head,7.25rem)] bottom-0 z-10 flex flex-col bg-[#07140c] lg:relative lg:z-auto lg:mt-4 lg:h-[calc(100dvh-8.5rem)] lg:overflow-hidden lg:rounded-3xl">
-          <img
-            src="/chat-ground.png?v=1"
-            alt=""
-            className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-top opacity-40"
-          />
-          <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-[#07140c]/35 via-[#07140c]/50 to-[#07140c]/78" />
-          <div className="relative z-10 border-b border-white/10 bg-[#07140c]/80 px-3 py-2 backdrop-blur-sm">
-            <p className="truncate text-sm font-semibold text-white">
-              {page.isHead || page.isFounder ? page.memberName : page.headName}
+        <div className="ofc-thread">
+          <div className="ofc-thread-who">
+            <p className="ofc-name" style={{ fontSize: 15 }}>
+              {page.isHead || page.isFounder ? page.memberName : page.headName ? `With ${page.headName}` : page.name}
             </p>
-            <p className="truncate text-xs text-white/60">{page.roomName}</p>
             {page.isHead && page.memberId && page.memberId !== seed.id ? (
               <button type="button" className={`office-door${page.doorClosed ? " is-closed" : ""}`} onClick={() => void toggleDoor()}>
                 {page.doorClosed ? "Door closed · Open the door" : "Close the door"}
@@ -1273,19 +1284,21 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
                 Back
               </button>
             ) : null}
-            {thanks ? (
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <p className="text-xs text-white/80">
-                  {page.requestStatus === "answered" ? "Answered" : page.requestStatus === "received" ? "Received" : "Open"}
-                </p>
-                {page.memberId === seed.id ? (
-                  <button type="button" className={quietButtonClass} onClick={() => void markPrayer("answered")}>
-                    Answered
+            {page.room !== "official" && page.notes.length && ((thanks && page.memberId === seed.id && page.requestStatus !== "answered") || page.isHead) ? (
+              <div className="pb-row" style={{ gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                {thanks && page.memberId === seed.id && page.requestStatus !== "answered" ? (
+                  <button type="button" className="pb-chip" onClick={() => void markPrayer("answered")}>
+                    God answered
                   </button>
                 ) : null}
-                {page.isHead ? (
-                  <button type="button" className={quietButtonClass} onClick={() => void markPrayer("received")}>
-                    Received
+                {page.isHead && page.requestStatus === "open" ? (
+                  <button type="button" className="pb-chip" onClick={() => void markPrayer("received")}>
+                    Mark confirmed
+                  </button>
+                ) : null}
+                {page.isHead && page.requestStatus !== "answered" ? (
+                  <button type="button" className="pb-chip" onClick={() => void markPrayer("answered")}>
+                    Mark answered
                   </button>
                 ) : null}
               </div>
@@ -1297,10 +1310,10 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
               const el = event.currentTarget;
               stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
             }}
-            className="relative z-10 min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3"
+            className="ofc-thread-notes"
           >
             {page.notes.length === 0 ? (
-              <p className="pt-10 text-center text-sm text-white/60">{canWriteHere ? "Say hello." : "Nothing here yet."}</p>
+              <p className="pb-quiet" style={{ paddingTop: 40, textAlign: "center", fontSize: 14 }}>{canWriteHere ? "Write your message below." : "Nothing here yet."}</p>
             ) : (
               page.notes.map((note) => {
                 const day = dayLabel(note.createdAt);
@@ -1309,24 +1322,15 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
                 return (
                   <div key={note.id}>
                     {showDay ? (
-                      <p className="mx-auto my-2 w-fit rounded-full bg-black/50 px-3 py-1 text-xs text-white/60">{day}</p>
+                      <p className="pb-quiet" style={{ margin: "8px auto", width: "fit-content", fontSize: 12 }}>{day}</p>
                     ) : null}
                     <div className={`flex ${note.mine ? "justify-end" : "justify-start"}`}>
-                      <div
-                        className={`max-w-[78%] rounded-2xl px-3 py-1.5 ${
-                          note.mine ? "rounded-br-md bg-[#f8a018] text-black" : "rounded-bl-md bg-[#1a1a1a] text-white"
-                        }`}
-                      >
-                        {note.mine ? null : <p className="text-xs font-semibold">{note.authorName}</p>}
+                      <div className={`ofc-bubble${note.mine ? " is-mine" : ""}`}>
                         <LinkText
                           text={note.body}
-                          linkClass={
-                            note.mine
-                              ? "text-black underline decoration-black underline-offset-2"
-                              : "text-white underline decoration-white underline-offset-2"
-                          }
+                          linkClass="underline underline-offset-2"
                         />
-                        {note.official ? <p className={`mt-1 text-[10px] font-semibold ${note.mine ? "text-black/70" : "text-[#f8a018]"}`}>Official</p> : null}
+                        {note.official ? <p className="ofc-bubble-meta" style={{ fontWeight: 700 }}>Official</p> : null}
                         {note.held ? (
                           <p className="office-held">
                             <W k="office.not-sent">Not sent</W> ·{" "}
@@ -1335,8 +1339,9 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
                             </button>
                           </p>
                         ) : null}
-                        <p className={`mt-0.5 text-right text-[10px] ${note.mine ? "text-black/70" : "text-white/60"}`}>
+                        <p className="ofc-bubble-meta">
                           <time dateTime={note.createdAt}>{clock(note.createdAt)}</time>
+                          {note.mine ? null : ` · ${note.authorName}, ${page.name}`}
                         </p>
                       </div>
                     </div>
@@ -1346,26 +1351,26 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
             )}
           </div>
           {canWriteHere && page.waiting ? (
-            <p className="office-wait safe-bottom relative z-10"><W k="office.waiting">Your message is with the office. You can write again when they reply.</W></p>
+            <p className="office-wait ofc-compose"><W k="office.waiting">Your message is with the office. You can write again when they reply.</W></p>
           ) : canWriteHere ? (
-          <form onSubmit={onSubmit} className="safe-bottom relative z-10 flex items-end gap-2 border-t border-white/10 bg-[#07140c] py-2 pl-3" style={{ paddingRight: "0.75rem" }}>
+          <form onSubmit={onSubmit} className="ofc-compose">
             <label className="sr-only" htmlFor="office-note">
               Message
             </label>
             <textarea
               id="office-note"
-              className="max-h-32 min-h-11 flex-1 resize-none rounded-3xl border border-white/15 bg-black px-4 py-2.5 text-base text-white outline-none placeholder:text-white/40"
+              className="ofc-compose-box"
               rows={1}
               maxLength={2000}
               value={draft}
-              placeholder="Message"
+              placeholder="Write to the office…"
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={onKeyDown}
             />
             <button
               type="submit"
               aria-label="Send"
-              className="grid size-11 shrink-0 place-items-center rounded-full bg-[#f8a018] text-black disabled:opacity-40"
+              className="ofc-send"
               disabled={pending || !draft.trim()}
             >
               <Send className="size-5" aria-hidden="true" />
@@ -1377,5 +1382,103 @@ export function OfficeRoom({ officeKey, member, room }: { officeKey: string; mem
       {error && page.kind !== "calendar" ? <Fault text={error} /> : null}
       </div>
     </div>
+  );
+}
+
+
+/** The weekly programme: the office's head writes it; everyone in the church reads it. */
+function WeeklyProgramme({ officeKey, text, canEdit, phaneroo, onSaved }: { officeKey: string; text: string; canEdit: boolean; phaneroo: boolean; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(text);
+  const [note, setNote] = useState("");
+  useEffect(() => setDraft(text), [text]);
+  if (editing) {
+    return (
+      <form
+        className="pb-card ofc-form"
+        style={{ marginTop: 14 }}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void saveCalendar({ data: { key: officeKey, body: draft } }).then((result) => {
+            if (!result.ok) {
+              setNote(result.error);
+              return;
+            }
+            setEditing(false);
+            onSaved();
+          });
+        }}
+      >
+        <label className="ofc-lbl">
+          This week (one line per day or meeting)
+          <textarea className="ofc-input" style={{ minHeight: 180, padding: 12 }} value={draft} maxLength={4000} onChange={(event) => setDraft(event.target.value)} />
+        </label>
+        {note ? <p className="text-danger" style={{ margin: 0 }}>{note}</p> : null}
+        <div className="ofc-admin">
+          <button type="submit" className="pb-btn">Save</button>
+          <button type="button" className="pb-btn2" onClick={() => setEditing(false)}>Cancel</button>
+        </div>
+      </form>
+    );
+  }
+  const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  return (
+    <div style={{ marginTop: 14 }}>
+      {lines.length ? (
+        <ul className="pb-card ofc-list">
+          {lines.map((line, index) => (
+            <li key={index} className="ofc-row">{line}</li>
+          ))}
+        </ul>
+      ) : phaneroo ? (
+        <PastorWeek />
+      ) : (
+        <p className="pb-quiet">Nothing written for this week yet.</p>
+      )}
+      {canEdit ? (
+        <button type="button" className="pb-btn2" style={{ marginTop: 12, width: "100%" }} onClick={() => setEditing(true)}>
+          {lines.length ? "Change the programme" : "Write this week's programme"}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** The office's head posts a short announcement. It shows pinned at the top of My porch. */
+function AnnounceBox({ officeKey, officeName }: { officeKey: string; officeName: string }) {
+  const [body, setBody] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <form
+      className="pb-card ofc-form"
+      style={{ marginTop: 14 }}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!body.trim()) return;
+        setBusy(true);
+        void postAnnouncement({ data: { key: officeKey, body } })
+          .then((result) => {
+            setBusy(false);
+            if (!result.ok) {
+              setNote(result.error);
+              return;
+            }
+            setBody("");
+            setNote("Posted. It's pinned at the top of My porch.");
+          })
+          .catch(() => {
+            setBusy(false);
+            setNote("Couldn't post.");
+          });
+      }}
+    >
+      <label className="ofc-lbl">
+        Announcement from the {officeName.replace(/^the /i, "")}
+        <textarea className="ofc-input" style={{ minHeight: 90, padding: 12 }} value={body} maxLength={600} onChange={(event) => setBody(event.target.value)} placeholder="Shown pinned at the top of My porch. A new one replaces the last." />
+      </label>
+      {note ? <p className="pb-quiet" style={{ margin: 0, fontSize: 14 }}>{note}</p> : null}
+      <button type="submit" className="pb-btn" disabled={busy || !body.trim()}>{busy ? "Posting…" : "Post announcement"}</button>
+    </form>
   );
 }

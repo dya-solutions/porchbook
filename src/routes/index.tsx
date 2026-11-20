@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { AppFrame } from "@/components/porch/frame";
 import { FeedView } from "@/components/porch/feed-view";
 import { PbIcon, PorchSwitch, PresenceStrip } from "@/components/porch/pb-shell";
+import { OfficeAnnouncements } from "@/components/porch/office-screens";
 import { FILTERS, type FeedFilter } from "@/lib/porch/model";
 
 /** My porch (design-reference/Porch.dc.html), with the switch to the Public porch. */
@@ -30,6 +31,7 @@ function Home() {
         ) : (
           <div className="pb-body">
             <PresenceStrip />
+            <OfficeAnnouncements />
             <FeedView filter={room} onMeta={onMeta} />
           </div>
         )}

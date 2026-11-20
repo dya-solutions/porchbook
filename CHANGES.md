@@ -209,6 +209,86 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
 - **Fixed during this stage:** a crash ("Rendered more hooks…") I had caused in the frame while sign-in finishes. It was caught by the theme pictures and fixed before saving.
 - **Known, not new:** a "hydration" warning in the browser log. The server draws an empty placeholder before it knows who you are, and the browser redraws. This was already there; the page works. It can be tidied later.
 
+### 7. Stage 4b (20 Nov 2026): Stage 9 written down, three fixes, the Tour and the Offices
+
+**Part 1: Stage 9 (Porch stations) is now in BUILD-BRIEF.md and PLAN-MULTI-CHURCH.md.** Text only, nothing built: 9a a free playlist station on R2, 9b paid live broadcasting with a monthly allowance, and the rules.
+
+**Part 2: three fixes**
+- **"User's complaints" and "Edit words" are gone from "On the porch now"** (`trouble.tsx`). Admins open both from **Your account** on their own profile.
+- **Post cards: "Reply" stays visible; Pin, Edit, Lock replies and Remove are in a "⋯" menu** on your own posts (`feed-view.tsx`). Remove still asks once more ("Delete for good").
+- **New members are asked once, the first time they arrive: "Let the porch see you're here?"** (`porch-online.tsx`).
+  - It is asked per person, not per phone, until they answer.
+  - "Not now" is saved as their choice to stay hidden, so being hidden is always their own choice.
+  - They can change it any time in Your account → How you appear.
+
+**Part 3: Stage 4b**
+- **Offices is its own tab** (Offices.dc.html, `office-screens.tsx`): each office has an icon, its name and a short description.
+  - Phaneroo keeps its 8 offices, their names and heads. Their short descriptions come from the design.
+  - The old "Prayer Requests" office from the first database setup had been merged into the Pastor's "Thank God with me" long ago and was only hidden. It is now marked removed. Nothing was deleted.
+- **Each church makes its own offices.** On the Offices tab an admin taps **Manage offices** to:
+  - create an office (name, short description, head, and what it offers);
+  - change an office (rename it, change its description, head or what it offers);
+  - remove an office. Members stop seeing it; its old messages are kept in the database.
+
+  Only church porches have offices (decision 1). A new church starts with **no** offices: Phaneroo's are not copied in.
+- **What an office can offer** (an admin ticks these for each office):
+  - Thank God with me
+  - Contact the office ("Contact the pastor" for a pastor's office)
+  - Book an appointment
+  - Weekly programme
+  - Accountability (office holders only)
+  - Official (from the head to office holders)
+
+  Phaneroo's Office of the Pastor keeps all six. Phaneroo's other offices offer "Contact the office". Their old single conversation moved into it, nothing lost.
+- **One office's page** (Office.dc.html): its icon and name, who heads it, its actions as a list, and **"Your requests"**.
+  - **For the head:** a box to post an office announcement.
+  - **For admins:** the head picker.
+  - **For the head and admins:** the office's books and files as before.
+- **Request status: Sent, Confirmed, Answered.**
+  - **Sent:** when you write.
+  - **Confirmed:** when the office marks it. The head has a "Mark confirmed" button.
+  - **Answered:** when the office replies, or the head marks it.
+  - **For "Thank God with me":** a reply means Confirmed. The person who asked taps **"God answered"**.
+
+  You see the status on the office page and at the top of the conversation. The head sees it on each conversation and can filter by it.
+- **The conversation** (OfficeThread.dc.html): theme colours, your messages on the right, the office's on the left with "time · name, office", and "Write to the office…" at the bottom. The old green photo behind it is gone. The rule stays: one message, then wait for the office to reply.
+- **Weekly programme:** the office's head can now write it in the app.
+  - Everyone in the church reads it.
+  - Phaneroo's Office of the Pastor shows its usual week until the pastor writes a new one.
+  - Before, that week (with Phaneroo's phone number) was built into the app.
+- **Office announcements:** the head of an office posts a short announcement from the office's page. It shows **pinned at the top of My porch**: "From the Office of the Pastor · Pinned".
+  - A new announcement replaces that office's last one.
+  - The head or an admin can remove it.
+  - Up to three offices' announcements show at a time.
+- **Official messages** now come from whichever office the writer heads that offers "Official". At Phaneroo that is the Office of the Pastor, as before.
+- **Tour in the new design** (Tour.dc.html, `tour-door.tsx`): "Tour · Everything your church offers, in one place."
+  - The doors are cards with an icon, a name and one line: Pray, My 20 (with your count), Events, Groups, Serve, Transport, and Feedback across the bottom.
+  - The stitched leather panel is gone.
+  - Each door works exactly as before. When one is open, the doors shrink to a strip above it, as before.
+  - Offices left the Tour because it has its own tab now.
+  - The Pray door's line says what it does today: "Let the porch know you're praying". The design's "Send a prayer request" is in the Office of the Pastor → Thank God with me.
+- **Rules changed (BUILD-BRIEF.md wins over porchbook-state.md):**
+  - Offices are no longer the same fixed list for everyone.
+  - The Tour no longer has an Offices door.
+  - The Pastor's weekly programme is no longer fixed in the app.
+- **Still Phaneroo-shaped (noted for later):**
+  - The H.O.O reports board and the Missions text messages only appear in offices whose short names are "hoo" and "missions".
+  - The office books' starting shelves are Phaneroo's.
+
+  Other churches' offices simply don't have these extras.
+- **Checked:**
+  - Type check passes.
+  - **Two-church test: 139 passed, 0 failed, 0 not private yet** (it was 112). New checks:
+    - Phaneroo keeps its 8 offices and the Pastor's six actions.
+    - A new church starts with no offices, and a member can't create one.
+    - **Offices created by Porch B don't appear in Porch A** (in Ann's list or Abe's list). Abe can't open or write to them. Ann can't rename or remove them.
+    - Renaming or removing in B leaves A alone.
+    - Request status goes Sent → Confirmed → Answered. Ben can't mark Porch A's requests.
+    - Announcements: only the head can post. A's announcement isn't seen in B or Phaneroo, and B's isn't seen in A. Ben can't remove A's. A new one replaces the last.
+  - Design vs app: `../compare-design.html` now also has Office and OfficeThread, and Tour and the Office of the Pastor in each theme (Porch Evening, Morning Light, Royal Night). Phaneroo was set back to Porch Evening afterwards.
+  - "After" pictures: `../after-stage4b/`.
+- **Not yet in the new look:** Read, Chat, profiles and the older pages (Stage 4c). What opens inside a Tour door (Events, Groups, Serve, Transport, My 20) keeps its old look until then.
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).

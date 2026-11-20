@@ -86,6 +86,7 @@ Build the themes as one set of colour settings that every screen reads from, so 
 6. **Public porch**: porch pages, following, public posts and reactions.
 7. **Branches**: link requests, approval, branch list, unlinking.
 8. **One-to-one calls** on a free setup (section 5).
+9. **Porch stations** (future, after Stage 8): see section 9.
 
 ## 8. Decisions, 19 November
 
@@ -106,3 +107,21 @@ JT's answers to the questions raised after Stage 1. Where these differ from anyt
 13. **Public porch design:** `design-reference/Public.dc.html` was updated. The filter chips are replaced by "From the X porches you follow" and a **"Find porches"** button. Follow that version.
 
 Decisions 9–13 belong to **Stage 6 (public porch)**.
+
+## 9. Stage 9: Porch stations (future, after Stage 8)
+
+Every porch can have its own radio station that its members tune into while they're on the porch. It reuses the on-hold radio code, which must first get church tags and pass the two-church test (decision 8).
+
+### 9a. Playlist station (free)
+- Porch admins upload or link sounds (sermons, choir recordings, jingles, announcements, songs) and arrange them into a schedule.
+- No always-on radio server. Every member's app plays the same scheduled file at the same point in time, so everyone hears the same thing. Files are stored in Cloudflare R2, where listening is free.
+- Low sound quality settings that still sound clear, and respect Porchbook Lite, to save members' mobile data.
+
+### 9b. Live broadcasting (paid, with a monthly allowance per church)
+- An approved person (an admin, or someone an admin chooses) can go live from their own phone or computer microphone. Members who tune in hear them live, and the playlist pauses until the broadcast ends.
+- Needs a one-to-many audio streaming service (about $0.59 per 1,000 listener-minutes, e.g. Agora audience-only), or a self-hosted radio server. Each church gets a monthly allowance; the app stops new broadcasts when it is used up and never goes over it.
+
+### Rules
+- **Music copyright:** porches may only play what they have the right to (their own sermons and choir, and songs from artists who give permission, for example artist porches on Porchbook). Admins must confirm they have the rights when they upload a song.
+- **Only approved people can go live.**
+- **Each porch's station is private to its own members.**

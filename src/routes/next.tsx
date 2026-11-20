@@ -14,6 +14,7 @@ import { playButtonSound } from "@/lib/porch/button-sound-play";
 import { ServeButton } from "@/components/porch/serve-form";
 import { FmButton } from "@/components/porch/fm";
 import { LightRow } from "@/components/porch/pb-shell";
+import { DoorFace, TourTitle } from "@/components/porch/tour-door";
 import { shown } from "@/lib/porch/on-hold";
 import { EventsHome } from "@/components/porch/events-home";
 import { Fault } from "@/components/porch/trouble";
@@ -148,7 +149,7 @@ function nineDigits(raw: string): string {
 }
 
 function pressClass(down: boolean) {
-  return `tour-key no-sink${down ? " is-down" : ""}`;
+  return `tour-key no-sink pb-door${down ? " is-down" : ""}`;
 }
 
 function PrayButton() {
@@ -169,8 +170,11 @@ function PrayButton() {
       onPointerLeave={() => setDown(false)}
       onPointerCancel={() => setDown(false)}
     >
-      <span className="text-base leading-none" aria-hidden="true">🙏</span>
-      {on ? <W k="tour.praying">Praying</W> : <W k="tour.pray">Pray</W>}
+      <DoorFace
+        icon="pray"
+        name={on ? <W k="tour.praying">Praying</W> : <W k="tour.pray">Pray</W>}
+        hint={on ? "The porch sees you're praying" : "Let the porch know you're praying"}
+      />
     </button>
   );
 }
@@ -192,8 +196,7 @@ function EventsDoor() {
       onPointerCancel={() => setDown(false)}
       onClick={() => toggleTourMode("events")}
     >
-      <Calendar className="size-4 text-[#f0c014]" aria-hidden="true" />
-      <W k="tour.events">Events</W>
+      <DoorFace icon="events" name={<W k="tour.events">Events</W>} hint="What's coming up and who's going" />
     </button>
   );
 }
@@ -201,12 +204,6 @@ function EventsDoor() {
 function DoorButton({ mode, label }: { mode: Extract<TourMode, "groups" | "offices">; label: string }) {
   const open = useTourMode() === mode;
   const [down, setDown] = useState(false);
-  const icon =
-    mode === "groups" ? (
-      <Users className="size-4 text-[#f0c014]" aria-hidden="true" />
-    ) : (
-      <Building2 className="size-4 text-[#f5a018]" aria-hidden="true" />
-    );
   return (
     <button
       type="button"
@@ -221,8 +218,11 @@ function DoorButton({ mode, label }: { mode: Extract<TourMode, "groups" | "offic
       onPointerCancel={() => setDown(false)}
       onClick={() => toggleTourMode(mode)}
     >
-      {icon}
-      {mode === "groups" ? <W k="tour.groups">{label}</W> : <W k="tour.offices">{label}</W>}
+      {mode === "groups" ? (
+        <DoorFace icon="groups" name={<W k="tour.groups">{label}</W>} hint="Your fellowship and study groups" />
+      ) : (
+        <DoorFace icon="offices" name={<W k="tour.offices">{label}</W>} hint="Reach the right people in your church" />
+      )}
     </button>
   );
 }
@@ -381,8 +381,7 @@ function TransportButton() {
         onPointerCancel={() => setDown(false)}
         onClick={() => toggleTourMode("transport")}
       >
-        <Bus className="size-4 text-[#3dcc3d]" aria-hidden="true" />
-        <W k="tour.transport">Transport</W>
+        <DoorFace icon="transport" name={<W k="tour.transport">Transport</W>} hint="A ride to church and back" />
       </button>
       {open ? (
         <TourSlot>
@@ -575,7 +574,7 @@ function FeedbackButton() {
     <button
       type="button"
       aria-expanded={open}
-      className={pressClass(down || open)}
+      className={`${pressClass(down || open)} pb-door-wide`}
       onPointerDown={() => {
         playButtonSound();
         setDown(true);
@@ -592,8 +591,7 @@ function FeedbackButton() {
         window.dispatchEvent(new CustomEvent("porch-trouble"));
       }}
     >
-      <MessageCircle className="size-4 text-[#7ec8ff]" aria-hidden="true" />
-      <W k="tour.feedback">Feedback</W>
+      <DoorFace icon="feedback" name={<W k="tour.feedback">Feedback</W>} hint="Tell your church what could be better" />
     </button>
   );
 }
@@ -622,8 +620,7 @@ function ClinicButton() {
       onPointerCancel={() => setDown(false)}
       onClick={() => toggleTourMode("clinic")}
     >
-      <span className="tour-clinic-cross" aria-hidden="true">✚</span>
-      <W k="tour.clinic">Clinic</W>
+      <DoorFace icon="clinic" name={<W k="tour.clinic">Clinic</W>} hint="See a doctor or nurse" />
     </button>
   );
 }
@@ -646,8 +643,7 @@ function CallButton() {
         void navigate({ to: "/calls", search: { to: "", name: "", video: "" } });
       }}
     >
-      <Phone className="size-4 text-[#2fb36d]" aria-hidden="true" />
-      <W k="tour.call">Call</W>
+      <DoorFace icon="call" name={<W k="tour.call">Call</W>} hint="Call someone on the porch" />
     </button>
   );
 }
@@ -921,7 +917,7 @@ function MyTwenty() {
   }
 
   return (
-    <div className={`tour-stage${mode ? " is-open" : ""}${mode === "worship" ? " is-radio" : ""}`}>
+    <div className={`pb-tour tour-stage${mode ? " is-open" : ""}${mode === "worship" ? " is-radio" : ""}`}>
       <div className="tour-doors">
           <PrayButton />
           <button
@@ -937,24 +933,23 @@ function MyTwenty() {
             onPointerCancel={() => setDown(false)}
             onClick={() => toggleTourMode("twenty")}
           >
-            <TwentyGauge
-              count={Math.min(
+            <DoorFace
+              icon="twenty"
+              name={<W k="tour.my20">My 20</W>}
+              hint={`The 20 people you're reaching · ${Math.min(
                 20,
                 sent + rows.filter((row) => row.name.trim().length > 0 && nineDigits(row.phone).length === 9).length,
-              )}
+              )} of 20`}
             />
-            <W k="tour.my20">My 20</W>
           </button>
           <EventsDoor />
+          <DoorButton mode="groups" label="Groups" />
           {shown("radio") ? <FmButton /> : null}
           <ServeButton />
           <TransportButton />
-          <DoorButton mode="groups" label="Groups" />
-          <DoorButton mode="offices" label="Offices" />
           <ClinicOrFeedback />
           {shown("groupCalls") ? <CallButton /> : null}
         </div>
-      {/* On phones, brightness is the ☀ by "on the porch"; computers keep the roller here. */}
       <div className="pb">
         <LightRow />
       </div>
@@ -1155,6 +1150,7 @@ function NextPage() {
 
   return (
     <AppFrame>
+      <TourTitle />
       <MyTwenty />
       <PrayerSetter />
     </AppFrame>

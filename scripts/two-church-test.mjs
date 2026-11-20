@@ -287,7 +287,17 @@ try {
   const future = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
 
   // ---- Offices ----
-  await ann.call("lib/porch/offices.ts", "listOffices");
+  // Stage 4b: each church makes its own offices. Phaneroo keeps its 8; a new church starts with none.
+  const oliveOffices = await olive.call("lib/porch/offices.ts", "listOffices");
+  const phanerooPastor = (oliveOffices?.offices ?? []).find((o) => o.key === "pastor");
+  record("sanity", "offices", "Phaneroo keeps its 8 offices", (oliveOffices?.offices ?? []).length === 8, `${(oliveOffices?.offices ?? []).length} offices`);
+  record("sanity", "offices", "Phaneroo's Office of the Pastor keeps all six actions", (phanerooPastor?.actions ?? []).length === 6);
+  const annStart = await ann.call("lib/porch/offices.ts", "listOffices");
+  record("isolation", "offices", "A new church starts with no offices (Phaneroo's are not copied in)", Array.isArray(annStart?.offices) && annStart.offices.length === 0);
+  const abeMakes = await abe.call("lib/porch/offices.ts", "createOffice", { name: "Abe's office", actions: ["chat"] });
+  record("sanity", "offices", "A member (Abe) can't create an office", abeMakes?.ok === false);
+  const annMakes = await ann.call("lib/porch/offices.ts", "createOffice", { name: "Office of the Pastor", description: "Porch A's pastor", actions: ["thanks", "chat", "appoint", "calendar", "account", "official"] });
+  record("sanity", "offices", "Ann (A's admin) creates Porch A's Office of the Pastor", annMakes?.ok === true && annMakes?.key === "pastor");
   const annHead = await ann.call("lib/porch/offices.ts", "setOfficeHead", { key: "pastor", userId: ann.userId });
   record("sanity", "offices", "Ann (Porch A's admin) makes herself head of A's pastor's office", annHead?.ok === true);
   const abeNote = await abe.call("lib/porch/offices.ts", "sendOfficeNote", { key: "pastor", room: "chat", body: "Office note in Porch A" });
@@ -297,6 +307,32 @@ try {
   const annBook = await ann.call("lib/porch/office-book.ts", "saveOfficeBook", { key: "pastor", title: "A book", body: "A secret office book" });
   record("sanity", "offices", "Ann can write Porch A's office book", annBook?.ok === true);
 
+  // Porch B makes its own offices; none of them may appear in Porch A.
+  await ben.call("lib/porch/offices.ts", "createOffice", { name: "Office of the Pastor", actions: ["thanks", "chat", "appoint", "calendar", "account", "official"] });
+  await ben.call("lib/porch/offices.ts", "createOffice", { name: "Missions", actions: ["chat"] });
+  const benYouth = await ben.call("lib/porch/offices.ts", "createOffice", { name: "Youth Desk B", description: "Only in Porch B", actions: ["chat", "appoint"] });
+  record("sanity", "offices", "Ben (B's admin) creates Porch B's own offices", benYouth?.ok === true && benYouth?.key === "youth-desk-b");
+  const annAfterB = await ann.call("lib/porch/offices.ts", "listOffices");
+  const abeAfterB = await abe.call("lib/porch/offices.ts", "listOffices");
+  record("isolation", "offices", "Offices created by Porch B don't appear in Porch A (Ann's list)", !has(annAfterB, "Youth Desk B") && (annAfterB?.offices ?? []).length === 1);
+  record("isolation", "offices", "Offices created by Porch B don't appear in Porch A (Abe's list)", !has(abeAfterB, "Youth Desk B") && !has(abeAfterB, "Missions"));
+  const abeOpensB = await abe.call("lib/porch/offices.ts", "openOffice", { key: "youth-desk-b" });
+  record("isolation", "offices", "Abe can't open Porch B's office by its name", abeOpensB?.ok === false);
+  const abeWritesB = await abe.call("lib/porch/offices.ts", "sendOfficeNote", { key: "youth-desk-b", room: "chat", body: "Sneaking into B" });
+  record("isolation", "offices", "Abe can't write to Porch B's office", abeWritesB?.ok === false);
+  const annRenamesB = await ann.call("lib/porch/offices.ts", "updateOffice", { key: "youth-desk-b", name: "Taken over", actions: ["chat"] });
+  const annRemovesB = await ann.call("lib/porch/offices.ts", "removeOffice", { key: "youth-desk-b" });
+  const benStill = await ben.call("lib/porch/offices.ts", "listOffices");
+  record("isolation", "offices", "Ann can't rename or remove Porch B's office", annRenamesB?.ok === false && annRemovesB?.ok === false && has(benStill, "Youth Desk B") && !has(benStill, "Taken over"));
+  await ben.call("lib/porch/offices.ts", "updateOffice", { key: "pastor", name: "Office of the Senior Pastor B", actions: ["chat"] });
+  const annPastorName = await ann.call("lib/porch/offices.ts", "listOffices");
+  record("isolation", "offices", "Ben renaming B's pastor's office doesn't rename A's", has(annPastorName, "Office of the Pastor") && !has(annPastorName, "Senior Pastor B") && (annPastorName?.offices?.[0]?.actions ?? []).length === 6);
+  await ben.call("lib/porch/offices.ts", "createOffice", { name: "Short-lived B", actions: ["chat"] });
+  const benRemoves = await ben.call("lib/porch/offices.ts", "removeOffice", { key: "short-lived-b" });
+  const benAfterRemove = await ben.call("lib/porch/offices.ts", "listOffices");
+  record("sanity", "offices", "Ben can remove one of B's offices", benRemoves?.ok === true && !has(benAfterRemove, "Short-lived B"));
+  const annAfterRemove = await ann.call("lib/porch/offices.ts", "listOffices");
+  record("isolation", "offices", "Ben removing a B office leaves Porch A's offices alone", (annAfterRemove?.offices ?? []).length === 1 && has(annAfterRemove, "Office of the Pastor"));
   const benOffices = await ben.call("lib/porch/offices.ts", "listOffices");
   record("isolation", "offices", "Ben's offices list shows none of Porch A's heads", Array.isArray(benOffices?.offices) && !has(benOffices, "Ann Admin"));
   record("isolation", "offices", "Ben's office-head picker shows only his own church", !has(benOffices?.people, "Ann Admin") && !has(benOffices?.people, "Abe Member"));
@@ -309,11 +345,49 @@ try {
   record("isolation", "offices", "Ben can't read Porch A's office book", !has(benReadsBook, "A secret office book"));
   const benHoo = await ben.call("lib/porch/hoo-reports.ts", "loadHooBoard");
   record("isolation", "offices", "Ben's report-writer picker shows only his own church", !has(benHoo, "Ann Admin") && !has(benHoo, "Abe Member"));
-  await ben.call("lib/porch/offices.ts", "saveCalendar", { body: "Porch B calendar" });
+  await ben.call("lib/porch/offices.ts", "saveCalendar", { key: "pastor", body: "Porch B calendar" });
   const annCalendar = await ann.call("lib/porch/offices.ts", "openOffice", { key: "pastor", room: "calendar" });
   record("isolation", "offices", "Ben's office calendar doesn't change Porch A's", !has(annCalendar, "Porch B calendar"));
   const annStillHead = await ann.call("lib/porch/offices.ts", "listOffices");
   record("isolation", "offices", "Ben choosing B's head doesn't change A's head", has(annStillHead, "Ann Admin") && !has(annStillHead, "Ben Other"));
+
+  // ---- Request status: Sent, Confirmed, Answered ----
+  const abeSent = await abe.call("lib/porch/offices.ts", "listOffices");
+  const abeRequest = (abeSent?.requests ?? []).find((r) => r.officeKey === "pastor" && r.room === "chat");
+  record("sanity", "offices", "Abe sees his request to the office as Sent", abeRequest?.status === "open");
+  const benMarksAbe = await ben.call("lib/porch/offices.ts", "setPrayerStatus", { key: "pastor", room: "chat", memberId: abe.userId, status: "received" });
+  record("isolation", "offices", "Ben (head of B's pastor's office) can't mark Abe's Porch A request", benMarksAbe?.ok === false);
+  const abeMarksOwn = await abe.call("lib/porch/offices.ts", "setPrayerStatus", { key: "pastor", room: "chat", memberId: abe.userId, status: "received" });
+  record("sanity", "offices", "Abe can't mark his own request Confirmed", abeMarksOwn?.ok === false);
+  const annConfirms = await ann.call("lib/porch/offices.ts", "setPrayerStatus", { key: "pastor", room: "chat", memberId: abe.userId, status: "received" });
+  const abeConfirmed = await abe.call("lib/porch/offices.ts", "listOffices");
+  record("sanity", "offices", "Ann (the head) marks it Confirmed and Abe sees Confirmed", annConfirms?.ok === true && (abeConfirmed?.requests ?? []).some((r) => r.officeKey === "pastor" && r.status === "received"));
+  await ann.call("lib/porch/offices.ts", "sendOfficeNote", { key: "pastor", room: "chat", memberId: abe.userId, body: "Ann's reply" });
+  const abeAnswered = await abe.call("lib/porch/offices.ts", "listOffices");
+  record("sanity", "offices", "When the office replies, Abe sees Answered", (abeAnswered?.requests ?? []).some((r) => r.officeKey === "pastor" && r.room === "chat" && r.status === "answered"));
+  const benRequests = await ben.call("lib/porch/offices.ts", "listOffices");
+  record("isolation", "offices", "Ben's requests list has none of Porch A's requests", !has(benRequests?.requests, "Office note in Porch A") && !has(benRequests?.requests, "Ann's reply"));
+
+  // ---- Office announcements (pinned at the top of My porch) ----
+  const abeAnnounces = await abe.call("lib/porch/offices.ts", "postAnnouncement", { key: "pastor", body: "Abe pretending" });
+  record("sanity", "offices", "A member who isn't the head can't post an office announcement", abeAnnounces?.ok === false);
+  const annAnnounces = await ann.call("lib/porch/offices.ts", "postAnnouncement", { key: "pastor", body: "A pinned word for Porch A" });
+  const abeSees = await abe.call("lib/porch/offices.ts", "listAnnouncements");
+  record("sanity", "offices", "Ann (the head) posts an announcement and Abe sees it", annAnnounces?.ok === true && has(abeSees, "A pinned word for Porch A") && has(abeSees, "Office of the Pastor"));
+  await ben.call("lib/porch/offices.ts", "postAnnouncement", { key: "pastor", body: "A pinned word for Porch B" });
+  const benSeesNotes = await ben.call("lib/porch/offices.ts", "listAnnouncements");
+  const abeSeesAgain = await abe.call("lib/porch/offices.ts", "listAnnouncements");
+  record("isolation", "offices", "Porch A's announcement doesn't show in Porch B", !has(benSeesNotes, "A pinned word for Porch A") && has(benSeesNotes, "A pinned word for Porch B"));
+  record("isolation", "offices", "Porch B's announcement doesn't show in Porch A", !has(abeSeesAgain, "A pinned word for Porch B"));
+  const oliveSees = await olive.call("lib/porch/offices.ts", "listAnnouncements");
+  record("isolation", "offices", "Phaneroo sees neither church's announcement", !has(oliveSees, "Porch A") && !has(oliveSees, "Porch B"));
+  const annAnnouncement = (abeSees ?? [])[0];
+  const benRemovesA = await ben.call("lib/porch/offices.ts", "removeAnnouncement", { id: annAnnouncement?.id ?? 0 });
+  const abeStillSees = await abe.call("lib/porch/offices.ts", "listAnnouncements");
+  record("isolation", "offices", "Ben can't remove Porch A's announcement", benRemovesA?.ok === false && has(abeStillSees, "A pinned word for Porch A"));
+  await ann.call("lib/porch/offices.ts", "postAnnouncement", { key: "pastor", body: "A newer word for Porch A" });
+  const abeNewest = await abe.call("lib/porch/offices.ts", "listAnnouncements");
+  record("sanity", "offices", "A new announcement replaces the office's last one", has(abeNewest, "A newer word for Porch A") && !has(abeNewest, "A pinned word for Porch A"));
 
   // ---- Events (with hotels and travel) ----
   const annEvent = await ann.call("lib/porch/events.ts", "saveEvent", { title: "Porch A retreat", startsOn: future });

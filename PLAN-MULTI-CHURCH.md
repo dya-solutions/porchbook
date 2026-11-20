@@ -44,7 +44,7 @@ Any **church, ministry, gospel artist or organisation** starts its own **porch**
 | **Stage 3a:** MSG/AMPC hidden; feed, chat, group chats, people, "on the porch now" and one-to-one calls private per porch | ✅ Done (19 Nov). Two-church test: 46 passed, 0 failed, 0 not private yet |
 | **Stage 3b:** offices, tour doors, read shelf and devotional, notifications, wording, sounds and settings | ✅ Done (19 Nov). Two-church test: 112 passed, 0 failed, 0 not private yet |
 | **Stage 4a:** six themes, Dawn/Dusk/Night dimmer, new top and bottom bars, My porch, Who is on the porch, "founder" → "admin" | ✅ Done (19 Nov) |
-| **Stage 4b:** Tour, Offices tab, offices each church creates, office screens, request status | ❌ Not started |
+| **Stage 4b:** Tour, Offices tab, offices each church creates, office screens, request status, office announcements | ✅ Done (20 Nov). Two-church test: 139 passed, 0 failed, 0 not private yet |
 | **Stage 4c:** Read, Chat, messaging, profiles, Porch settings screen | ❌ Not started |
 | Stages 3–8 | ❌ Not started |
 
@@ -236,11 +236,18 @@ After every stage: git undo point, CHANGES.md, "after" pictures where screens ch
    - **3b** ✅ Done (19 Nov): offices (and the office-head and report pickers), tour doors (Events, Serve, Transport, My 20 and its SMS, Pray, Feedback), read shelf and devotional, notifications and alerts ("send to everyone" is now "everyone in this porch"), and per-porch wording, sounds and every "only one" setting.
    - **Still not separated, by decision:** the on-hold features (radio, nuggets, PorchGuy, Clinic, devotional voice, machine translation, group calls). They must be tagged and pass the two-church test before being switched on (decision 8).
    - **Left for later stages:** moving between churches (Stage 5: old conversations, office threads, roles, and old Porchbook "legacy" posts claimed by email); the devotional source and the 8 office names as church settings (Stage 4); calls through outside services (Stage 8).
-4. **Themes and the new design**, in three parts (4a ✅ themes, bars, My porch, Who is on the porch; 4b Tour and Offices; 4c Read, Chat, profiles, Porch settings), one screen at a time, following `design-reference/`. Hide the old photo and texture settings and the old Themes menu (decisions 2 and 3), and make Dawn / Dusk / Night a gentle dimmer (decision 4). The colour settings come first, then Porch, Tour, Offices (with its new tab and office actions), Chat, Read, Presence, Conversation and profile. Phaneroo uses Porch Evening.
+4. **Themes and the new design**, in three parts (4a ✅ themes, bars, My porch, Who is on the porch; 4b ✅ Tour and Offices; 4c Read, Chat, profiles, Porch settings), one screen at a time, following `design-reference/`. Hide the old photo and texture settings and the old Themes menu (decisions 2 and 3), and make Dawn / Dusk / Night a gentle dimmer (decision 4). The colour settings come first, then Porch, Tour, Offices (with its new tab and office actions), Chat, Read, Presence, Conversation and profile. Phaneroo uses Porch Evening.
 5. **Joining, leaving and starting a porch**, with invite codes, the 3-step Start a porch screen, and platform-owner approval.
 6. **Public porch**: porch pages, following (automatic for your own church and its main church), public posts and reactions (separate tables), and Find porches. Members react only; no posting or comments.
 7. **Branches**: link requests, approval by the main porch, the branch list on the porch page, unlinking.
 8. **One-to-one calls** on a free setup. JT approves the setup first.
+9. **Porch stations** (future, after Stage 8; BUILD-BRIEF.md section 9). Each porch gets its own private radio station, reusing the on-hold radio code.
+   - **First:** the radio code gets church tags and must pass the two-church test (decision 8). The radio's tables (`fm_*`, `radio_usage`, `jingle_drafts`, `worship_songs`) and its one shared storage setting become per porch.
+   - **9a, playlist station (free):** admins upload or link sounds and arrange a schedule. No always-on server: every member's app plays the same scheduled file at the same moment. Files live in Cloudflare R2 (free to listen). Low but clear sound quality, respecting Porchbook Lite.
+   - **9b, live broadcasting (paid, monthly allowance per church):** an approved person goes live from their phone or computer microphone, and the playlist pauses meanwhile. This needs a one-to-many audio service (about $0.59 per 1,000 listener-minutes, e.g. Agora audience-only) or a self-hosted radio server. The app stops new broadcasts when a church's allowance is used up and never goes over.
+   - **Rules:** porches only play what they have the right to; admins confirm the rights when uploading a song. Only approved people go live. Each station is private to its own porch.
+   - **Tests to add then:** Porch B never hears or sees Porch A's station, schedule or files; a member who isn't approved can't go live; a church over its allowance can't start a broadcast.
+   - **To decide then:** Cloudflare R2's free tier asks for a payment card when you sign up (decision 6 says storage waits until later). Live broadcasting is the first feature in the plan that costs money each month.
 
 ### The two-church test (from Stage 2)
 A script sets up **Porch A** (Ann the admin, and Abe) and **Porch B** (Ben). In Porch A it creates a post, comment, reaction, chat message, group, office request and message, event, transport request, My 20 list, complaint, shelf book and notification. Then, as **Ben**, it checks that:

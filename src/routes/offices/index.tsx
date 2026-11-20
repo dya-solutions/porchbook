@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppFrame } from "@/components/porch/frame";
-import { OfficesHome } from "@/components/porch/offices-view";
+import { OfficesList } from "@/components/porch/office-screens";
 
 export const Route = createFileRoute("/offices/")({
   component: OfficesPage,
@@ -9,7 +9,7 @@ export const Route = createFileRoute("/offices/")({
 function OfficesPage() {
   return (
     <AppFrame>
-      <OfficesHome />
+      <OfficesList />
     </AppFrame>
   );
 }

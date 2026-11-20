@@ -139,24 +139,12 @@ export function PresenceChoice() {
 
 /** Once: invite a member to show themselves on the porch. */
 export function PresenceInvite() {
+  // Asked once per person (not once per phone), the first time they arrive. Their answer, even
+  // "Not now", is saved as their choice, so being hidden is never a silent default (Stage 4b).
   const porch = usePorch();
-  const [gone, setGone] = useState(true);
-  useEffect(() => {
-    try {
-      setGone(localStorage.getItem("porch-presence-asked") === "1");
-    } catch {
-      setGone(false);
-    }
-  }, []);
+  const [gone, setGone] = useState(false);
   if (gone || !porch.loaded || porch.chose) return null;
-  const done = () => {
-    setGone(true);
-    try {
-      localStorage.setItem("porch-presence-asked", "1");
-    } catch {
-      /* fine */
-    }
-  };
+  const done = () => setGone(true);
   return (
     <div className="pi-card" role="dialog" aria-label="Show you're on the porch">
       <p>Let the porch see you're here?</p>
@@ -171,7 +159,14 @@ export function PresenceInvite() {
         >
           Show me
         </button>
-        <button type="button" className="pi-no" onClick={done}>
+        <button
+          type="button"
+          className="pi-no"
+          onClick={() => {
+            done();
+            void choosePresence("hidden");
+          }}
+        >
           Not now
         </button>
       </div>

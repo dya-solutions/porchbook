@@ -3,7 +3,7 @@ import { ThemesSheet } from "@/components/porch/themes";
 import { playButtonSound } from "@/lib/porch/button-sound-play";
 import { RadioNews } from "@/components/porch/radio-news";
 import { shown as featureShown } from "@/lib/porch/on-hold";
-import { W, WordsEditor } from "@/components/porch/words";
+import { EditWordsButton, W, WordsEditor } from "@/components/porch/words";
 import { capturePlace, finishRestore, keepForReload, keepInMemory, onCall, placeToRestore, restoreDrafts, scroller } from "@/lib/porch/place";
 import { guardStart, toast, useBackLayer } from "@/lib/porch/back-stack";
 import { KeepRunning, OPEN_KEEP, inPorchApp } from "@/components/porch/keep-running";
@@ -47,7 +47,7 @@ import { porchStanding } from "@/lib/porch/roll";
 import { alertPermission, alertsSupported, enableAlerts, keepAlertsCurrent, pushIsArmed } from "@/lib/porch/alerts";
 import { INBOX_EVENT } from "@/lib/porch/inbox-events";
 import { ClearEvents } from "@/components/porch/city-events";
-import { Fault, TroubleBar } from "@/components/porch/trouble";
+import { COMPLAINTS_EVENT, Fault, TroubleBar } from "@/components/porch/trouble";
 import { claimLine, hangUp, useLine } from "@/lib/porch/line-call";
 import { OnAirBar } from "@/components/porch/fm";
 import { firebaseReady, watchFirebaseMember } from "@/lib/porch/firebase-call";
@@ -1167,6 +1167,13 @@ export function AccountCard({ user }: { user: AppUser }) {
             <small>Message everyone, the roll, sounds</small>
           </button>
         ) : null}
+        {admin ? (
+          <button type="button" onClick={() => window.dispatchEvent(new Event(COMPLAINTS_EVENT))}>
+            <MessageCircle className="size-5" aria-hidden="true" />
+            User's complaints
+          </button>
+        ) : null}
+        {admin ? <EditWordsButton /> : null}
         <button
           type="button"
           disabled={leaving}
