@@ -43,6 +43,12 @@ const SETUP: string[] = [
      country_code text not null default '+256',
      updated_at timestamptz not null default now()
    )`,
+  // Stage 5c: accounts. A verified email, an optional unique username, and a personal switch to
+  // hide one's church on public reactions. Accounts made before 5c count as verified (once).
+  `alter table profiles add column if not exists email_verified_at timestamptz`,
+  `alter table profiles add column if not exists username text`,
+  `alter table profiles add column if not exists hide_church boolean not null default false`,
+  `create unique index if not exists profiles_username_idx on profiles (lower(username)) where username is not null`,
   // Stage 4e: each porch's accent colour (brand/BRAND.md); every porch starts with Porchbook gold.
   `alter table porch_settings add column if not exists accent text not null default 'gold'`,
   // Stage 4e: each member's own Light or Dark choice.
@@ -65,6 +71,9 @@ const SETUP: string[] = [
    )`,
   // One-off steps already done (so they never repeat).
   `create table if not exists porch_steps (step text primary key, done_at timestamptz not null default now())`,
+  // Stage 5c: accounts made before verified emails existed count as verified (once).
+  `with done as (insert into porch_steps (step) values ('accounts-before-5c-verified') on conflict (step) do nothing returning step)
+   update profiles set email_verified_at = now() where email_verified_at is null and exists (select 1 from done)`,
   // Phaneroo is porch 1.
   `insert into porches (id, name, short_name, kind, town, country, status, verified, invite_code)
    values (1, 'Phaneroo Ministries Mbarara', 'Phaneroo Mbarara', 'church', 'Mbarara', 'Uganda', 'approved', true, null)

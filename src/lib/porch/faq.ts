@@ -67,6 +67,26 @@ const START: { section: string; items: [question: string, answer: string, check?
   },
 ];
 
+/** Stage 5c made these true (joining by request, member details). */
+const NOW_TRUE_5C: [question: string, answer: string][] = [
+  [
+    "How do I join my church's porch?",
+    "Ask your church for its invite code or link. Make your account and confirm your email with the code we send you. Then send a join request with your full name, nation, phone number and address. Your church's admins look at it and let you in. A code alone never lets anyone in.",
+  ],
+  [
+    "What details does my church ask for, and why?",
+    "Your full name, nation, phone number and address. Each question says why: your name so your church family knows you, your nation so the church can welcome you well, your phone so the church can reach you, and your address for visits and nearby groups.",
+  ],
+  [
+    "Who can see my phone number and address?",
+    "Only you and your church's admins. Other members can't see them, and they never appear on the public porch. They are deleted if you leave your church.",
+  ],
+  [
+    "How do I change my details?",
+    "Open your profile (your picture at the top right), then Your account → My details. You can correct your full name, nation, phone number and address, and choose a username for the public porch.",
+  ],
+];
+
 let ready: Promise<void> | null = null;
 function ensure(sql: Sql) {
   ready ??= (async () => {
@@ -87,6 +107,14 @@ function ensure(sql: Sql) {
           sort += 10;
           await sql.query("insert into faq_items (section, question, answer, sort, needs_check) values ($1, $2, $3, $4, $5)", [block.section, question, answer, sort, Boolean(check)]);
         }
+      }
+    }
+    // Stage 5c: answers that are now true. Only answers still waiting for JT's check change, so
+    // anything JT has already edited stays as JT wrote it.
+    const later = await sql.query<{ step: string }>("insert into porch_steps (step) values ('faq-5c-v1') on conflict do nothing returning step");
+    if (later.length) {
+      for (const [question, answer] of NOW_TRUE_5C) {
+        await sql.query("update faq_items set answer = $2, needs_check = false, updated_at = now() where question = $1 and needs_check", [question, answer]);
       }
     }
   })().catch((error) => {

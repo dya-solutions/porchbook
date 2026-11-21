@@ -966,3 +966,17 @@ html .head-logo { display: none !important; }
 .faq-edit-row { display: flex; align-items: center; gap: 4px; padding: 10px 8px 10px 16px; }
 .faq-edit-q { flex: 1; font-weight: 600; font-size: 15px; }
 .faq-edit-row .faq-check { margin: 2px 0 0; }
+
+/* ---- Accounts and join requests (Stage 5c) ---- */
+.acct-test { margin: 0; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--pb-accent) 12%, var(--pb-card)); border: 1px dashed var(--pb-accent); font-size: 14px; }
+.acct-test b { font-size: 20px; letter-spacing: 0.12em; color: var(--pb-accent); }
+.acct-code { font-size: 26px; letter-spacing: 0.35em; text-align: center; font-weight: 700; }
+.acct-why { font-weight: 400; font-size: 13px; color: var(--pb-quiet); margin-top: -2px; }
+.acct-note { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--pb-card); border: 1px solid var(--pb-line); font-size: 14px; }
+.acct-dl { display: grid; grid-template-columns: 6.5rem 1fr; gap: 6px 12px; margin: 0; font-size: 15px; }
+.acct-dl dt { color: var(--pb-quiet); font-weight: 600; }
+.acct-dl dd { margin: 0; overflow-wrap: anywhere; }
+/* Links drawn as buttons keep the button's text colour. */
+html.pb-on .pb a.pb-btn,
+.pb a.pb-btn { color: var(--pb-on-main); }
+.pb a.pb-btn2 { color: var(--pb-text); }

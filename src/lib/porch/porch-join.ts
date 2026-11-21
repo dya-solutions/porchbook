@@ -125,8 +125,9 @@ export const joinWithCode = createServerFn({ method: "POST" })
     if (current !== null) {
       return { ok: false as const, error: `You're a member of ${me[0]?.name ?? "another church"}. Moving to another church comes soon.` };
     }
-    await sql.query("update profiles set porch_id = $2 where user_id = $1 and porch_id is null", [context.userId, porch.id]);
-    return { ok: true as const, name: porch.name };
+    // Stage 5c (decision 14): a code only finds the church. Joining is by a request that the
+    // church's admins approve (membership.ts: requestToJoin).
+    return { ok: false as const, needsRequest: true, name: porch.name, error: `Send a join request to ${porch.name}. Its admins will let you in.` };
   });
 
 /** A church admin's invite code (to share as a code or a link). */
@@ -204,6 +205,9 @@ export const startPorch = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ensure(sql);
     await touchProfile(sql, context.userId, data.seed);
+    // Stage 5c: only accounts with a confirmed email can start a porch.
+    const confirmed = await sql.query<{ v: string | null }>("select email_verified_at::text as v from profiles where user_id = $1", [context.userId]);
+    if (!confirmed[0]?.v) return { ok: false as const, error: "Confirm your email first." };
     const me = await sql.query<{ porch_id: number | null; name: string | null }>(
       "select p.porch_id, c.name from profiles p left join porches c on c.id = p.porch_id where p.user_id = $1",
       [context.userId],

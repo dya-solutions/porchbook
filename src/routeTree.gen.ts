@@ -19,6 +19,7 @@ import { Route as FaqRouteImport } from './routes/faq'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManualRouteImport } from './routes/manual'
+import { Route as MyDetailsRouteImport } from './routes/my-details'
 import { Route as NextRouteImport } from './routes/next'
 import { Route as PorchSettingsRouteImport } from './routes/porch-settings'
 import { Route as PorchesWaitingRouteImport } from './routes/porches-waiting'
@@ -29,6 +30,7 @@ import { Route as ReadRouteImport } from './routes/read'
 import { Route as RollRouteImport } from './routes/roll'
 import { Route as StartRouteImport } from './routes/start'
 import { Route as TourOfficesRouteImport } from './routes/tour-offices'
+import { Route as WaitingToJoinRouteImport } from './routes/waiting-to-join'
 import { Route as ApiBibleWorkerRouteImport } from './routes/api/bible-worker'
 import { Route as ApiBrowseRouteImport } from './routes/api/browse'
 import { Route as ApiBuildRouteImport } from './routes/api/build'
@@ -117,6 +119,11 @@ const ManualRoute = ManualRouteImport.update({
   path: '/manual',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MyDetailsRoute = MyDetailsRouteImport.update({
+  id: '/my-details',
+  path: '/my-details',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NextRoute = NextRouteImport.update({
   id: '/next',
   path: '/next',
@@ -165,6 +172,11 @@ const StartRoute = StartRouteImport.update({
 const TourOfficesRoute = TourOfficesRouteImport.update({
   id: '/tour-offices',
   path: '/tour-offices',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WaitingToJoinRoute = WaitingToJoinRouteImport.update({
+  id: '/waiting-to-join',
+  path: '/waiting-to-join',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiBibleWorkerRoute = ApiBibleWorkerRouteImport.update({
@@ -364,6 +376,7 @@ export interface FileRoutesByFullPath {
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
+  '/my-details': typeof MyDetailsRoute
   '/next': typeof NextRoute
   '/porch-settings': typeof PorchSettingsRoute
   '/porches-waiting': typeof PorchesWaitingRoute
@@ -374,6 +387,7 @@ export interface FileRoutesByFullPath {
   '/roll': typeof RollRoute
   '/start': typeof StartRoute
   '/tour-offices': typeof TourOfficesRoute
+  '/waiting-to-join': typeof WaitingToJoinRoute
   '/api/bible-worker': typeof ApiBibleWorkerRoute
   '/api/browse': typeof ApiBrowseRoute
   '/api/build': typeof ApiBuildRoute
@@ -423,6 +437,7 @@ export interface FileRoutesByTo {
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
+  '/my-details': typeof MyDetailsRoute
   '/next': typeof NextRoute
   '/porch-settings': typeof PorchSettingsRoute
   '/porches-waiting': typeof PorchesWaitingRoute
@@ -433,6 +448,7 @@ export interface FileRoutesByTo {
   '/roll': typeof RollRoute
   '/start': typeof StartRoute
   '/tour-offices': typeof TourOfficesRoute
+  '/waiting-to-join': typeof WaitingToJoinRoute
   '/api/bible-worker': typeof ApiBibleWorkerRoute
   '/api/browse': typeof ApiBrowseRoute
   '/api/build': typeof ApiBuildRoute
@@ -483,6 +499,7 @@ export interface FileRoutesById {
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
+  '/my-details': typeof MyDetailsRoute
   '/next': typeof NextRoute
   '/porch-settings': typeof PorchSettingsRoute
   '/porches-waiting': typeof PorchesWaitingRoute
@@ -493,6 +510,7 @@ export interface FileRoutesById {
   '/roll': typeof RollRoute
   '/start': typeof StartRoute
   '/tour-offices': typeof TourOfficesRoute
+  '/waiting-to-join': typeof WaitingToJoinRoute
   '/api/bible-worker': typeof ApiBibleWorkerRoute
   '/api/browse': typeof ApiBrowseRoute
   '/api/build': typeof ApiBuildRoute
@@ -544,6 +562,7 @@ export interface FileRouteTypes {
     | '/invite'
     | '/login'
     | '/manual'
+    | '/my-details'
     | '/next'
     | '/porch-settings'
     | '/porches-waiting'
@@ -554,6 +573,7 @@ export interface FileRouteTypes {
     | '/roll'
     | '/start'
     | '/tour-offices'
+    | '/waiting-to-join'
     | '/api/bible-worker'
     | '/api/browse'
     | '/api/build'
@@ -603,6 +623,7 @@ export interface FileRouteTypes {
     | '/invite'
     | '/login'
     | '/manual'
+    | '/my-details'
     | '/next'
     | '/porch-settings'
     | '/porches-waiting'
@@ -613,6 +634,7 @@ export interface FileRouteTypes {
     | '/roll'
     | '/start'
     | '/tour-offices'
+    | '/waiting-to-join'
     | '/api/bible-worker'
     | '/api/browse'
     | '/api/build'
@@ -662,6 +684,7 @@ export interface FileRouteTypes {
     | '/invite'
     | '/login'
     | '/manual'
+    | '/my-details'
     | '/next'
     | '/porch-settings'
     | '/porches-waiting'
@@ -672,6 +695,7 @@ export interface FileRouteTypes {
     | '/roll'
     | '/start'
     | '/tour-offices'
+    | '/waiting-to-join'
     | '/api/bible-worker'
     | '/api/browse'
     | '/api/build'
@@ -722,6 +746,7 @@ export interface RootRouteChildren {
   InviteRoute: typeof InviteRoute
   LoginRoute: typeof LoginRoute
   ManualRoute: typeof ManualRoute
+  MyDetailsRoute: typeof MyDetailsRoute
   NextRoute: typeof NextRoute
   PorchSettingsRoute: typeof PorchSettingsRoute
   PorchesWaitingRoute: typeof PorchesWaitingRoute
@@ -732,6 +757,7 @@ export interface RootRouteChildren {
   RollRoute: typeof RollRoute
   StartRoute: typeof StartRoute
   TourOfficesRoute: typeof TourOfficesRoute
+  WaitingToJoinRoute: typeof WaitingToJoinRoute
   ApiBibleWorkerRoute: typeof ApiBibleWorkerRoute
   ApiBrowseRoute: typeof ApiBrowseRoute
   ApiBuildRoute: typeof ApiBuildRoute
@@ -843,6 +869,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ManualRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/my-details': {
+      id: '/my-details'
+      path: '/my-details'
+      fullPath: '/my-details'
+      preLoaderRoute: typeof MyDetailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/next': {
       id: '/next'
       path: '/next'
@@ -911,6 +944,13 @@ declare module '@tanstack/react-router' {
       path: '/tour-offices'
       fullPath: '/tour-offices'
       preLoaderRoute: typeof TourOfficesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/waiting-to-join': {
+      id: '/waiting-to-join'
+      path: '/waiting-to-join'
+      fullPath: '/waiting-to-join'
+      preLoaderRoute: typeof WaitingToJoinRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/bible-worker': {
@@ -1186,6 +1226,7 @@ const rootRouteChildren: RootRouteChildren = {
   InviteRoute: InviteRoute,
   LoginRoute: LoginRoute,
   ManualRoute: ManualRoute,
+  MyDetailsRoute: MyDetailsRoute,
   NextRoute: NextRoute,
   PorchSettingsRoute: PorchSettingsRoute,
   PorchesWaitingRoute: PorchesWaitingRoute,
@@ -1196,6 +1237,7 @@ const rootRouteChildren: RootRouteChildren = {
   RollRoute: RollRoute,
   StartRoute: StartRoute,
   TourOfficesRoute: TourOfficesRoute,
+  WaitingToJoinRoute: WaitingToJoinRoute,
   ApiBibleWorkerRoute: ApiBibleWorkerRoute,
   ApiBrowseRoute: ApiBrowseRoute,
   ApiBuildRoute: ApiBuildRoute,

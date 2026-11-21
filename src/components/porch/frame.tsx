@@ -13,6 +13,7 @@ import { warmDevotion } from "@/lib/porch/devotion-cache";
 import { LiteKey, LiteOffer } from "@/components/porch/lite-bits";
 import { NoteBell } from "@/components/porch/note-bell";
 import { WelcomeScreen } from "@/components/porch/welcome-screen";
+import { JoinChurch, MissingDetails, VerifyEmail, WaitingToJoin, detailsSkipped, useAccount } from "@/components/porch/account-screens";
 import { BrandLoading } from "@/components/porch/brand-logo";
 import { BottomNav, LookModeChoice, PbIcon, TopBar, usePorchLook } from "@/components/porch/pb-shell";
 import { NuggetLink } from "@/components/porch/nugget-bits";
@@ -133,8 +134,8 @@ export function AuthCard({ startMode = "join", note }: { startMode?: "join" | "e
       setError("Use at least 8 characters.");
       return;
     }
-    if (mode === "join" && name.trim().length < 2) {
-      setError("Add the name your team uses.");
+    if (mode === "join" && name.trim().split(/\s+/).length < 2) {
+      setError("Add your full name (first and last name).");
       return;
     }
     setPending(true);
@@ -198,7 +199,7 @@ export function AuthCard({ startMode = "join", note }: { startMode?: "join" | "e
       <form onSubmit={onSubmit} className="grid gap-3">
         {mode === "join" ? (
           <label className="grid gap-1 text-sm font-medium text-ink">
-            Name
+            Full name
             <input
               className={fieldClass}
               value={name}
@@ -663,6 +664,9 @@ function FounderDesk({ user, home }: { user: AppUser; home: boolean }) {
   );
 }
 
+/** True once the app has drawn its first page in this browser tab. */
+let appHydrated = false;
+
 export function AppFrame({
   children,
   rail,
@@ -671,6 +675,13 @@ export function AppFrame({
   rail?: ReactNode;
 }) {
   const { user, isPending } = useCurrentUserState();
+  // The very first draw in the browser must match what the server drew (the loading screen), or
+  // React reports a "hydration" error. After the first page, frames draw straight away.
+  const [hydrated, setHydrated] = useState(appHydrated);
+  useEffect(() => {
+    appHydrated = true;
+    setHydrated(true);
+  }, []);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const search = useRouterState({ select: (state) => state.location.search });
@@ -684,6 +695,9 @@ export function AppFrame({
   // These run on every draw, before any early return (React needs the same order every time).
   const look = usePorchLook();
   const face = useMyFace(user?.id ?? "");
+  // Stage 5c: the account (email confirmed? in a church? request waiting? details missing?).
+  const account = useAccount(user?.id);
+  const [detailsDone, setDetailsDone] = useState(false);
   // Keep today's devotional on the phone so it opens instantly.
   useEffect(() => {
     if (!user?.id) return;
@@ -957,6 +971,7 @@ export function AppFrame({
     };
   }, [user?.id, user?.displayName, user?.primaryEmail, user?.profileImageUrl]);
 
+  if (!hydrated) return <ShellSkeleton />;
   if (isPending || !user) {
     // The server can't see the sign-in yet, so it draws the neutral shell
     // rather than the sign-up page (which flashed on every refresh).
@@ -964,9 +979,19 @@ export function AppFrame({
     return <Welcome />;
   }
 
-  // Stage 5a: signed in but not in a church yet: join one with an invite code (or start a porch).
-  if (look?.member === false && pathname !== "/start" && pathname !== "/porches-waiting") {
-    return <WelcomeScreen signedIn />;
+  // Stage 5c: the account steps. Confirm the email first; then, not in a church yet: join one by
+  // request (an invite code only finds the church), or start a porch. The public porch ("coming
+  // soon") is open to any confirmed account, and so are Start a porch, Help and the approval list.
+  const openWithoutChurch = pathname === "/start" || pathname === "/porches-waiting" || (pathname === "/" && (search as { view?: string }).view === "public");
+  if (account && !account.verified && pathname !== "/porches-waiting") return <VerifyEmail email={account.email} />;
+  if ((look?.member === false || (account && !account.member)) && !openWithoutChurch) {
+    if (!account) return <ShellSkeleton />;
+    if (account.waiting) return <WaitingToJoin account={account} />;
+    return <JoinChurch account={account} />;
+  }
+  // Members with details missing are asked for them once, the next time they open the app.
+  if (account?.member && account.missing.length && !detailsDone && !detailsSkipped()) {
+    return <MissingDetails account={account} onDone={() => setDetailsDone(true)} />;
   }
 
   if (removed) {
@@ -1074,6 +1099,8 @@ function screenName(pathname: string) {
   if (pathname === "/invite") return "Invite";
   if (pathname === "/porch-settings") return "Porch settings";
   if (pathname === "/porches-waiting") return "Waiting for approval";
+  if (pathname === "/waiting-to-join") return "Waiting to join";
+  if (pathname === "/my-details") return "My details";
   if (pathname === "/presence") return "On the porch now";
   if (pathname === "/roll") return "The roll";
   if (pathname.startsWith("/calls")) return "Calls";
@@ -1189,6 +1216,18 @@ export function AccountCard({ user }: { user: AppUser }) {
             <Landmark className="size-5" aria-hidden="true" />
             Porches waiting for approval
             <small>Approve or decline new porches</small>
+          </Link>
+        ) : null}
+        <Link to="/my-details">
+          <Users className="size-5" aria-hidden="true" />
+          My details
+          <small>Name, nation, phone, address, username</small>
+        </Link>
+        {admin ? (
+          <Link to="/waiting-to-join">
+            <Users className="size-5" aria-hidden="true" />
+            People waiting to join
+            <small>Let in or decline join requests</small>
           </Link>
         ) : null}
         <Link to="/faq">

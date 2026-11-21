@@ -544,6 +544,78 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
     - members never see the "to check" marks.
   - **Pictures:** `../brand-pictures.html` (Light and Dark, Phaneroo and Grace Test Church, now with the FAQ), and every screen in `../after-stage4f/`, including the FAQ signed out.
 
+### 13. Brevo checked, hydration error fixed, and Stage 5c: accounts and join requests (21 Nov 2026)
+
+**Brevo, checked on its own pages** (brevo.com/pricing and help.brevo.com, read in the browser):
+- **Free plan:**
+  - **300 emails a day**, free forever, no card needed.
+  - Brevo has to approve the account for sending first.
+  - Transactional emails (like our codes) work on every plan through its API.
+  - Over 300 in a day, up to 1,000 wait in a queue, and beyond that they're not sent.
+  - Unused emails don't carry over.
+  - Every free email carries a "Sent with Brevo" sticker.
+- **One verified email address works:** you add it as a sender and type the 6-digit code Brevo sends to it. No domain is needed.
+- **Brevo warns** that sending from a free address (Gmail, Yahoo) makes emails more likely to land in spam. Your plan to get a Porchbook domain before real members sign up fixes that.
+
+**The "hydration" error is fixed.** The browser log is clean on every page load. The first picture the browser drew didn't match what the server had drawn; now it always starts with the loading screen, as the server does.
+
+**Stage 5c: accounts and join requests** (BUILD-BRIEF.md decisions 14–17)
+- **A Porchbook account:** full name, plus an **email confirmed with a 6-digit code** sent through Brevo, plus an **optional unique username**.
+  - The code works for 15 minutes; five wrong tries means asking for a new one; at most 6 codes a day.
+  - **Test mode:** with no Brevo key on this computer, nothing is emailed and the code is shown on screen instead, in a dashed box. This happens only on this computer and never in a deployed app.
+  - **The Brevo key** goes only in `porch-local.json` (`"brevo": { "apiKey", "senderEmail", "senderName" }`), which git ignores.
+  - **Starting a porch** also needs a confirmed email.
+- **An account alone belongs to no private porch.** It can look at the public porch ("coming soon" until Stage 6), start a porch, and read the FAQ.
+- **Joining a church is by request only:**
+  - **The invite code or link** only finds the church.
+  - **The request** asks for full name, nation, phone number and address. Each field has one line saying why the church needs it.
+  - **While waiting,** the person sees "Your request is on its way", can take it back, and can look at the public porch. Their screen checks every 20 seconds, so the porch opens as soon as they're let in.
+  - **Declined:** the person is told, and can ask again with a code.
+  - **Nobody gets in without an admin's approval.** The old "join with a code" step now only says "send a join request".
+- **People waiting to join** (new page `/waiting-to-join`, in Your account for church admins):
+  - each request shows the person's name, nation, phone, address and email, with **Let in** and **Decline**;
+  - admins get a notification for each new request;
+  - the person gets one when they're let in or declined.
+- **Existing accounts:**
+  - They stay members of their churches, and count as confirmed.
+  - The next time they open the app, **they're asked for any missing details** (nation, phone, address), with **Not now** for that visit.
+- **My details** (new page `/my-details`, in Your account):
+  - every member sees and corrects their full name, nation, phone and address;
+  - **On the public porch:** an optional username, and the **"Show my church with my reactions"** switch (on by default; switching it off hides your church). These are ready for public reactions in Stage 6.
+- **Member details are seen only by the member and their church's admins** (admin levels refine this in 5d). Admins see a **"Member details · admins only"** card on a member's profile.
+- **Full names:** the sign-up form asks for a **Full name** (first and last). The name from a person's join request becomes the name their posts and messages show.
+- **FAQ:** four answers are now true and were updated, with their "to check" marks cleared:
+  - how to join;
+  - what details are asked and why;
+  - who sees phone and address;
+  - how to change details.
+
+  Answers you had already edited were left as you wrote them. The other marked answers (the public porch, moving church, calls, approval time) still wait for later stages.
+- **Also fixed:** buttons that are links (like **Message** on a profile) showed dark text on olive. They now show white text.
+- **Checked:**
+  - Type check passes.
+  - **Two-church test: 214 passed, 0 failed, 0 not private yet** (it was 193). New checks:
+    - a code alone doesn't let anyone in;
+    - a person must confirm their email first, and a wrong code is refused;
+    - a request must have all the details;
+    - a request waits and lets nobody in by itself, and a waiting person sees none of the church's posts;
+    - **a request to Porch A never shows in Porch B's waiting list**;
+    - a member who isn't an admin can't see the list;
+    - **Porch B's admin can't let anyone into Porch A**;
+    - A's admin lets someone in;
+    - **Porch B's admins can never see Porch A's member details**, and a plain member can't see others' details;
+    - members see and correct their own details;
+    - declining works, and the person can ask again;
+    - usernames are unique;
+    - "hide my church" is each person's own;
+    - existing members are asked for missing details until they give them.
+  - **Pictures:**
+    - `../accounts-pictures.html` shows the whole joining path with local test accounts: asked for missing details → My details → a new person's account → confirm email (test mode) → the join request with its "why" lines → waiting → the admin's People waiting to join → member details on a profile → let in.
+    - Every screen is in `../after-stage5c/all-screens/`.
+- **Test data on this computer** (all in `../TEST-ACCOUNT.md`):
+  - **New accounts:** Hope Newcomer (let into Grace Test Church) and Joy Waiting (still waiting to join Grace Test Church).
+  - **Test details** were filled in for Test Member and Grace Tester.
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).
