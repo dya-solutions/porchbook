@@ -15,6 +15,7 @@ import { Route as CallRouteImport } from './routes/call'
 import { Route as CallsRouteImport } from './routes/calls'
 import { Route as CityRouteImport } from './routes/city'
 import { Route as ControlRoomRouteImport } from './routes/control-room'
+import { Route as FaqRouteImport } from './routes/faq'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManualRouteImport } from './routes/manual'
@@ -94,6 +95,11 @@ const CityRoute = CityRouteImport.update({
 const ControlRoomRoute = ControlRoomRouteImport.update({
   id: '/control-room',
   path: '/control-room',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InviteRoute = InviteRouteImport.update({
@@ -354,6 +360,7 @@ export interface FileRoutesByFullPath {
   '/calls': typeof CallsRoute
   '/city': typeof CityRoute
   '/control-room': typeof ControlRoomRoute
+  '/faq': typeof FaqRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
@@ -412,6 +419,7 @@ export interface FileRoutesByTo {
   '/calls': typeof CallsRoute
   '/city': typeof CityRoute
   '/control-room': typeof ControlRoomRoute
+  '/faq': typeof FaqRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
@@ -471,6 +479,7 @@ export interface FileRoutesById {
   '/calls': typeof CallsRoute
   '/city': typeof CityRoute
   '/control-room': typeof ControlRoomRoute
+  '/faq': typeof FaqRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
@@ -531,6 +540,7 @@ export interface FileRouteTypes {
     | '/calls'
     | '/city'
     | '/control-room'
+    | '/faq'
     | '/invite'
     | '/login'
     | '/manual'
@@ -589,6 +599,7 @@ export interface FileRouteTypes {
     | '/calls'
     | '/city'
     | '/control-room'
+    | '/faq'
     | '/invite'
     | '/login'
     | '/manual'
@@ -647,6 +658,7 @@ export interface FileRouteTypes {
     | '/calls'
     | '/city'
     | '/control-room'
+    | '/faq'
     | '/invite'
     | '/login'
     | '/manual'
@@ -706,6 +718,7 @@ export interface RootRouteChildren {
   CallsRoute: typeof CallsRoute
   CityRoute: typeof CityRoute
   ControlRoomRoute: typeof ControlRoomRoute
+  FaqRoute: typeof FaqRoute
   InviteRoute: typeof InviteRoute
   LoginRoute: typeof LoginRoute
   ManualRoute: typeof ManualRoute
@@ -800,6 +813,13 @@ declare module '@tanstack/react-router' {
       path: '/control-room'
       fullPath: '/control-room'
       preLoaderRoute: typeof ControlRoomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invite': {
@@ -1162,6 +1182,7 @@ const rootRouteChildren: RootRouteChildren = {
   CallsRoute: CallsRoute,
   CityRoute: CityRoute,
   ControlRoomRoute: ControlRoomRoute,
+  FaqRoute: FaqRoute,
   InviteRoute: InviteRoute,
   LoginRoute: LoginRoute,
   ManualRoute: ManualRoute,

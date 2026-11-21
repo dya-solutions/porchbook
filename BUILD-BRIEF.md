@@ -142,6 +142,13 @@ After Stage 5a and the brand stage (4e): **Stage 5c** accounts and join requests
     - **Dawn / Dusk / Night** stays as the dimmer.
 22. **Invite codes are random** (like K7QM-4XPA) for every porch, Phaneroo included, so they can't be guessed. They are never made from the church's name.
 
+### D. Help (Stage 4f)
+23. **The Porchbook Manual is replaced by one Porchbook FAQ.**
+    - **The same FAQ for every porch.** Only the platform owner adds, edits, reorders or removes questions, from a simple editor in Your account.
+    - **Where people find it:** "Help and FAQ" in Your account, and a small "Questions?" link on the Welcome screen. It works for people who aren't signed in.
+    - **How it looks:** questions are grouped into sections, with a search box at the top. Each answer is short, and tapping a question opens its answer in place. It uses the brand look.
+    - **The Manual's card and book are hidden, not deleted** (the `manual` switch in on-hold.ts).
+
 ## 9. Stage 9: Porch stations (future, after Stage 8)
 
 Every porch can have its own radio station that its members tune into while they're on the porch. It reuses the on-hold radio code, which must first get church tags and pass the two-church test (decision 8).

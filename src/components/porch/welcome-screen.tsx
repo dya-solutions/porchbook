@@ -179,9 +179,11 @@ export function WelcomeScreen({ account, signedIn = false }: { account?: (mode: 
             </button>
           </p>
         )}
-        <Link to="/privacy" className="pb-quiet" style={{ textAlign: "center", fontSize: 13 }}>
-          Privacy
-        </Link>
+        <p className="welcome-small" style={{ margin: 0, textAlign: "center", fontSize: 14 }}>
+          <Link to="/faq" className="welcome-link">Questions?</Link>
+          {" · "}
+          <Link to="/privacy" className="welcome-link" style={{ fontWeight: 400 }}>Privacy</Link>
+        </p>
       </div>
     </main>
   );

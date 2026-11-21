@@ -49,6 +49,7 @@ Any **church, ministry, gospel artist or organisation** starts its own **porch**
 | **Stage 4d:** devotional per church (Porch settings), Tour spacing, office head behind Edit, devotional card title, the older screens and readers in the theme | ✅ Done (20 Nov). Two-church test: 157 passed, 0 failed, 0 not private yet |
 | **Stage 5a:** Welcome, invite codes and links, joining by code, Start a porch (types, branch recorded), approval list | ✅ Done (20 Nov). Two-church test: 181 passed, 0 failed, 0 not private yet |
 | **Stage 4e:** the Porchbook brand: olive frame, church accent colours, Light/Dark per member, logos and app icons, Fredoka titles; random invite codes | ✅ Done (21 Nov). Two-church test: 188 passed, 0 failed, 0 not private yet |
+| **Stage 4f:** Help and FAQ instead of the Manual (decision 23); old butterfly mark removed | ✅ Done (21 Nov). Two-church test: 193 passed, 0 failed, 0 not private yet |
 | **Stage 5c:** accounts (verified email, optional username) and join requests approved by admins (decisions 14–17, 19–20) | ❌ Not started. The email service is to be agreed with JT first |
 | **Stage 5d:** admin levels (decision 18) | ❌ Not started |
 | **Stage 5b:** leaving and moving church | ❌ Not started (after 5c and 5d) |

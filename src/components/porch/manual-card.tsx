@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { shown } from "@/lib/porch/on-hold";
 import { createPortal } from "react-dom";
 import { hideManualCard, manualCard } from "@/lib/porch/manual-card";
 import { PorchManual } from "@/components/porch/manual-book";
@@ -10,6 +11,11 @@ import { PorchManual } from "@/components/porch/manual-book";
 type Card = { kind: "new" | "old"; name: string; founder: boolean; live: boolean };
 
 export function ManualCard() {
+  // Stage 4f: the Manual is replaced by the Porchbook FAQ (Your account → Help and FAQ).
+  return shown("manual") ? <ManualCardOn /> : null;
+}
+
+function ManualCardOn() {
   const [card, setCard] = useState<Card | null>(null);
   const [open, setOpen] = useState(false);
   // A link with ?manual opens the book straight away (for the porch guy and for sharing).

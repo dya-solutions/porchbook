@@ -504,6 +504,46 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
 - **Test data on this computer:** a second test account, Grace Tester, with its own approved church **Grace Test Church** (Royal blue), for the accent pictures. Its details are in `../TEST-ACCOUNT.md`.
 - **Not changed (Android):** the Android app's own icon lives in the android folder, which I don't touch unless you ask.
 
+### 12. Two fixes and Stage 4f: Help and FAQ instead of the Manual (21 Nov 2026)
+
+**Fixes**
+1. **The old orange-and-green butterfly is gone** from post cards and everywhere else it appeared: the post box, book covers and office books, Calls, the complaints list and the office reports. Nothing replaces it.
+   - The code is kept and switched off in one place (`pb.css`), like the on-hold features.
+   - The small icon on phone notifications (the "badge") is now the Porchbook circle of people. The old one is kept in `public/old-icons/`.
+   - The radio's lock-screen picture (radio is on hold) now uses the Porchbook app icon.
+2. **The blank Offices picture:** the Offices page works in Light mode. The picture had been taken while the page was still fading in. The picture script now retakes any nearly blank picture, and `after-stage4e/brand/phaneroo-light-offices.png` has been taken again.
+
+**Stage 4f: Help and FAQ** (BUILD-BRIEF.md decision 23, new page `/faq`)
+- **The Porchbook Manual is hidden, not deleted:** its card on My porch and its book are behind a new `manual` switch in on-hold.ts.
+- **One Porchbook FAQ, the same for every porch.** Reach it from:
+  - **Your account → Help and FAQ**;
+  - a small **"Questions?"** link on the Welcome screen, which works for people who aren't signed in.
+- **How it looks:** a search box at the top, then questions grouped into sections. Tapping a question opens its short answer in place. Searching opens the matching answers. It uses the brand look: an olive bar with the circle of people.
+- **Only you (the platform owner) can change it:** **Edit the FAQ** on the same page lets you add a question (to a section, or a new one), edit, move up or down, or remove. Admins and members can't.
+- **It starts with 22 questions in 7 sections:** Getting started, My porch, Offices, Chat and calls, Public porch, Privacy and account, For churches.
+  - The answers match how the app works today and the Stage 5c decisions (join requests need admin approval).
+  - **Answers marked "Marked for you to check"** (only you see the mark) describe things not built yet, or details to confirm:
+    - joining by request;
+    - the details a church asks for;
+    - using Porchbook without a church;
+    - what the three rooms are for;
+    - calls;
+    - the public porch and following;
+    - who sees phone and address;
+    - changing details;
+    - leaving or moving church;
+    - how long approval takes.
+
+    Saving an edited answer clears its mark.
+- **Checked:**
+  - Type check passes.
+  - **Two-church test: 193 passed, 0 failed, 0 not private yet** (it was 188). New checks:
+    - the FAQ is the same for every porch;
+    - a porch admin can't change it;
+    - the owner adds a question that every porch then sees, and removes it again;
+    - members never see the "to check" marks.
+  - **Pictures:** `../brand-pictures.html` (Light and Dark, Phaneroo and Grace Test Church, now with the FAQ), and every screen in `../after-stage4f/`, including the FAQ signed out.
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).

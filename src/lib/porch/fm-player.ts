@@ -513,7 +513,7 @@ function setMediaSession(onAir: OnAir) {
       title: onAir.track.title,
       artist: onAir.programme,
       album: "Porchbook Radio",
-      artwork: [{ src: "/logo.png?v=5", sizes: "512x512", type: "image/png" }],
+      artwork: [{ src: "/icon-512.png?v=5", sizes: "512x512", type: "image/png" }],
     });
     navigator.mediaSession.setActionHandler("play", () => void tuneIn());
     navigator.mediaSession.setActionHandler("pause", () => tuneOut());

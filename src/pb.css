@@ -939,3 +939,30 @@ html .welcome.is-olive .welcome-card .text-danger { color: #a8323a; }
 .pb-look-label { font-weight: 600; font-size: 15px; flex: 1; min-width: 80px; }
 html.pb-on .pb .manual-card h3 { font: 500 21px/1.15 Fredoka, "Source Sans 3", system-ui, sans-serif; text-shadow: none; }
 html.pb-on .pb .manual-card-k { color: var(--pb-accent); }
+
+/* Stage 4f: the old orange-and-green butterfly mark is gone from the app (post cards, the post
+ * box, book covers, office books, calls, complaints). The code stays; the mark never shows. */
+html .butterfly,
+html .post-butterfly,
+html .lf-rest,
+html .lf-flyer,
+html .butterfly-wing,
+html .head-logo { display: none !important; }
+
+/* ---- Help and FAQ (Stage 4f) ---- */
+.faq { min-height: 100dvh; background: var(--pb-bg); color: var(--pb-text); }
+.faq-top { display: flex; align-items: center; gap: 12px; padding: calc(12px + env(safe-area-inset-top)) 16px 12px; background: var(--pb-bar); color: var(--pb-on-bar); position: sticky; top: 0; z-index: 2; }
+.faq-top .pb-iconbtn { color: var(--pb-on-bar); border-color: color-mix(in srgb, var(--pb-on-bar) 35%, transparent); }
+.faq-in { max-width: 640px; margin: 0 auto; padding: 18px 16px 40px; }
+.faq-list { overflow: hidden; }
+.faq-q + .faq-q, .faq-edit-row + .faq-edit-row, .faq-list > * + * { border-top: 1px solid var(--pb-line); }
+.faq-q summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 14px 16px; min-height: 48px; cursor: pointer; font-weight: 700; font-size: 16px; }
+.faq-q summary::-webkit-details-marker { display: none; }
+.faq-q summary span { flex: 1; }
+.faq-chev { flex: none; color: var(--pb-quiet); transition: transform 0.15s ease; }
+.faq-q[open] .faq-chev { transform: rotate(180deg); color: var(--pb-main); }
+.faq-a { margin: 0; padding: 0 16px 16px; font-size: 15px; line-height: 1.5; color: var(--pb-text); }
+.faq-check { margin: -8px 16px 14px; font-size: 12px; font-weight: 700; color: var(--pb-accent); }
+.faq-edit-row { display: flex; align-items: center; gap: 4px; padding: 10px 8px 10px 16px; }
+.faq-edit-q { flex: 1; font-weight: 600; font-size: 15px; }
+.faq-edit-row .faq-check { margin: 2px 0 0; }

@@ -1191,6 +1191,11 @@ export function AccountCard({ user }: { user: AppUser }) {
             <small>Approve or decline new porches</small>
           </Link>
         ) : null}
+        <Link to="/faq">
+          <CircleHelp className="size-5" aria-hidden="true" />
+          Help and FAQ
+          <small>Short answers about Porchbook</small>
+        </Link>
         <Link to="/start">
           <Users className="size-5" aria-hidden="true" />
           Start a porch

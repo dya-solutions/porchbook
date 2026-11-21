@@ -503,6 +503,21 @@ try {
   const benModeLook = await ben.call("lib/porch/porch-look.ts", "myPorchLook");
   record("isolation", "settings", "Abe choosing Dark changes only Abe's look, not Ann's (same church) or Ben's", abeDark?.ok === true && abeDarkLook?.mode === "dark" && annModeLook?.mode === "light" && benModeLook?.mode === "light");
   await abe.call("lib/porch/porch-look.ts", "setMyLookMode", { mode: "light" });
+
+  // ---- Help and FAQ (Stage 4f): one FAQ for every porch, only the platform owner edits it ----
+  const abeFaq = await abe.call("lib/porch/faq.ts", "loadFaq");
+  const benFaq = await ben.call("lib/porch/faq.ts", "loadFaq");
+  record("sanity", "settings", "The FAQ starts with its questions, the same for every porch", Array.isArray(abeFaq) && abeFaq.length >= 20 && JSON.stringify(abeFaq) === JSON.stringify(benFaq));
+  const annFaqEdit = await ann.call("lib/porch/faq.ts", "editFaq", { action: "add", section: "Getting started", question: "Ann's question?", answer: "Not allowed" });
+  record("sanity", "settings", "A porch admin (Ann) can't change the FAQ", annFaqEdit?.ok === false);
+  const oliveFaqAdd = await olive.call("lib/porch/faq.ts", "editFaq", { action: "add", section: "Getting started", question: "A test question?", answer: "A test answer." });
+  const abeFaqAfter = await abe.call("lib/porch/faq.ts", "loadFaq");
+  const newItem = (abeFaqAfter ?? []).find((item) => item.question === "A test question?");
+  record("sanity", "settings", "The platform owner adds a question and every porch sees it", oliveFaqAdd?.ok === true && Boolean(newItem) && has(await ben.call("lib/porch/faq.ts", "loadFaq"), "A test question?"));
+  await olive.call("lib/porch/faq.ts", "editFaq", { action: "remove", id: newItem?.id });
+  const faqAfterRemove = await abe.call("lib/porch/faq.ts", "loadFaq");
+  record("sanity", "settings", "The platform owner removes it again", !has(faqAfterRemove, "A test question?"));
+  record("sanity", "settings", "Members never see the owner's \"to check\" marks", (abeFaq ?? []).every((item) => item.check === false));
   const abeDoors = await abe.call("lib/porch/porch-look.ts", "setTourDoors", { off: ["my20"] });
   record("sanity", "settings", "A member (Abe) can't switch Tour doors off", abeDoors?.ok === false);
   const allOff = await ben.call("lib/porch/porch-look.ts", "setTourDoors", { off: ["pray", "my20", "events", "groups", "serve", "transport", "feedback"] });

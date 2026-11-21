@@ -36,6 +36,8 @@ export const ON_HOLD = {
    * olive frame, one accent colour per church, Light or Dark per member. Kept, switched off.
    */
   churchThemes: true,
+  /** The Porchbook Manual (its card on My porch and the book). Replaced by the FAQ on 21 Nov (decision 23). */
+  manual: true,
 } as const;
 
 export type OnHoldFeature = keyof typeof ON_HOLD;
