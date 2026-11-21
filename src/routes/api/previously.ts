@@ -46,6 +46,43 @@ async function founder(userId: string) {
   return value === true || value === 1 || value === "1" || value === "t" || value === "true";
 }
 
+/** After a Blob upload: record the video's address for the admin's church porch. */
+async function saveBlobVideo(request: Request, body: Record<string, unknown>) {
+  const session = await auth.api.getSession({ headers: request.headers });
+  if (!session?.user) return Response.json({ ok: false, error: "Sign in first." }, { status: 401 });
+  if (!(await founder(session.user.id))) return Response.json({ ok: false, error: "Only an admin can upload this video." }, { status: 403 });
+  const url = typeof body.url === "string" ? body.url : "";
+  let host = "";
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    host = "";
+  }
+  if (!host.endsWith(".blob.vercel-storage.com")) return Response.json({ ok: false, error: "That video address isn't ours." }, { status: 400 });
+  const mime = videoMime(String(body.name ?? "video.mp4"), String(body.type ?? "")) ?? "video/mp4";
+  const sql = await getSql();
+  const porch = await myPorchId(sql, session.user.id);
+  if (!porch) return Response.json({ ok: false, error: "Join a porch first." }, { status: 403 });
+  await sql`
+    create table if not exists previous_clip (
+      id integer primary key,
+      kind text not null,
+      youtube_id text,
+      url text,
+      mime text,
+      updated_at timestamptz not null default now()
+    )
+  `;
+  await porchTables(sql, { key: [["previous_clip", "id"]] });
+  await sql`
+    insert into previous_clip (porch_id, id, kind, youtube_id, url, mime, updated_at)
+    values (${porch}, 1, 'file', null, ${url}, ${mime}, now())
+    on conflict (porch_id, id) do update
+      set kind = 'file', youtube_id = null, url = ${url}, mime = ${mime}, updated_at = now()
+  `;
+  return Response.json({ ok: true });
+}
+
 export const Route = createFileRoute("/api/previously")({
   server: {
     handlers: {
@@ -54,11 +91,13 @@ export const Route = createFileRoute("/api/previously")({
         if (!session?.user) return new Response("Sign in to watch.", { status: 401 });
         const sql = await getSql();
         const porch = await myPorchId(sql, session.user.id);
-        const rows = await sql.query<{ mime: string | null; kind: string }>(
-          "select mime, kind from previous_clip where id = 1 and porch_id = $1",
+        const rows = await sql.query<{ mime: string | null; kind: string; url: string | null }>(
+          "select mime, kind, url from previous_clip where id = 1 and porch_id = $1",
           [porch],
         );
         if (rows[0]?.kind !== "file") return new Response("No uploaded video.", { status: 404 });
+        // Online, the video lives in Vercel Blob (files on disk don't survive on Vercel).
+        if (rows[0].url) return Response.redirect(rows[0].url, 302);
         try {
           const bytes = await readFile(videoPath(porch));
           return new Response(bytes, {
@@ -72,6 +111,28 @@ export const Route = createFileRoute("/api/previously")({
         }
       },
       POST: async ({ request }) => {
+        // Online (a Vercel Blob store is connected): the phone sends the video straight to Blob
+        // with a one-off token, then tells us its address. Big files never pass through here.
+        if (process.env.BLOB_READ_WRITE_TOKEN && (request.headers.get("content-type") || "").includes("application/json")) {
+          const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+          if (body && body.action === "saved") return saveBlobVideo(request, body);
+          const { handleUpload } = await import("@vercel/blob/client");
+          try {
+            const result = await handleUpload({
+              body: body as never,
+              request,
+              onBeforeGenerateToken: async () => {
+                const session = await auth.api.getSession({ headers: request.headers });
+                if (!session?.user || !(await founder(session.user.id))) throw new Error("Only an admin can upload this video.");
+                return { allowedContentTypes: ["video/*"], maximumSizeInBytes: MAX_BYTES, addRandomSuffix: true };
+              },
+            });
+            return Response.json(result);
+          } catch (error) {
+            return Response.json({ error: error instanceof Error ? error.message : "Upload refused." }, { status: 400 });
+          }
+        }
+        if (process.env.VERCEL) return Response.json({ ok: false, error: "Video storage isn't connected yet." }, { status: 503 });
         const session = await auth.api.getSession({ headers: request.headers });
         if (!session?.user) return Response.json({ ok: false, error: "Sign in first." }, { status: 401 });
         if (!(await founder(session.user.id))) {

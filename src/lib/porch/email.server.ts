@@ -1,12 +1,25 @@
 // Stage 5c: sending a verification code by email through Brevo (free plan: 300 emails a day).
-// The Brevo key lives ONLY in porch-local.json on this computer (never in the code or in git):
-//   { "brevo": { "apiKey": "xkeysib-…", "senderEmail": "you@example.com", "senderName": "Porchbook" } }
-// With no key, Porchbook is in "test mode": nothing is sent and the code is shown on screen
-// instead (on this computer only, never in a deployed app).
+// The Brevo key is never in the code or in git:
+// - online (Vercel): the settings BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME;
+// - on this computer: porch-local.json  { "brevo": { "apiKey": "…", "senderEmail": "…", "senderName": "Porchbook" } }
+// With no key on this computer, Porchbook is in "test mode": nothing is sent and the code is shown
+// on screen instead. Online, test mode can never happen: no key means no code is sent at all.
 
 type BrevoSetup = { apiKey: string; senderEmail: string; senderName: string };
 
+/** Online means a deployed app (Vercel, or any production build): never test mode there. */
+export function isOnline() {
+  return Boolean(process.env.VERCEL) || process.env.NODE_ENV === "production";
+}
+
 async function readBrevo(): Promise<BrevoSetup | null> {
+  const fromEnv = process.env.BREVO_API_KEY?.trim();
+  if (fromEnv) {
+    const senderEmail = process.env.BREVO_SENDER_EMAIL?.trim() ?? "";
+    if (!senderEmail) return null;
+    return { apiKey: fromEnv, senderEmail, senderName: process.env.BREVO_SENDER_NAME?.trim() || "Porchbook" };
+  }
+  if (isOnline()) return null;
   try {
     const { readFile } = await import("node:fs/promises");
     const raw = JSON.parse(await readFile("porch-local.json", "utf8")) as { brevo?: Partial<BrevoSetup> };
@@ -20,17 +33,17 @@ async function readBrevo(): Promise<BrevoSetup | null> {
 
 /** True when codes may be shown on screen: no Brevo key, and not a deployed app. */
 export async function emailTestMode() {
+  if (isOnline()) return false;
   if (process.env.PORCH_TEST_MODE === "1") return true;
-  if (process.env.NODE_ENV === "production") return false;
   return !(await readBrevo());
 }
 
 /** Send a 6-digit verification code. Returns "sent", "test" (shown on screen) or an error. */
 export async function sendCodeEmail(to: string, name: string, code: string): Promise<{ ok: true; how: "sent" | "test" } | { ok: false; error: string }> {
-  if (process.env.PORCH_TEST_MODE === "1") return { ok: true, how: "test" };
+  if (!isOnline() && process.env.PORCH_TEST_MODE === "1") return { ok: true, how: "test" };
   const brevo = await readBrevo();
   if (!brevo) {
-    if (process.env.NODE_ENV === "production") return { ok: false, error: "Email isn't set up yet. Try again later." };
+    if (isOnline()) return { ok: false, error: "Email isn't set up yet. Try again later." };
     return { ok: true, how: "test" };
   }
   const text = `Hello ${name || "there"},\n\nYour Porchbook code is ${code}\n\nIt works for 15 minutes. If you didn't ask for it, you can ignore this email.\n\nPorchbook`;

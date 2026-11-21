@@ -10,6 +10,8 @@ import { dbSource, getSql } from "@/lib/db";
  * with a real database, it says "not found" and does nothing.
  */
 function enabled() {
+  // Never online: a deployed app (Vercel) refuses this helper whatever its settings say.
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") return false;
   return process.env.PORCH_TEST_MODE === "1" && dbSource === "pglite";
 }
 

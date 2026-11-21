@@ -327,6 +327,11 @@ export async function placeNewProfile(sql: Sql, userId: string): Promise<void> {
 type LocalSetup = { platformOwners: string[]; phanerooAdmins: string[] };
 let localSetup: Promise<LocalSetup> | null = null;
 
+/** A comma-separated list of emails from a setting (online: Vercel's environment variables). */
+function fromEnv(name: string): string[] {
+  return (process.env[name] ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+}
+
 function readLocalSetup(): Promise<LocalSetup> {
   localSetup ??= (async () => {
     const empty = { platformOwners: [], phanerooAdmins: [] };
@@ -335,9 +340,10 @@ function readLocalSetup(): Promise<LocalSetup> {
       const raw = JSON.parse(await readFile("porch-local.json", "utf8")) as Partial<LocalSetup>;
       const emails = (list: unknown) =>
         Array.isArray(list) ? list.filter((e): e is string => typeof e === "string").map((e) => e.trim().toLowerCase()).filter(Boolean) : [];
-      return { platformOwners: emails(raw.platformOwners), phanerooAdmins: emails(raw.phanerooAdmins) };
+      return { platformOwners: [...emails(raw.platformOwners), ...fromEnv("PORCH_PLATFORM_OWNERS")], phanerooAdmins: [...emails(raw.phanerooAdmins), ...fromEnv("PORCH_PHANEROO_ADMINS")] };
     } catch {
-      return empty;
+      // Online there is no porch-local.json: the same lists come from the settings.
+      return { platformOwners: fromEnv("PORCH_PLATFORM_OWNERS"), phanerooAdmins: fromEnv("PORCH_PHANEROO_ADMINS") };
     }
   })();
   return localSetup;

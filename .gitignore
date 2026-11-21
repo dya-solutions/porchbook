@@ -20,3 +20,11 @@ artifacts
 .local-db
 .test-db*
 porch-local.json
+
+# Never upload (Porchbook, before going online)
+.vercel
+data/previously
+*.log
+.env
+.env.*
+bibles-private/*.key

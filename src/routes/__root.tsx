@@ -39,6 +39,8 @@ export const Route = createRootRoute({
       },
       { name: "theme-color", content: "#576C31" },
       { name: "color-scheme", content: "light dark" },
+      // The private test site asks search engines not to list it (VITE_PORCH_NOINDEX=1 on Vercel).
+      ...(import.meta.env.VITE_PORCH_NOINDEX === "1" ? [{ name: "robots", content: "noindex, nofollow" }] : []),
     ],
     links: [
       { rel: "stylesheet", href: appCss },
