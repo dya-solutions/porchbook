@@ -48,7 +48,10 @@ Any **church, ministry, gospel artist or organisation** starts its own **porch**
 | **Stage 4c:** Read, Chat, messaging, profiles, Porch settings screen (theme and Tour doors) | ✅ Done (20 Nov). Two-church test: 149 passed, 0 failed, 0 not private yet |
 | **Stage 4d:** devotional per church (Porch settings), Tour spacing, office head behind Edit, devotional card title, the older screens and readers in the theme | ✅ Done (20 Nov). Two-church test: 157 passed, 0 failed, 0 not private yet |
 | **Stage 5a:** Welcome, invite codes and links, joining by code, Start a porch (types, branch recorded), approval list | ✅ Done (20 Nov). Two-church test: 181 passed, 0 failed, 0 not private yet |
-| **Stage 5b:** leaving and moving church | ❌ Not started |
+| **Stage 4e:** the Porchbook brand: olive frame, church accent colours, Light/Dark per member, logos and app icons, Fredoka titles; random invite codes | ✅ Done (21 Nov). Two-church test: 188 passed, 0 failed, 0 not private yet |
+| **Stage 5c:** accounts (verified email, optional username) and join requests approved by admins (decisions 14–17, 19–20) | ❌ Not started. The email service is to be agreed with JT first |
+| **Stage 5d:** admin levels (decision 18) | ❌ Not started |
+| **Stage 5b:** leaving and moving church | ❌ Not started (after 5c and 5d) |
 | Stages 3–8 | ❌ Not started |
 
 ---
@@ -240,7 +243,23 @@ After every stage: git undo point, CHANGES.md, "after" pictures where screens ch
    - **Still not separated, by decision:** the on-hold features (radio, nuggets, PorchGuy, Clinic, devotional voice, machine translation, group calls). They must be tagged and pass the two-church test before being switched on (decision 8).
    - **Left for later stages:** moving between churches (Stage 5: old conversations, office threads, roles, and old Porchbook "legacy" posts claimed by email); the devotional source and the 8 office names as church settings (Stage 4); calls through outside services (Stage 8).
 4. **Themes and the new design**, in three parts (4a ✅ themes, bars, My porch, Who is on the porch; 4b ✅ Tour and Offices; 4c ✅ Read, Chat, profiles, Porch settings), one screen at a time, following `design-reference/`. Hide the old photo and texture settings and the old Themes menu (decisions 2 and 3), and make Dawn / Dusk / Night a gentle dimmer (decision 4). The colour settings come first, then Porch, Tour, Offices (with its new tab and office actions), Chat, Read, Presence, Conversation and profile. Phaneroo uses Porch Evening.
-5. **Joining, leaving and starting a porch**, with invite codes, the 3-step Start a porch screen, and platform-owner approval.
+5. **Joining, leaving and starting a porch.** The order changed on 21 Nov (BUILD-BRIEF.md decisions 14–22):
+   - **5a** ✅ Welcome, invite codes and links, Start a porch, platform-owner approval.
+   - **4e** (brand) next: `brand/BRAND.md`, plus random invite codes.
+   - **5c** accounts and join requests:
+     - A Porchbook account has a full name, a verified email and an optional unique username, and can use the public porch.
+     - Membership of a church is by request only, with full name, nation, phone and address and a "why we ask" line for each. Admins approve or decline.
+     - Invite codes only find the church.
+     - Private posts and messages show full names. Public reactions show the username and church; each member can hide their church.
+     - Member details can be seen only by allowed admins and by the member. They are deleted when the member leaves.
+     - Starting a church offers to move you to it.
+     - **First:** agree the free email service with JT.
+   - **5d** admin levels (draft): Lead admin, Membership admin, Moderator, Public page editor, Office head.
+   - **5b** leaving and moving church:
+     - Old posts and messages stay with the old church, and notebook and Bible progress go with the person.
+     - Old roles end.
+     - One-to-one chats with old members become read-only; group and office conversations from the old church disappear.
+     - Plus the Stage 3b gaps: two people moving together, office threads and roles, and legacy posts claimed by email never bring old-church content along.
 6. **Public porch**: porch pages, following (automatic for your own church and its main church), public posts and reactions (separate tables), and Find porches. Members react only; no posting or comments.
 7. **Branches**: link requests, approval by the main porch, the branch list on the porch page, unlinking.
 8. **One-to-one calls** on a free setup. JT approves the setup first.

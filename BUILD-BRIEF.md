@@ -108,6 +108,40 @@ JT's answers to the questions raised after Stage 1. Where these differ from anyt
 
 Decisions 9–13 belong to **Stage 6 (public porch)**.
 
+## 8b. Decisions, 21 November
+
+### A. Accounts and joining a porch (replaces joining by invite code alone)
+14. **Two levels.**
+    - **A Porchbook account:** full name and a **verified email** (a code or link sent by email), plus an **optional unique username**. With only an account, a person can use the **public porch**: find porches, follow them and react. They belong to no private porch.
+    - **Membership of one church porch, by request only.** The request must include **full name, nation, phone number and address**. It goes to the church's admins, who **approve or decline**. **Approval is always required.**
+    - **Invite codes and links still exist**, but only to find the church and start a request. They never let anyone in by themselves.
+15. **In the private porch, posts and messages show the member's full name.**
+16. **On the public porch, reactions show the person's username** (or their full name if they have none) and, for members, **the church they belong to**. Each member has a personal switch to **hide their church on public reactions** (shown by default).
+17. **Member details (nation, phone, address):**
+    - Only admins whose level allows it can see them.
+    - Members can see and correct their own.
+    - They are **deleted when someone leaves the church**.
+    - When asking for each detail, the app shows **one line saying why the church needs it**.
+18. **Admin levels** (draft, to be confirmed later):
+    - **Lead admin:** everything, including choosing admins and their levels.
+    - **Membership admin:** join requests, member details, removing members.
+    - **Moderator:** posts and complaints, no member details.
+    - **Public page editor:** posts on the public porch for the church.
+    - **Office head:** their own office only.
+19. **Email verification needs a free email-sending service.** Before building it, Claude says which one it would use and its free limits, and waits for JT's OK.
+20. **When a church member starts a new church**, the app offers **"Leave your current church and move to the new one"**, using the Stage 5b moving rules.
+
+### B. New order of the remaining stages
+After Stage 5a and the brand stage (4e): **Stage 5c** accounts and join requests, then **Stage 5d** admin levels, then **Stage 5b** leaving and moving church, then **Stage 6** onwards as planned.
+
+### C. The Porchbook brand (Stage 4e)
+21. **`brand/BRAND.md` is the rulebook for the look.** It wins over `design-reference/` and over the six church themes in section 6.
+    - **Porchbook's olive is always the frame:** top bar, bottom bar, main buttons, selected tab, links and switches.
+    - **Each church picks one accent colour** for its own touches.
+    - **Each member picks Light (default) or Dark.**
+    - **Dawn / Dusk / Night** stays as the dimmer.
+22. **Invite codes are random** (like K7QM-4XPA) for every porch, Phaneroo included, so they can't be guessed. They are never made from the church's name.
+
 ## 9. Stage 9: Porch stations (future, after Stage 8)
 
 Every porch can have its own radio station that its members tune into while they're on the porch. It reuses the on-hold radio code, which must first get church tags and pass the two-church test (decision 8).

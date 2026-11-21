@@ -1,4 +1,5 @@
 import { W, WHint, useWord } from "@/components/porch/words";
+import { BrandLogo } from "@/components/porch/brand-logo";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
@@ -514,7 +515,10 @@ export function FeedView({
       ) : null}
       {status === "ready" && posts.length === 0 ? (
         <div className="pb-card pointer-events-auto px-5 py-10 text-center">
-          <img src="/speaker.png" alt="" className="mx-auto mb-4 h-56 w-auto object-contain" draggable={false} />
+          {/* Stage 4e: the Porchbook circle of people (no longer a speaker's photo, which every new church would see). */}
+          <span className="mx-auto mb-4 flex justify-center" style={{ color: "var(--pb-main)" }}>
+            <BrandLogo kind="mark" height={88} />
+          </span>
           <h2 className="font-display text-2xl text-ink">Porchbook is quiet</h2>
           <p className="mx-auto mt-2 max-w-sm text-muted">
             {filter === "all"

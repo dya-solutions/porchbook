@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { myPorchLook, type PorchLook } from "@/lib/porch/porch-look";
 import { THEME_CACHE_KEY, themeOf, themeVars, type ThemeId } from "@/lib/porch/themes";
+import { brandVars, type AccentId, type LookMode } from "@/lib/porch/brand";
+import { shown as featureOn } from "@/lib/porch/on-hold";
 import { usePorch } from "@/lib/porch/presence-store";
 import { LIGHT_LEVELS, currentBrightness, setBrightness } from "@/components/porch/bits";
 
@@ -19,9 +21,39 @@ function readCachedLook(): PorchLook | null {
   }
 }
 
-/** Put a theme's colours on the page, and remember them for next time (so they show before anything loads). */
+/** Put colours on the page, and remember them for next time (so they show before anything loads). */
+function putColours(vars: Record<string, string>, mode: LookMode) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value);
+  root.dataset.pbMode = mode;
+  root.classList.add("pb-on");
+  root.classList.toggle("pb-dark", mode === "dark");
+  try {
+    localStorage.setItem(THEME_CACHE_KEY, JSON.stringify(vars));
+    localStorage.setItem("porch-mode-v1", mode);
+  } catch {
+    /* this visit still has the colours */
+  }
+}
+
+/**
+ * Stage 4e: the Porchbook brand. Olive frame, the church's accent, and the member's own Light or
+ * Dark. (The six church themes are kept but switched off: the churchThemes switch in on-hold.ts.)
+ */
+export function applyLook(look: { theme: ThemeId; accent?: AccentId; mode?: LookMode }) {
+  if (featureOn("churchThemes")) {
+    applyTheme(look.theme);
+    return;
+  }
+  const mode = look.mode ?? "light";
+  putColours(brandVars(mode, look.accent), mode);
+}
+
+/** The six church themes (Stage 4a, now switched off). */
 export function applyTheme(id: ThemeId) {
   if (typeof document === "undefined") return;
+  if (!featureOn("churchThemes")) return;
   const vars = themeVars(themeOf(id));
   const root = document.documentElement;
   for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value);
@@ -46,7 +78,7 @@ export function reloadPorchLook() {
 function loadLook() {
   lookLoad ??= myPorchLook()
     .then((look) => {
-      applyTheme(look.theme);
+      applyLook(look);
       try {
         localStorage.setItem(LOOK_KEY, JSON.stringify(look));
       } catch {
@@ -69,7 +101,7 @@ export function usePorchLook(): PorchLook | null {
     const cached = readCachedLook();
     if (cached) {
       setLook(cached);
-      applyTheme(cached.theme);
+      applyLook(cached);
     }
     lookWatchers.add(setLook);
     void loadLook().then(setLook).catch(() => undefined);
@@ -356,4 +388,41 @@ export function useConversationOpen(open = true) {
     document.body.classList.add("pb-in-convo");
     return () => document.body.classList.remove("pb-in-convo");
   }, [open]);
+}
+
+/** Stage 4e: each member chooses Light (default) or Dark for themselves, in Your account. */
+export function LookModeChoice() {
+  const look = usePorchLook();
+  const [mode, setMode] = useState<LookMode | null>(null);
+  const [note, setNote] = useState("");
+  useEffect(() => {
+    if (look) setMode((current) => current ?? look.mode ?? "light");
+  }, [look]);
+  if (!look) return null;
+  async function choose(next: LookMode) {
+    if (!look || next === mode) return;
+    setMode(next);
+    applyLook({ ...look, mode: next });
+    const { setMyLookMode } = await import("@/lib/porch/porch-look");
+    const result = await setMyLookMode({ data: { mode: next } }).catch(() => null);
+    if (!result?.ok) {
+      setNote(result?.error ?? "That didn't save.");
+      return;
+    }
+    setNote("");
+    reloadPorchLook();
+  }
+  return (
+    <div className="pb-look-row">
+      <span className="pb-look-label">Look</span>
+      <span className="pb-chips" role="radiogroup" aria-label="Light or Dark">
+        {(["light", "dark"] as const).map((item) => (
+          <button key={item} type="button" role="radio" aria-checked={mode === item} className={`pb-chip${mode === item ? " is-on" : ""}`} onClick={() => void choose(item)}>
+            {item === "light" ? "Light" : "Dark"}
+          </button>
+        ))}
+      </span>
+      {note ? <span className="text-danger" style={{ fontSize: 13 }}>{note}</span> : null}
+    </div>
+  );
 }

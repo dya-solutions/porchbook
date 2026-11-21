@@ -1,10 +1,12 @@
-// Stage 4c: Porch settings, for the porch's admins. The porch's theme (one of the six; only
-// colours change) and which Tour doors the porch shows. Members never see this screen.
+// Porch settings, for the porch's admins (Stage 4c; Stage 4e): the church's accent colour (the six
+// full themes are switched off), the devotional, and which Tour doors the porch shows.
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { setPorchTheme, setTourDoors, TOUR_DOORS } from "@/lib/porch/porch-look";
+import { setPorchAccent, setPorchTheme, setTourDoors, TOUR_DOORS } from "@/lib/porch/porch-look";
+import { ACCENTS, type AccentId } from "@/lib/porch/brand";
+import { shown } from "@/lib/porch/on-hold";
 import { THEMES, type Theme, type ThemeId } from "@/lib/porch/themes";
-import { applyTheme, reloadPorchLook, usePorchLook } from "@/components/porch/pb-shell";
+import { applyLook, applyTheme, reloadPorchLook, usePorchLook } from "@/components/porch/pb-shell";
 import { DevotionSetting } from "@/components/porch/devotion-setting";
 
 function Swatch({ theme }: { theme: Theme }) {
@@ -22,6 +24,7 @@ function Swatch({ theme }: { theme: Theme }) {
 export function PorchSettings() {
   const look = usePorchLook();
   const [theme, setTheme] = useState<ThemeId | null>(null);
+  const [accent, setAccent] = useState<AccentId | null>(null);
   const [off, setOff] = useState<string[] | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -29,6 +32,7 @@ export function PorchSettings() {
   useEffect(() => {
     if (!look) return;
     setTheme((current) => current ?? look.theme);
+    setAccent((current) => current ?? look.accent ?? "gold");
     setOff((current) => current ?? look.tourOff ?? []);
   }, [look]);
 
@@ -61,6 +65,26 @@ export function PorchSettings() {
     setNote(`Everyone in ${look?.shortName ?? "your porch"} now sees ${THEMES.find((item) => item.id === id)?.name}.`);
   }
 
+  /** Stage 4e: the church's one accent colour (brand/BRAND.md). Olive stays the frame. */
+  async function chooseAccent(id: AccentId) {
+    if (busy || !look) return;
+    const before = accent;
+    setAccent(id);
+    applyLook({ ...look, accent: id }); // show it straight away
+    setBusy(true);
+    setNote("");
+    const result = await setPorchAccent({ data: { accent: id } }).catch(() => null);
+    setBusy(false);
+    if (!result?.ok) {
+      setAccent(before);
+      applyLook(look);
+      setNote(result?.error ?? "That didn't go through.");
+      return;
+    }
+    reloadPorchLook();
+    setNote(`Everyone in ${look.shortName} now sees ${ACCENTS.find((item) => item.id === id)?.name}.`);
+  }
+
   async function toggleDoor(key: string) {
     if (!off || busy) return;
     const next = off.includes(key) ? off.filter((item) => item !== key) : [...off, key];
@@ -86,6 +110,35 @@ export function PorchSettings() {
       </div>
 
       <section>
+        <p className="ofc-sec">Accent colour</p>
+        <p className="pb-quiet" style={{ margin: "0 4px 10px", fontSize: 14 }}>
+          Porchbook's olive is always the frame. Your church's accent colours its own touches: its name badge, pinned announcements, office icons, room chips, reactions and badges. Each member chooses Light or Dark for themselves.
+        </p>
+        <div className="ps-accents" role="radiogroup" aria-label="Accent colour">
+          {ACCENTS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="radio"
+              aria-checked={accent === item.id}
+              className={`ps-accent${accent === item.id ? " is-on" : ""}`}
+              onClick={() => void chooseAccent(item.id)}
+            >
+              <i style={{ background: look.mode === "dark" ? item.dark : item.light }} aria-hidden="true" />
+              <span style={{ fontWeight: 700, fontSize: 15 }}>{item.name}</span>
+            </button>
+          ))}
+        </div>
+        <div className="ps-preview" style={{ marginTop: 12 }} aria-hidden="true">
+          <span className="pb-logo">{look.initials}</span>
+          <span className="pb-chip is-on" style={{ background: "var(--pb-accent)", borderColor: "var(--pb-accent)", color: "var(--pb-on-accent)" }}>Inspire</span>
+          <span className="pb-count">3</span>
+          <span className="pb-btn" style={{ minHeight: 40, fontSize: 14 }}>Button (always olive)</span>
+        </div>
+      </section>
+
+      {shown("churchThemes") ? (
+      <section>
         <p className="ofc-sec">Theme</p>
         <p className="pb-quiet" style={{ margin: "0 4px 10px", fontSize: 14 }}>
           Only the colours change. Each member can still dim the screen with Dawn, Dusk and Night.
@@ -107,6 +160,7 @@ export function PorchSettings() {
           ))}
         </div>
       </section>
+      ) : null}
 
       <section>
         <p className="ofc-sec">Tour doors</p>

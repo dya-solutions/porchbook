@@ -70,11 +70,9 @@ export function ActionIcon({ action, size = 22 }: { action: string; size?: numbe
 }
 
 /** Each action's colour, as in the design. */
-export function actionTone(action: string): string {
-  if (action === "thanks" || action === "official") return "var(--pb-main)";
-  if (action === "appoint") return "#E8C25A";
-  if (action === "account") return "#C9A27A";
-  return "var(--pb-second)";
+/** Office icons wear the church's accent colour (Stage 4e, brand/BRAND.md). */
+export function actionTone(_action: string): string {
+  return "var(--pb-accent)";
 }
 
 export function ActionTile({ action, size = 42 }: { action: string; size?: number }) {

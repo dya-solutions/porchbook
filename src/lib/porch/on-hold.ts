@@ -31,6 +31,11 @@ export const ON_HOLD = {
   permissionBibles: true,
   /** The old photo and texture settings (porch photo, header photo, call look, shelf, hide, door) and the old Themes menu (decisions 2 and 3). */
   oldLooks: true,
+  /**
+   * The six full church themes (Stage 4a), replaced by the Porchbook brand on 21 Nov (brand/BRAND.md):
+   * olive frame, one accent colour per church, Light or Dark per member. Kept, switched off.
+   */
+  churchThemes: true,
 } as const;
 
 export type OnHoldFeature = keyof typeof ON_HOLD;

@@ -53,19 +53,12 @@ const ICONS: Record<string, ReactNode> = {
   ),
 };
 
-const TONES: Record<string, string> = {
-  pray: "var(--pb-main)",
-  twenty: "var(--pb-second)",
-  events: "#E8C25A",
-  groups: "var(--pb-second)",
-  serve: "var(--pb-main)",
-  transport: "#E8C25A",
-  feedback: "#C9A27A",
-};
+/** Tour door icons are Porchbook olive (Stage 4e: the accent is kept for the church's own touches). */
+const TONES: Record<string, string> = {};
 
 /** The inside of one Tour door. */
 export function DoorFace({ icon, name, hint }: { icon: string; name: ReactNode; hint: ReactNode }) {
-  const tone = TONES[icon] ?? "var(--pb-second)";
+  const tone = TONES[icon] ?? "var(--pb-main)";
   return (
     <>
       <span className="pb-door-tile" style={{ color: tone, background: `color-mix(in srgb, ${tone} 14%, transparent)` }}>

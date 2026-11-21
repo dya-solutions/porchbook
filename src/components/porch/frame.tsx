@@ -13,7 +13,8 @@ import { warmDevotion } from "@/lib/porch/devotion-cache";
 import { LiteKey, LiteOffer } from "@/components/porch/lite-bits";
 import { NoteBell } from "@/components/porch/note-bell";
 import { WelcomeScreen } from "@/components/porch/welcome-screen";
-import { BottomNav, PbIcon, TopBar, usePorchLook } from "@/components/porch/pb-shell";
+import { BrandLoading } from "@/components/porch/brand-logo";
+import { BottomNav, LookModeChoice, PbIcon, TopBar, usePorchLook } from "@/components/porch/pb-shell";
 import { NuggetLink } from "@/components/porch/nugget-bits";
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { CircleHelp, House, Landmark, Mail, Megaphone, MessageCircle, Share2, Users, Bell, AudioLines, RefreshCw, Eye, EyeOff, Palette } from "lucide-react";
@@ -282,6 +283,12 @@ function HeadMeasure({ children }: { children: ReactNode }) {
 }
 
 function ShellSkeleton() {
+  // Stage 4e: the loading screen is the Porchbook circle of people.
+  return <BrandLoading />;
+}
+
+/** The loading shell used before Stage 4e (kept for reference). */
+export function ShellSkeletonOld() {
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
       <header className="fixed inset-x-0 top-0 z-30 border-b border-line bg-paper">
@@ -1228,6 +1235,7 @@ export function AccountCard({ user }: { user: AppUser }) {
         </button>
       </div>
       <div className="pb-card" style={{ marginTop: 12, padding: "4px 0" }}>
+        <LookModeChoice />
         <PresenceChoice />
         <div style={{ padding: "8px 16px" }}>
           <LiteKey />

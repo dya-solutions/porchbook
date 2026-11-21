@@ -49,4 +49,4 @@ export function themeVars(theme: Theme): Record<string, string> {
 }
 
 /** The key this phone keeps the last theme under, so the right colours show before anything loads. */
-export const THEME_CACHE_KEY = "porch-theme-v1";
+export const THEME_CACHE_KEY = "porch-colours-v2"; // v2: the Porchbook brand (Stage 4e)

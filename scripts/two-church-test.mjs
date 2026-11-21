@@ -132,7 +132,10 @@ try {
   record("foundation", "joining", "A new account joins no church by itself (no more \"everyone joins Phaneroo\")", annState.porch_id === null || annState.porch_id === undefined, `porch ${annState.porch_id}`);
   const wrongCode = await ann.call("lib/porch/porch-join.ts", "joinWithCode", { code: "NOT-A-CODE" });
   record("foundation", "joining", "A wrong invite code joins nothing", wrongCode?.ok === false);
-  const annJoins = await ann.call("lib/porch/porch-join.ts", "joinWithCode", { code: "phaneroo-mbarara" });
+  const phanerooCode = (await helper("porchInfo", { name: "Phaneroo Ministries Mbarara" })).porch?.invite_code;
+  const oldName = await ann.call("lib/porch/porch-join.ts", "checkInvite", { code: "PHANEROO-MBARARA" });
+  record("foundation", "joining", "Invite codes are random (no more name codes like PHANEROO-MBARARA)", /^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/.test(phanerooCode ?? "") && oldName?.ok === false, phanerooCode);
+  const annJoins = await ann.call("lib/porch/porch-join.ts", "joinWithCode", { code: phanerooCode?.toLowerCase() });
   const annAfterJoin = await helper("person", { email: ann.email });
   record("foundation", "joining", "With Phaneroo's invite code, Ann joins Phaneroo (porch 1)", annJoins?.ok === true && annAfterJoin.porch_id === 1);
   record("foundation", "admins", "The first account ever is NOT made admin automatically", annState.admin === false);
@@ -166,7 +169,7 @@ try {
   const annStorage = await ann.call("lib/porch/storage-settings.ts", "storageInfo");
   record("foundation", "owners", "A porch admin is not a platform owner (shared settings stay closed)", annStorage?.ok === false);
   const olive = await person("Olive Owner", "olive@two-church.test");
-  await olive.call("lib/porch/porch-join.ts", "joinWithCode", { code: "PHANEROO-MBARARA" });
+  await olive.call("lib/porch/porch-join.ts", "joinWithCode", { code: phanerooCode });
   await helper("makeOwner", { email: olive.email });
   const oliveStorage = await olive.call("lib/porch/storage-settings.ts", "storageInfo");
   record("foundation", "owners", "The platform owner can open the shared settings", oliveStorage?.ok === true);
@@ -198,6 +201,7 @@ try {
   const newB = await cara.call("lib/porch/porch-join.ts", "checkInvite", { code: benReset?.code });
   const annCodeAfter = await abe.call("lib/porch/porch-join.ts", "myInvite");
   record("sanity", "joining", "Ben (B's admin) resets B's code: the old code stops working, the new one works", benReset?.ok === true && oldB?.ok === false && newB?.ok === true && newB?.name === "Porch B");
+  record("sanity", "joining", "A reset gives a new random code, not one made from the church's name", /^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/.test(benReset?.code ?? "") && benReset?.code !== codeB && !/PORCH/.test(benReset?.code ?? ""), benReset?.code);
   record("isolation", "joining", "Resetting Porch B's code leaves Porch A's code alone", annCodeAfter?.code === codeA);
 
   const dee = await person("Dee Starter", "dee@two-church.test");
@@ -480,6 +484,25 @@ try {
   const oliveLook = await olive.call("lib/porch/porch-look.ts", "myPorchLook");
   record("sanity", "settings", "Ann (A's admin) sets Porch A's theme and Abe sees it", annTheme?.ok === true && abeLook?.theme === "living-water");
   record("isolation", "settings", "Ben's theme for Porch B doesn't change Porch A's or Phaneroo's", benTheme?.ok === true && benLook?.theme === "crimson-grace" && abeLook?.theme === "living-water" && oliveLook?.theme === "porch-evening");
+
+  // ---- The Porchbook brand (Stage 4e): one accent per church, Light or Dark per member ----
+  const startAccent = await abe.call("lib/porch/porch-look.ts", "myPorchLook");
+  record("sanity", "settings", "Every porch starts with Porchbook gold and Light", startAccent?.accent === "gold" && startAccent?.mode === "light");
+  const abeAccent = await abe.call("lib/porch/porch-look.ts", "setPorchAccent", { accent: "teal" });
+  record("sanity", "settings", "A member (Abe) can't change the church's accent colour", abeAccent?.ok === false);
+  const benAccent = await ben.call("lib/porch/porch-look.ts", "setPorchAccent", { accent: "royal-blue" });
+  const badAccent = await ben.call("lib/porch/porch-look.ts", "setPorchAccent", { accent: "neon-pink" });
+  const benAccentLook = await ben.call("lib/porch/porch-look.ts", "myPorchLook");
+  const abeAccentLook = await abe.call("lib/porch/porch-look.ts", "myPorchLook");
+  const oliveAccentLook = await olive.call("lib/porch/porch-look.ts", "myPorchLook");
+  record("sanity", "settings", "Ben sets Porch B's accent to Royal blue (and only the six brand accents are allowed)", benAccent?.ok === true && badAccent?.ok === false && benAccentLook?.accent === "royal-blue");
+  record("isolation", "settings", "Porch B changing its accent doesn't change Porch A's or Phaneroo's", abeAccentLook?.accent === "gold" && oliveAccentLook?.accent === "gold");
+  const abeDark = await abe.call("lib/porch/porch-look.ts", "setMyLookMode", { mode: "dark" });
+  const abeDarkLook = await abe.call("lib/porch/porch-look.ts", "myPorchLook");
+  const annModeLook = await ann.call("lib/porch/porch-look.ts", "myPorchLook");
+  const benModeLook = await ben.call("lib/porch/porch-look.ts", "myPorchLook");
+  record("isolation", "settings", "Abe choosing Dark changes only Abe's look, not Ann's (same church) or Ben's", abeDark?.ok === true && abeDarkLook?.mode === "dark" && annModeLook?.mode === "light" && benModeLook?.mode === "light");
+  await abe.call("lib/porch/porch-look.ts", "setMyLookMode", { mode: "light" });
   const abeDoors = await abe.call("lib/porch/porch-look.ts", "setTourDoors", { off: ["my20"] });
   record("sanity", "settings", "A member (Abe) can't switch Tour doors off", abeDoors?.ok === false);
   const allOff = await ben.call("lib/porch/porch-look.ts", "setTourDoors", { off: ["pray", "my20", "events", "groups", "serve", "transport", "feedback"] });

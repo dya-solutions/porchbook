@@ -43,6 +43,10 @@ const SETUP: string[] = [
      country_code text not null default '+256',
      updated_at timestamptz not null default now()
    )`,
+  // Stage 4e: each porch's accent colour (brand/BRAND.md); every porch starts with Porchbook gold.
+  `alter table porch_settings add column if not exists accent text not null default 'gold'`,
+  // Stage 4e: each member's own Light or Dark choice.
+  `alter table profiles add column if not exists look_mode text not null default 'light'`,
   // Stage 4c: the Tour doors a porch has switched off (Porch settings).
   `alter table porch_settings add column if not exists tour_off text[] not null default '{}'`,
   `alter table profiles add column if not exists porch_id integer references porches (id)`,
@@ -63,7 +67,7 @@ const SETUP: string[] = [
   `create table if not exists porch_steps (step text primary key, done_at timestamptz not null default now())`,
   // Phaneroo is porch 1.
   `insert into porches (id, name, short_name, kind, town, country, status, verified, invite_code)
-   values (1, 'Phaneroo Ministries Mbarara', 'Phaneroo Mbarara', 'church', 'Mbarara', 'Uganda', 'approved', true, 'PHANEROO-MBARARA')
+   values (1, 'Phaneroo Ministries Mbarara', 'Phaneroo Mbarara', 'church', 'Mbarara', 'Uganda', 'approved', true, null)
    on conflict (id) do nothing`,
   `select setval(pg_get_serial_sequence('porches', 'id'), greatest((select max(id) from porches), 1))`,
   `insert into porch_settings (porch_id) values (1) on conflict (porch_id) do nothing`,

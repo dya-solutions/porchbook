@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { newCode } from "@/lib/porch/porch-join";
 import { dbSource, getSql } from "@/lib/db";
 
 /**
@@ -45,8 +46,9 @@ export const Route = createFileRoute("/api/porch-test")({
               );
               await sql.query("insert into porch_settings (porch_id) values ($1) on conflict do nothing", [rows[0].id]);
               // Church porches have an invite code (Stage 5a).
-              if (String(body.kind ?? "church") === "church") await sql.query("update porches set invite_code = $2 where id = $1", [rows[0].id, `TEST${rows[0].id}-CODE`]);
-              return json({ ok: true, id: rows[0].id, code: String(body.kind ?? "church") === "church" ? `TEST${rows[0].id}-CODE` : null });
+              const code = String(body.kind ?? "church") === "church" ? newCode() : null;
+              if (code) await sql.query("update porches set invite_code = $2 where id = $1", [rows[0].id, code]);
+              return json({ ok: true, id: rows[0].id, code });
             }
             case "person": {
               const userId = await userIdOf(body.email);

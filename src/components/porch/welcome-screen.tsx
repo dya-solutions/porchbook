@@ -7,6 +7,7 @@ import { checkInvite, joinWithCode } from "@/lib/porch/porch-join";
 import { reloadPorchLook } from "@/components/porch/pb-shell";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { signOut } from "@/lib/auth/client";
+import { BrandLogo } from "@/components/porch/brand-logo";
 
 /** The invite code waiting on this phone (from a typed code or an invite link) until the account exists. */
 export const JOIN_CODE_KEY = "porch-join-code";
@@ -38,13 +39,9 @@ const Plus = () => (
   </svg>
 );
 
-function Brand() {
-  return (
-    <div className="pb-row" style={{ gap: 10 }}>
-      <span className="pb-logo" style={{ background: "var(--pb-main)", color: "var(--pb-on-main)" }}>P</span>
-      <p className="pb-ttl" style={{ fontSize: 22 }}>Porchbook</p>
-    </div>
-  );
+/** The main logo (brand/porchbook-logo-tile.svg): white on olive here, olive on cream on sign-in. */
+function Brand({ onOlive = true }: { onOlive?: boolean }) {
+  return <BrandLogo kind="tile" height={onOlive ? 44 : 36} className={onOlive ? "" : "welcome-logo-olive"} />;
 }
 
 /**
@@ -118,6 +115,7 @@ export function WelcomeScreen({ account, signedIn = false }: { account?: (mode: 
           <button type="button" className="pb-link" style={{ alignSelf: "flex-start", paddingLeft: 0 }} onClick={() => setMode("")}>
             ← Back
           </button>
+          <Brand onOlive={false} />
           {account(mode, note)}
         </div>
       </main>
@@ -125,16 +123,16 @@ export function WelcomeScreen({ account, signedIn = false }: { account?: (mode: 
   }
 
   return (
-    <main className="pb pb-legacy welcome">
+    <main className="pb pb-legacy welcome is-olive">
       <div className="welcome-in">
         <Brand />
         <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 14 }}>
           <h1 className="pb-ttl" style={{ fontSize: 40, lineHeight: 1.08 }}>
             Your church,
             <br />
-            <span style={{ color: "var(--pb-second)" }}>on one porch.</span>
+            <span className="welcome-hi">on one porch.</span>
           </h1>
-          <p className="pb-quiet" style={{ margin: 0, fontSize: 17, lineHeight: 1.5 }}>
+          <p className="welcome-tagline" style={{ margin: 0, fontSize: 17, lineHeight: 1.5 }}>
             {signedIn
               ? "You're signed in. Join your church's porch with the invite code your church gave you."
               : "Fellowship with your church family, reach your church offices, and follow porches you love."}
@@ -160,10 +158,10 @@ export function WelcomeScreen({ account, signedIn = false }: { account?: (mode: 
             {busy ? "Checking…" : "Join porch"} <Arrow />
           </button>
         </form>
-        <Link to="/start" className="pb-btn2" style={{ textDecoration: "none" }}>
+        <Link to="/start" className="pb-btn2 welcome-start" style={{ textDecoration: "none" }}>
           <Plus /> Start a porch
         </Link>
-        <p className="pb-quiet" style={{ margin: "-8px 0 0", textAlign: "center", fontSize: 13 }}>
+        <p className="welcome-small" style={{ margin: "-8px 0 0", textAlign: "center", fontSize: 13 }}>
           For churches, ministries, artists and organisations
         </p>
         {signedIn ? (

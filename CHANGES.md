@@ -442,6 +442,68 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
 - **Fixed during this stage:** the Decline button failed with a database error. Two lines had lost their "$1" when I wrote them. The test caught it before saving.
 - **Test data on this computer:** while checking Decline, I started and declined a ministry porch called "Decline Check Ministry" with the test account. It shows as Declined under the test account's Your porches.
 
+### 11. Decisions of 21 Nov, random invite codes, and Stage 4e: the Porchbook brand (21 Nov 2026)
+
+**Part 1: decisions recorded (text only).** They are in BUILD-BRIEF.md section 8b (decisions 14–22) and in the plan:
+- accounts with a verified email and an optional username;
+- church membership by request only, approved by admins, with full name, nation, phone and address;
+- full names in the private porch, and usernames on public reactions with an "hide my church" switch;
+- who sees member details;
+- the draft admin levels;
+- the email service to be agreed first;
+- "move to the new church" when starting one.
+
+**The new stage order:** 4e → 5c → 5d → 5b → 6 onwards.
+
+**Part 2: invite codes can't be guessed any more.**
+- Every porch, Phaneroo included, now has a **random code like K7QM-4XPA**: 8 letters and digits, with no 0/O or 1/I/L, about 850 billion possible codes.
+- The old name codes (PHANEROO-MBARARA) were replaced once and **no longer work**. Admins share the new code and link from Invite.
+- Reset still gives a new random code.
+
+**Part 3: Stage 4e, the Porchbook brand** (`brand/BRAND.md`, `src/lib/porch/brand.ts`)
+- **Olive is always the frame:**
+  - the top bar (olive with white text in Light);
+  - the bottom bar (with an olive line, and the selected tab in olive);
+  - main buttons, links, switches, selected chips, focus rings;
+  - the My porch / Public porch track (olive tint).
+- **Each church's accent colour** colours only its own touches:
+  - its name badge in the top bar;
+  - room chips (Inspire / Inform / Inquire);
+  - reactions;
+  - pinned office announcements;
+  - office icons;
+  - notification badges and unread counts.
+
+  The accent never replaces olive on buttons or bars.
+- **Every porch, Phaneroo included, now uses olive with Porchbook gold.**
+- **The six full church themes are switched off, not deleted**: the `churchThemes` switch in on-hold.ts, like the on-hold features.
+- **Porch settings:** the theme picker is replaced by an **accent colour picker** (the six accents from BRAND.md), with a small preview showing that buttons stay olive.
+- **Light or Dark, each member's own choice:** Your account → Look: **Light** (default) / **Dark**.
+  - Dawn / Dusk / Night stays as the gentle dimmer.
+  - The phone remembers the choice, so the right colours show before anything loads.
+- **Logos**, from `brand/`, used exactly as the files are (never recoloured, stretched or redrawn; they take the colour of the text around them):
+  - **Welcome:** the main logo (tile + word) **white on an olive page**.
+  - **Sign-in:** olive on cream.
+  - **Loading screen:** the circle of people, breathing gently.
+  - **Public porch header:** the circle of people.
+  - **Top bar:** keeps the church's own initials badge, in its accent, and its name.
+  - **Empty feed** ("Porchbook is quiet"): now the circle of people. Before, it showed a photo of a speaker that every new church would have seen.
+- **App icon and favicons:** the brand app-icon pictures (512 and 192 for the web app, 180 for iPhone, 32 and 16 for the browser tab). The old icons are kept in `public/old-icons/`. The browser bar colour is olive.
+- **Type:** **Fredoka** (weight 500) for titles and names instead of Fraunces. Source Sans 3 stays for body text.
+- **Checked:**
+  - Type check passes.
+  - **Two-church test: 188 passed, 0 failed, 0 not private yet** (it was 181). New checks:
+    - **invite codes are random**, and the old name code doesn't work;
+    - **a reset gives a new random code and the old one stops working**;
+    - every porch starts with gold and Light;
+    - a member can't change the accent, and only the six accents are allowed;
+    - **Porch B changing its accent doesn't change Porch A's or Phaneroo's**;
+    - **Abe choosing Dark changes only Abe's look**, not Ann's (same church) or Ben's.
+  - **Pictures:** `../brand-pictures.html` shows the Welcome and sign-in screens, and Phaneroo (gold) and **Grace Test Church (Royal blue)**, each in **Light and Dark**: Porch, Tour, Offices, Read, Chat, Porch settings. The pictures are in `../after-stage4e/brand/`, and every screen in Light is in `../after-stage4e/all-screens-light/`.
+  - **New helper:** `../brand-pictures.mjs` makes these pictures again.
+- **Test data on this computer:** a second test account, Grace Tester, with its own approved church **Grace Test Church** (Royal blue), for the accent pictures. Its details are in `../TEST-ACCOUNT.md`.
+- **Not changed (Android):** the Android app's own icon lives in the android folder, which I don't touch unless you ask.
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).

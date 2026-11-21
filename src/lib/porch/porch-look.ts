@@ -2,9 +2,23 @@ import { createServerFn } from "@tanstack/react-start";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { DEFAULT_THEME, THEMES, type ThemeId } from "@/lib/porch/themes";
+import { DEFAULT_ACCENT, isAccent, type AccentId, type LookMode } from "@/lib/porch/brand";
 
 /** The viewer's church porch as the top bar shows it: its name, initials and theme (Stage 4a). */
-export type PorchLook = { name: string; shortName: string; initials: string; theme: ThemeId; admin: boolean; tourOff: string[]; member: boolean; owner: boolean; waiting: boolean };
+export type PorchLook = {
+  name: string;
+  shortName: string;
+  initials: string;
+  theme: ThemeId;
+  admin: boolean;
+  tourOff: string[];
+  member: boolean;
+  owner: boolean;
+  waiting: boolean;
+  /** Stage 4e: the church's accent colour, and this member's own Light or Dark. */
+  accent: AccentId;
+  mode: LookMode;
+};
 
 /** The Tour doors a porch can switch on or off in Porch settings (Stage 4c). */
 export const TOUR_DOORS = [
@@ -34,8 +48,8 @@ export const myPorchLook = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<PorchLook> => {
     const sql = await getSql();
-    const rows = await sql.query<{ name: string; short_name: string; theme: string | null; admin: unknown; tour_off: unknown; status: string }>(
-      `select p.name, p.short_name, p.status, s.theme, s.tour_off, is_porch_admin($1) as admin
+    const rows = await sql.query<{ name: string; short_name: string; theme: string | null; admin: unknown; tour_off: unknown; status: string; accent: string | null }>(
+      `select p.name, p.short_name, p.status, s.theme, s.tour_off, s.accent, is_porch_admin($1) as admin
          from porches p left join porch_settings s on s.porch_id = p.id
         where p.id = my_porch($1)`,
       [context.userId],
@@ -45,7 +59,10 @@ export const myPorchLook = createServerFn({ method: "POST" })
     const shortName = row?.short_name || name;
     const theme = (THEMES.some((t) => t.id === row?.theme) ? row?.theme : DEFAULT_THEME) as ThemeId;
     const admin = row?.admin === true || row?.admin === "t";
-    const owner = await sql.query<{ owner: unknown }>("select is_platform_owner($1) as owner", [context.userId]);
+    const owner = await sql.query<{ owner: unknown; mode: string | null }>(
+      "select is_platform_owner($1) as owner, (select look_mode from profiles where user_id = $1) as mode",
+      [context.userId],
+    );
     return {
       name,
       shortName,
@@ -57,6 +74,8 @@ export const myPorchLook = createServerFn({ method: "POST" })
       member: Boolean(row),
       owner: isTrue(owner[0]?.owner),
       waiting: row?.status === "waiting",
+      accent: isAccent(row?.accent) ? row.accent : DEFAULT_ACCENT,
+      mode: owner[0]?.mode === "dark" ? "dark" : "light",
     };
   });
 
@@ -95,4 +114,38 @@ export const setTourDoors = createServerFn({ method: "POST" })
       [context.userId, data.off],
     );
     return { ok: true as const };
+  });
+
+/** A porch admin chooses the church's accent colour (Stage 4e, Porch settings). */
+export const setPorchAccent = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => {
+    const accent = input && typeof input === "object" ? (input as { accent?: unknown }).accent : "";
+    return { accent: isAccent(accent) ? accent : null };
+  })
+  .handler(async ({ context, data }) => {
+    if (!data.accent) return { ok: false as const, error: "Choose an accent colour." };
+    const sql = await getSql();
+    const me = await sql.query<{ admin: unknown }>("select is_porch_admin($1) as admin", [context.userId]);
+    if (!isTrue(me[0]?.admin)) return { ok: false as const, error: "Only a porch admin can change the accent colour." };
+    await sql.query(
+      `insert into porch_settings (porch_id, accent, updated_at) values (my_porch($1), $2, now())
+       on conflict (porch_id) do update set accent = excluded.accent, updated_at = now()`,
+      [context.userId, data.accent],
+    );
+    return { ok: true as const };
+  });
+
+/** Each member chooses Light or Dark for themselves (Stage 4e, Your account). */
+export const setMyLookMode = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => {
+    const mode = input && typeof input === "object" ? (input as { mode?: unknown }).mode : "";
+    return { mode: mode === "dark" ? ("dark" as const) : ("light" as const) };
+  })
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const done = await sql.query<{ user_id: string }>("update profiles set look_mode = $2 where user_id = $1 returning user_id", [context.userId, data.mode]);
+    if (!done.length) return { ok: false as const, error: "Your profile isn't ready yet." };
+    return { ok: true as const, mode: data.mode };
   });

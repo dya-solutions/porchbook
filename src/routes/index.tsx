@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { BrandLogo } from "@/components/porch/brand-logo";
 import { useCallback } from "react";
 import { AppFrame } from "@/components/porch/frame";
 import { FeedView } from "@/components/porch/feed-view";
@@ -45,8 +46,9 @@ function PublicSoon() {
   return (
     <div className="pb-body">
       <div className="pb-card" style={{ padding: "28px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+        {/* Stage 4e: the Public porch header carries the Porchbook circle of people. */}
         <span style={{ color: "var(--pb-main)", display: "flex" }}>
-          <PbIcon name="globe" size={36} />
+          <BrandLogo kind="mark" height={44} />
         </span>
         <h2 className="pb-ttl" style={{ fontSize: 22 }}>
           The Public porch is coming soon

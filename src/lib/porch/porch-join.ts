@@ -33,14 +33,23 @@ export function cleanCode(value: unknown) {
   return typeof value === "string" ? value.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 32) : "";
 }
 const CODE_LETTERS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-function newCode(name: string) {
-  const word = name.toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim().split(" ").filter(Boolean)[0]?.slice(0, 8) || "PORCH";
-  let tail = "";
-  const bytes = new Uint8Array(5);
+/**
+ * A random invite code like K7QM-4XPA (Stage 4e, decision 22): never made from the church's name,
+ * so it can't be guessed. 31 letters and digits in 8 places: about 850 billion codes.
+ */
+export function newCode(_name = "") {
+  const bytes = new Uint8Array(8);
   crypto.getRandomValues(bytes);
-  for (const byte of bytes) tail += CODE_LETTERS[byte % CODE_LETTERS.length];
-  return `${word}-${tail}`;
+  let code = "";
+  for (const [index, byte] of bytes.entries()) {
+    if (index === 4) code += "-";
+    code += CODE_LETTERS[byte % CODE_LETTERS.length];
+  }
+  return code;
 }
+
+/** What a random invite code looks like. */
+export const CODE_SHAPE = /^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/;
 
 let ready: Promise<void> | null = null;
 function ensure(sql: Sql) {
@@ -50,6 +59,10 @@ function ensure(sql: Sql) {
     await sql.query("alter table porches drop constraint if exists porches_status_chk");
     await sql.query("alter table porches add constraint porches_status_chk check (status in ('waiting', 'approved', 'suspended', 'declined'))");
     // Every church porch has an invite code.
+    // Once (Stage 4e): every porch's old name-based code (like PHANEROO-MBARARA) is replaced by a
+    // random one. Old codes and links stop working; admins share the new one from Invite.
+    const once = await sql.query<{ step: string }>("insert into porch_steps (step) values ('random-invite-codes-v1') on conflict do nothing returning step");
+    if (once.length) await sql.query("update porches set invite_code = null where kind = 'church'");
     const missing = await sql.query<{ id: number; name: string }>("select id, name from porches where kind = 'church' and coalesce(invite_code, '') = ''");
     for (const porch of missing) await sql.query("update porches set invite_code = $2 where id = $1", [porch.id, newCode(porch.name)]);
   })().catch((error) => {
