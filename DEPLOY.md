@@ -1,6 +1,6 @@
 # Porchbook online: the private test site
 
-**Address:** https://test.porchbook.app (test data only, no real members yet).
+**Address:** https://porchbook.app (test data only while JT builds; no real members yet). www.porchbook.app sends people to porchbook.app.
 
 ## How it is set up
 
@@ -11,8 +11,8 @@
 | Database | Neon (free), added from the Vercel project's **Storage** tab | Vercel fills in `DATABASE_URL` by itself. The app creates and updates its own tables when it starts. |
 | Photos and files | Vercel Blob (free), added from the **Storage** tab | Vercel fills in `BLOB_STORE_ID` by itself. Files can't be kept on Vercel's disk, so big uploads go here. |
 | Emails | Brevo (free plan: 300 emails a day), sending from no-reply@porchbook.app as "Porchbook" | Online, codes are always really emailed. The "code on screen" test mode only works on JT's computer. |
-| Address | test.porchbook.app → Vercel | Added as a CNAME record where porchbook.app was bought. porchbook.app itself is unused for now. |
-| Search engines | Told not to list the site | Controlled by the `PORCH_NOINDEX` and `VITE_PORCH_NOINDEX` settings. |
+| Address | porchbook.app and www.porchbook.app → Vercel | Two records in Cloudflare (where porchbook.app's DNS is managed), both set to **DNS only** (grey cloud): `CNAME @ → 3efd5aafdb7b1ce5.vercel-dns-017.com` (or Vercel's A records) and `CNAME www → 3efd5aafdb7b1ce5.vercel-dns-017.com`. On Vercel, www redirects (308) to porchbook.app. |
+| Search engines | Told not to list the site | Controlled by the `PORCH_NOINDEX` and `VITE_PORCH_NOINDEX` settings. They stay `1` until JT says we're launching; then remove both and rebuild. |
 
 ## The settings (Vercel → the project → Settings → Environment Variables)
 
@@ -24,7 +24,7 @@ None of these are ever in the code or in git.
 | `BLOB_STORE_ID` | Which Blob store to use | Added automatically when Blob is connected. Vercel now connects Blob this way, without a separate key. |
 | `BLOB_READ_WRITE_TOKEN` | Lets a phone send a big file straight to Blob | **Not set yet.** Only the "previously" video needs it, and that screen isn't in the app today. Online it says "storage isn't connected" until this is added from the Blob store's page. |
 | `BETTER_AUTH_SECRET` | Keeps sign-ins safe | A long random value, made on JT's computer in `ONLINE-SECRET.txt` (next to the code folder, never uploaded) |
-| `BETTER_AUTH_URL` | The site's own address | `https://test.porchbook.app` |
+| `BETTER_AUTH_URL` | The site's own address (sign-in only works there) | `https://porchbook.app` |
 | `BREVO_API_KEY` | Lets the site send emails through Brevo | Brevo → your name (top right) → SMTP & API → API Keys → Generate a new API key |
 | `BREVO_SENDER_EMAIL` | Who the emails come from | `no-reply@porchbook.app` |
 | `BREVO_SENDER_NAME` | The sender's name | `Porchbook` |
