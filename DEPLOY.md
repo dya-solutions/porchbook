@@ -65,6 +65,24 @@ The script needs the database's address (from Neon: Vercel → Storage → the d
 
 The database keeps its data between updates. New tables and columns are added by the app itself when it starts.
 
+## Backups of the database (Neon branches)
+
+Before a big change to the database, JT makes a free copy in Neon: Vercel → Storage → porchbook → **Open in Neon** → **Branches** → **Create branch** (from the main branch, with the current data).
+
+| Branch | Made | Before |
+| --- | --- | --- |
+| `before-m1-m2` | 25 Nov 2026 | Many porches, steps M1 and M2 (Psalmist; the membership list `porch_members`) |
+
+**How to go back to `before-m1-m2` if ever needed** (do both, in this order):
+1. **The code:** in Vercel, open **Deployments**, choose the last deployment *before* "M1 + M2" (commit `4094673`, "Decisions 24-34…"), and press **Promote** (or **Instant Rollback**). The site goes back to the old code straight away.
+2. **The data:** in Neon, open **Branches**, choose the main branch → **Restore** → restore from the branch `before-m1-m2`. Neon keeps the replaced data as a backup branch of its own, so this step can be undone too.
+   - Anything posted or changed online after the backup was made is lost by this step. While only test data is online, that doesn't matter.
+3. Open https://porchbook.app and check it works.
+
+**Going back only the code (step 1)** is fine for a quick fix: the old code ignores the new membership list and puts back its own "one porch each" rules when it starts. The one thing that wouldn't work is starting a new "Gospel artist" porch, since the database now calls that type Psalmist. **To go back fully, do both steps.**
+
+Delete old backup branches in Neon once a change has settled, as the free plan allows only a few branches.
+
 ## Good to know
 
 - **The free limits:** Neon has 0.5 GB of database, Blob has 1 GB of files, and Brevo sends 300 emails a day. That's plenty for testing.
