@@ -622,7 +622,7 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
   - 36: one-to-one chats belong to the two people;
   - 37: you show as online in every porch you belong to.
 - **M1: names and types**
-  - **"Gospel artist" is now "Psalmist"** everywhere: the Start a porch choices, Help and FAQ, the public porch's text, and the stored type. Any porch already saved as a gospel artist becomes a psalmist by itself.
+  - **"Gospel artist" is now "Psalmist"** everywhere: the Start a porch choices, the welcome page, Help and FAQ, the public porch's text, and the stored type. Any porch already saved as a gospel artist becomes a psalmist by itself.
   - **Every porch type has members and an invite code:** church, ministry, psalmist and organisation alike. Porches that had no code get one.
   - The church-only rules are gone. Offices can be created in any porch, and Start a porch now says "Every porch has members, and you'll be its first member and admin". The menu says "A church, ministry, psalmist or organisation porch".
 - **M2: the membership list underneath**
