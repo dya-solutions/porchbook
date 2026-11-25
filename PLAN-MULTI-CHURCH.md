@@ -1,6 +1,6 @@
 # Plan: Porchbook for many porches
 
-**Updated:** 19 November 2026, to match **BUILD-BRIEF.md**, including its section 8, "Decisions, 19 November".
+**Updated:** 19 November 2026, to match **BUILD-BRIEF.md**, including its section 8, "Decisions, 19 November". **25 November:** section 11 plans the many-porches change (BUILD-BRIEF.md decisions 24–34), which replaces "one church per person" wherever this plan still says it.
 **Which file wins:** BUILD-BRIEF.md, then this plan, then `public/porchbook-state.md` (the creator's original rulebook, which now only describes how Phaneroo's porch looked before this work).
 
 ---
@@ -338,3 +338,134 @@ All switches live in one file: **`src/lib/porch/on-hold.ts`**. Changing a `true`
 
 ### Size
 This is several weeks of careful work in small stages. Phaneroo keeps working the same way after every stage.
+
+---
+
+## 11. The many-porches change (plan, 25 November — not built yet)
+
+This follows BUILD-BRIEF.md decisions 24–34. They replace "one church per person", "only churches have members", nation and address on join requests, and Stage 5b (moving church). **It comes next, before Stage 5d (admin levels).**
+
+### 11.1 The key idea: the switcher becomes the "current porch"
+
+**Today:**
+- Each person has one church, stored on their profile (`profiles.porch_id`).
+- Almost every screen asks the database "which porch is this person in?" through one shared question, `my_porch(person)`. It's used in 166 places across 27 files, plus 55 more uses of `myPorchId` in 21 files.
+
+**New:**
+- A new **membership list**, `porch_members`: one row per person per porch. Each row holds the full name, phone and city given to that porch, and the date they joined.
+- The profile's `porch_id` keeps its place but changes meaning. It becomes **"the porch you've switched to"**: the switcher.
+- `my_porch(person)` keeps its name. It now answers "the porch this person has switched to, as long as they're still a member of it".
+
+**Why this way:** all those places keep working unchanged, and they **automatically follow the switcher**. The feed, offices, chat, people, "on the porch now", tour doors and the read shelf all show the porch you've switched to, which is exactly decision 29. This keeps the change small and safe.
+
+### 11.2 What changes underneath
+
+| Part | Change |
+| --- | --- |
+| `porch_members` (new) | One row per person per porch: full name, phone, city, the date they agreed to share them, the date they joined. Each person can be in a porch only once. |
+| `profiles.porch_id` | Means "current porch". Switching is allowed only to a porch you're a member of. |
+| `my_porch(person)` | The current porch, but only if the person is still a member there. Otherwise none. |
+| `same_porch(a, b)` | "Share **at least one** porch" (decision 33). Used for profiles, messages and calls. |
+| `is_porch_admin(person)` | Admin of the **current** porch (same meaning per screen as today). A new `is_admin_of(person, porch)` is added for lists that cover all your porches. |
+| Join requests | One waiting request **per porch** (today: one per person). They ask for full name, phone and city; nation and address are no longer asked. |
+| Member details | Move into `porch_members`, per porch. Today's `member_details` table stops being used (the code is kept). |
+| Porch types | "Gospel artist" becomes **Psalmist** (labels, and the stored value becomes `psalmist`). Every type gets an invite code and members. The "only a church has members" rules (in 5 files) go. |
+| Sign-up | Email, username and password only. The sign-in system needs a name, so it stores the username there. |
+| Names | In a private porch: the full name given to **that** porch. On the public porch: the username. One shared database question, `name_in_porch(person, porch)`. The 200 places that show `display_name` (in 25 files) are switched to it area by area. Until an area is switched, it shows today's name, which is never a leak. |
+| Country | A fixed, searchable list of countries kept in the code (free, no service). |
+| QR code | Made in the browser from the invite link, with a small free library (for example `qrcode`). Shown on screen, or downloaded as a picture to print. No outside service. |
+| Search and Follow | "Find porches" (today's branch search, made general) gets **Follow** and **Request to join**. A small `porch_follows` table records follows now. Seeing followed porches' public posts comes with Stage 6 (the public porch). |
+
+**What stays as it is:**
+- **Every piece of content still belongs to exactly one porch:** posts, offices, chats, events, groups, the read shelf and more (487 uses of the porch tag). The separation built in Stages 3a–3b is untouched.
+- **Per porch, unchanged:** themes and accents, offices, tour doors, wording, admins.
+- **Unchanged rules:** platform-owner approval, random invite codes, and the rule that a code or link never lets anyone in by itself.
+
+### 11.3 The screens
+
+- **Sign up:** email, username (with a check that it's free), password, then the 6-digit email code. That's all.
+- **Signed in with no porch yet:** this replaces today's dead-end "Join your church" screen.
+  - The **Public porch**.
+  - **Find a porch.**
+  - **Join with a code or link.**
+  - **Start a porch.**
+  - For the platform owner: **Porches waiting for approval.**
+- **"My porches" switcher:** at the top of the Porch screen, the current porch's name with a small arrow.
+  - Tapping it lists your porches, each with its accent dot, plus "Find or join another porch".
+  - Switching changes every tab, and the app remembers your choice.
+  - The "My porches | Public porch" switch stays.
+- **Join form:**
+  - Full name, phone and city.
+  - The line "Shared only with [porch]'s admins", with a tick box to agree.
+  - Then "Request to join".
+- **Your account:** "My porches", listing each porch with **Leave this porch**. Leaving removes the details you gave that porch, and your other porches aren't affected.
+- **Admins:**
+  - "People waiting to join" for the porch you've switched to, with a small count for your other porches.
+  - The invite screen shows the link, the code and the **QR code** (show, or download to print).
+- **Scanning the QR code:** it simply holds the invite link (porchbook.app/join/CODE), so any phone camera opens it. No scanner inside the app is needed.
+  - **A new person:** Welcome, create an account and confirm the email, then they land on the join form.
+  - **Someone already signed in:** straight to the join form.
+- **Start a porch:** the country comes from a searchable drop-down. The starter becomes the porch's first member and admin, **whatever its type**.
+
+### 11.4 Existing accounts and the test churches
+
+- **Everyone who is in a church today** becomes a member of it in `porch_members`:
+  - full name from their current name;
+  - phone from their details;
+  - city left empty and asked once, the next time they open the app.
+- **Admins stay admins.**
+- **Whoever started a porch becomes its member and admin**, whatever its type. This brings JT's online Organisation porch fully inside.
+- **Accounts without a username** are asked for one once.
+- **Nation and address already given:** see question 1 below.
+- **Locally:** Phaneroo's members and the test accounts (tester, Grace, Hope, Joy) carry over by the same steps.
+- **Online test churches:** the test-data script (`scripts/online-test-data.mjs`) is updated to the new shape. It will include one made-up person in **both** test churches and people waiting to join. They're added only **after** step M4 below, and removed in one go before launch (DEPLOY.md).
+
+### 11.5 How the two-church test changes
+
+A new person, **Cara**, is a member of **both** Porch A and Porch B. Ben stays in B only. The test checks that:
+
+1. **Cara switched to A sees only A** (feed, chat, offices, people, "on the porch now", events, notifications), and switched to B sees only B. A screen never mixes the two.
+2. **Something Cara posts while in A stays in A.** A screen left open from before a switch can't post into the wrong porch.
+3. **Ben sees nothing of A**, including Cara's posts in A and the details she gave A.
+4. **Each porch's admins see only their own details:** B's admins see the details Cara gave B, never those she gave A.
+5. **Messages and calls:** Ben and Cara can message each other (they share B). Ben and Abe (in A only) can't.
+6. **Admin powers don't carry over:** being an admin of A gives no power in B.
+7. **Switching to a porch you're not in is refused.**
+8. **Join requests to A never appear in B's waiting list.**
+9. **Leaving:** Cara leaves A and keeps B. Her A details are deleted, and she can no longer open A's content.
+10. **Everything the test checks today** keeps passing (214 checks).
+
+### 11.6 Steps, in a safe order
+
+Each step is small, ends with the two-church test, an undo point and CHANGES.md, and stops for JT.
+
+- **M1. Names and types.** "Gospel artist" becomes Psalmist. All four types get invite codes and members, and the church-only rules go. *Small.*
+- **M2. The membership list underneath.**
+  - Add `porch_members` and fill it from today's data.
+  - Change `my_porch` to "current porch, still a member" and `same_porch` to "share any porch". Add switching on the server.
+  - **Nothing changes on screen:** Phaneroo looks identical. The test gets Cara's data checks.
+  - *Small in code, but central.*
+- **M3. "My porches" switcher and "Leave this porch".** Cara's checks 1, 2, 7 and 9.
+- **M4. Joining.** The new join form, one request per porch, each porch's waiting list, details per porch, and nation and address retired. Checks 4 and 8.
+- **M5. Sign-up.** Email, username and code only. Existing accounts are asked for a username once.
+- **M6. Names.** Full name in private porches, username on the public porch, done area by area. *The largest step* (200 spots), but low risk: a missed spot shows a name, never content.
+- **M7. Find porches.** Search, Request to join, and Follow (recorded now; public posts come with Stage 6).
+- **M8. Invites.** The QR code (show and download), the link flow for new and signed-in people, and the country drop-down.
+- **M9. Messages and calls between people who share a porch.** Check 5.
+- **Then:** the online test churches, then **Stage 5d** (admin levels).
+
+### 11.7 Risks
+
+- **Wrong-porch saves from an old screen.**
+  - **The risk:** with the switcher stored on the server, a second tab still showing A could save into B after you switched.
+  - **The fix:** every save sends the porch the screen is showing, and the server refuses (and refreshes the screen) if it doesn't match.
+- **Notifications** must say which porch they're from, and opening one switches to that porch first.
+- **Leaving** must cleanly end roles in that porch only (admin, office head, group leader).
+- **The online database:** each step's changes run by themselves when the site starts. **Before M2 goes online**, make a copy of the Neon database (a free "branch" in Neon) so we can go back.
+- **Size:** several sessions of work. M2 and M6 need the most care. Phaneroo keeps working the same way after every step.
+
+### 11.8 Questions for JT (needed before M4)
+
+1. **Nation and address already given** by members: delete them (recommended, since they're no longer asked for or agreed to) or keep them hidden?
+2. **A private chat between two people who share two porches:** it belongs to the porch where it was started (recommended), or shows in both?
+3. **"On the porch now":** you appear only in the porch you've switched to (recommended), or in all your porches at once?

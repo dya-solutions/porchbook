@@ -149,6 +149,46 @@ After Stage 5a and the brand stage (4e): **Stage 5c** accounts and join requests
     - **How it looks:** questions are grouped into sections, with a search box at the top. Each answer is short, and tapping a question opens its answer in place. It uses the brand look.
     - **The Manual's card and book are hidden, not deleted** (the `manual` switch in on-hold.ts).
 
+## 8c. Decisions, 25 November: many porches per person
+
+These **replace** earlier decisions where they clash: in particular decision 1 and 9 (only church porches have members; one church per person), section 3 "People and roles" (one account belongs to exactly one porch), decision 14 (sign-up with full name; nation and address on join requests), decision 20 (moving church), and the Stage 5b "moving" stage.
+
+24. **Four porch types, all with members:**
+    - **Church:** a congregation.
+    - **Ministry:** someone who ministers. People can join and fellowship there.
+    - **Psalmist:** renamed from "Gospel artist".
+    - **Organisation.**
+
+    Every type can have members, a private porch, admins and offices.
+25. **A person can belong to as many porches as they like.** Every join needs **that porch's admins to let them in.**
+26. **Sign-up asks only for an email and a username** (unique). Then the email is confirmed with a 6-digit code. Nothing else at sign-up.
+27. **Joining a porch asks for full name, phone number and city.** It no longer asks for nation or address.
+    - The person agrees to share these with **that porch's admins only**.
+    - Each porch's admins see only the details given to **their own** porch.
+    - Details given to one porch are never shown to another.
+28. **Names:**
+    - Inside a private porch, people show by the **full name they gave that porch**.
+    - On the public porch, they show by their **username**.
+29. **Two main sections:**
+    - **"My porches":** every porch you belong to, with a **switcher**. Every screen (feed, offices, chat, "on the porch now", tour doors, read shelf) shows the porch you've switched to.
+    - **"Public porch."** Someone who belongs to no porch still has the public porch.
+30. **Search inside the app:** find a porch, then **Follow** it (see its public posts and react) or **Request to join**.
+31. **Ways to join:**
+    - **Invite link.**
+    - **Invite code.**
+    - **QR code** that the porch's admins can show on screen or download to print.
+
+    Scanning the QR code:
+    - A new person creates an account, then sends the join request.
+    - Someone already signed in goes straight to the request.
+
+    None of these lets anyone in by themselves: the admins always decide.
+32. **Creating a porch:** the country is chosen from a **searchable drop-down list**.
+33. **Messages and calls only between people who share at least one porch.**
+34. **Moving church (the old Stage 5b) becomes simply "Leave this porch".** You can leave any porch you belong to. Your other porches are not affected.
+
+**New order of work:** the many-porches change (planned in PLAN-MULTI-CHURCH.md, section 11) comes next, before Stage 5d (admin levels). Stage 5b is replaced by "Leave this porch" inside that change.
+
 ## 9. Stage 9: Porch stations (future, after Stage 8)
 
 Every porch can have its own radio station that its members tune into while they're on the porch. It reuses the on-hold radio code, which must first get church tags and pass the two-church test (decision 8).
