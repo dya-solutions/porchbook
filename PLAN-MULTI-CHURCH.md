@@ -464,7 +464,13 @@ Each step is small, ends with the two-church test, an undo point and CHANGES.md,
 - **The online database:** each step's changes run by themselves when the site starts. **Before M2 goes online**, make a copy of the Neon database (a free "branch" in Neon) so we can go back.
 - **Size:** several sessions of work. M2 and M6 need the most care. Phaneroo keeps working the same way after every step.
 
-### 11.8 Questions for JT (needed before M4)
+### 11.8 Questions for JT: answered 25 November (BUILD-BRIEF.md decisions 35 to 37)
+
+**Answers:** (1) delete nation and address; only the city is asked. (2) One-to-one chats belong to the two people: they show in whichever porch you are switched to, are allowed while the two share at least one porch, and become read-only when they share none. Group chats and office conversations stay with their porch. (3) You show as online in every porch you belong to; the "Show me on the porch" switch covers them all, and "if you hide, you can't see others" stays.
+
+**Done:** M1 and M2 (25 November). Still to do before the switcher (M3): Serve forms per porch.
+
+The questions were:
 
 1. **Nation and address already given** by members: delete them (recommended, since they're no longer asked for or agreed to) or keep them hidden?
 2. **A private chat between two people who share two porches:** it belongs to the porch where it was started (recommended), or shows in both?

@@ -346,7 +346,7 @@ export const listOffices = createServerFn({ method: "POST" })
       }));
     const people = isFounder
       ? await sql.query<{ user_id: string; display_name: string }>(
-          "select user_id, display_name from profiles where porch_id = my_porch($1) order by lower(display_name) asc",
+          "select user_id, display_name from profiles where in_porch(user_id, my_porch($1)) order by lower(display_name) asc",
           [context.userId],
         )
       : [];
@@ -958,8 +958,6 @@ export const createOffice = createServerFn({ method: "POST" })
       noteAttempt(context.userId, "office-create", "Tried to create an office.");
       return { ok: false as const, error: "Only an admin can create an office." };
     }
-    const kind = await sql<{ kind: string }>`select kind from porches where id = my_porch(${context.userId})`;
-    if (kind[0]?.kind !== "church") return { ok: false as const, error: "Offices are for church porches." };
     const base = slugOf(data.name);
     const taken = await sql<{ key: string }>`select key from offices where porch_id = my_porch(${context.userId})`;
     const used = new Set(taken.map((row) => row.key));

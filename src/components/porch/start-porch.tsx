@@ -39,7 +39,7 @@ export function StartPorch({ account }: { account: (note: ReactNode) => ReactNod
   const creating = useRef(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState<{ name: string; kind: PorchKind; code: string | null } | null>(null);
+  const [done, setDone] = useState<{ name: string; kind: PorchKind; code: string | null; current: boolean } | null>(null);
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<{ id: number; name: string; place: string }[]>([]);
 
@@ -99,7 +99,7 @@ export function StartPorch({ account }: { account: (note: ReactNode) => ReactNod
     }
     keepDraft(null);
     reloadPorchLook();
-    setDone({ name: result.name, kind: result.kind, code: result.code });
+    setDone({ name: result.name, kind: result.kind, code: result.code, current: result.current !== false });
     setStep(3);
   }
 
@@ -163,9 +163,7 @@ export function StartPorch({ account }: { account: (note: ReactNode) => ReactNod
                 ))}
               </div>
               <p className="pb-quiet" style={{ margin: "8px 2px 0", fontSize: 13 }}>
-                {draft.kind === "church"
-                  ? "A church porch has members. You'll be its first member and admin."
-                  : "A ministry, artist or organisation porch is run by a small team of admins and has no members. You stay a member of your own church."}
+                {"Every porch has members, and you'll be its first member and admin."}
               </p>
             </div>
             <label className="ofc-lbl">
@@ -251,19 +249,22 @@ export function StartPorch({ account }: { account: (note: ReactNode) => ReactNod
                 Your {kindName(done.kind).toLowerCase()} porch is waiting for approval. It works privately now; it can post publicly once it's approved.
               </p>
             </div>
+            {!done.current ? (
+              <p className="pb-quiet" style={{ margin: 0 }}>It's one of your porches now. Switching between your porches comes with the next update.</p>
+            ) : null}
             {done.code ? (
               <div className="pb-card" style={{ padding: 16 }}>
-                <p className="ofc-lbl" style={{ margin: 0 }}>Your church's invite code</p>
+                <p className="ofc-lbl" style={{ margin: 0 }}>Your porch's invite code</p>
                 <p className="start-code">{done.code}</p>
                 <p className="pb-quiet" style={{ margin: 0, fontSize: 14 }}>
                   Share it with your members. You'll find it, and its invite link, under Invite.
                 </p>
               </div>
             ) : (
-              <p className="pb-quiet" style={{ margin: 0 }}>You'll find this porch under Your account → Your porches. If you're not in a church yet, it's listed on the next screen instead.</p>
+              <p className="pb-quiet" style={{ margin: 0 }}>You'll find this porch under Your account → Your porches.</p>
             )}
             <button type="button" className="pb-btn" onClick={() => window.location.replace("/?room=all")}>
-              {done.kind === "church" ? "Open your porch" : "Continue"}
+              {done.current ? "Open your porch" : "Continue"}
             </button>
           </>
         ) : null}

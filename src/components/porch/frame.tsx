@@ -1238,7 +1238,7 @@ export function AccountCard({ user }: { user: AppUser }) {
         <Link to="/start">
           <Users className="size-5" aria-hidden="true" />
           Start a porch
-          <small>A ministry, artist or organisation porch</small>
+          <small>A church, ministry, psalmist or organisation porch</small>
         </Link>
         {admin ? (
           <Link to="/porch-settings">

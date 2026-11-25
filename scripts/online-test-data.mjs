@@ -136,6 +136,11 @@ async function add(passwordsFile) {
             "insert into member_details (user_id, porch_id, nation, phone, address) values ($1, $2, 'Uganda', $3, $4)",
             [id, porchId, phone, address],
           );
+          // M2: membership is the porch_members list (profiles.porch_id is only the porch they're switched to).
+          await client.query(
+            "insert into porch_members (porch_id, user_id, full_name, phone, city, shared_at) values ($1, $2, $3, $4, $5, now())",
+            [porchId, id, person.name, phone, church.town],
+          );
         }
         if (person.admin) await client.query("insert into porch_admins (porch_id, user_id, added_by) values ($1, $2, 'test-data')", [porchId, id]);
         const what = person.admin ? "Admin (pastor)" : person.waiting ? "Waiting to join" : "Member";

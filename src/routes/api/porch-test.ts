@@ -47,23 +47,41 @@ export const Route = createFileRoute("/api/porch-test")({
                 [String(body.name ?? "Test porch"), String(body.kind ?? "church")],
               );
               await sql.query("insert into porch_settings (porch_id) values ($1) on conflict do nothing", [rows[0].id]);
-              // Church porches have an invite code (Stage 5a).
-              const code = String(body.kind ?? "church") === "church" ? newCode() : null;
-              if (code) await sql.query("update porches set invite_code = $2 where id = $1", [rows[0].id, code]);
+              // Every porch has an invite code (M1).
+              const code = newCode();
+              await sql.query("update porches set invite_code = $2 where id = $1", [rows[0].id, code]);
               return json({ ok: true, id: rows[0].id, code });
             }
             case "person": {
               const userId = await userIdOf(body.email);
               const rows = await sql.query(
-                "select porch_id, is_porch_admin(user_id) as admin, is_platform_owner(user_id) as owner from profiles where user_id = $1",
+                "select my_porch(user_id) as porch_id, is_porch_admin(user_id) as admin, is_platform_owner(user_id) as owner, (select coalesce(array_agg(porch_id order by porch_id), '{}') from porch_members m where m.user_id = profiles.user_id) as porches from profiles where user_id = $1",
                 [userId],
               );
               return json({ ok: true, userId, ...(rows[0] ?? {}) });
             }
             case "joinPorch": {
               const userId = await userIdOf(body.email);
+              await sql.query("insert into porch_members (porch_id, user_id, full_name) select $2, user_id, display_name from profiles where user_id = $1 on conflict do nothing", [userId, Number(body.porchId)]);
               await sql.query("update profiles set porch_id = $2 where user_id = $1", [userId, Number(body.porchId)]);
               return json({ ok: true });
+            }
+            case "addMember": {
+              // A second (or third) porch: a membership only. The porch they're switched to stays.
+              const userId = await userIdOf(body.email);
+              await sql.query("insert into porch_members (porch_id, user_id, full_name) select $2, user_id, display_name from profiles where user_id = $1 on conflict do nothing", [userId, Number(body.porchId)]);
+              return json({ ok: true });
+            }
+            case "removeMember": {
+              const userId = await userIdOf(body.email);
+              await sql.query("delete from porch_members where porch_id = $2 and user_id = $1", [userId, Number(body.porchId)]);
+              return json({ ok: true });
+            }
+            case "pair": {
+              const a = await userIdOf(body.email);
+              const b = await userIdOf(body.other);
+              const rows = await sql.query("select same_porch($1, $2) as same, is_admin_of($1, $3) as admin_of", [a, b, Number(body.porchId) || 0]);
+              return json({ ok: true, ...(rows[0] ?? {}) });
             }
             case "makeAdmin": {
               const userId = await userIdOf(body.email);

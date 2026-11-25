@@ -142,7 +142,7 @@ export const loadHooBoard = createServerFn({ method: "POST" })
     );
     const people = founder
       ? await sql.query<{ user_id: string; display_name: string }>(
-          "select user_id, display_name from profiles where porch_id = my_porch($1) order by lower(display_name)",
+          "select user_id, display_name from profiles where in_porch(user_id, my_porch($1)) order by lower(display_name)",
           [context.userId],
         )
       : [];

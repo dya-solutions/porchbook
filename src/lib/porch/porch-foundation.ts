@@ -3,15 +3,19 @@ import type { Sql } from "@/lib/db";
 /**
  * The porch foundation (BUILD-BRIEF.md, Stage 2).
  *
- * - `porches`: every porch. Four types: church, ministry, gospel_artist, organisation.
- *   Only church porches have members; the other three are public pages run by admins.
- * - `profiles.porch_id`: the ONE church porch a person belongs to.
+ * - `porches`: every porch. Four types: church, ministry, psalmist, organisation (decision 24).
+ *   Every type has members, admins and an invite code.
+ * - `porch_members`: one row per person per porch (decision 25: a person can be in many porches).
+ * - `profiles.porch_id`: the CURRENT porch, the one the person has switched to. It only counts
+ *   while they're still a member there (my_porch checks that).
  * - `porch_admins`: who runs which porch (replaces the single "founder").
  * - `platform_owners`: above all porches (JT).
  * - Phaneroo Ministries Mbarara is porch 1, and every account without a porch joins it.
  *
  * Two database checks are used everywhere instead of the old founder mark:
- *   is_porch_admin(user)    -> an admin of the church porch this person belongs to
+ *   is_porch_admin(user)    -> an admin of the porch this person has switched to
+ *   is_admin_of(user, porch) -> an admin (and member) of that porch
+ *   in_porch(user, porch)   -> a member of that porch
  *   is_platform_owner(user) -> a platform owner
  * The old `profiles.is_founder` column is no longer read for permissions. Its value was copied
  * once into `porch_admins` (an admin became Phaneroo's first admin) and is left as history.
@@ -33,7 +37,7 @@ const SETUP: string[] = [
      invite_code text unique,
      created_by text,
      created_at timestamptz not null default now(),
-     constraint porches_kind_chk check (kind in ('church', 'ministry', 'gospel_artist', 'organisation')),
+     constraint porches_kind_chk check (kind in ('church', 'ministry', 'psalmist', 'organisation')),
      constraint porches_status_chk check (status in ('waiting', 'approved', 'suspended'))
    )`,
   `create table if not exists porch_settings (
@@ -69,6 +73,27 @@ const SETUP: string[] = [
      user_id text primary key references profiles (user_id) on delete cascade,
      added_at timestamptz not null default now()
    )`,
+  // M1 (decision 24): "Gospel artist" is now "Psalmist". Done once, while the old type is still allowed.
+  `do $$ begin
+     if exists (select 1 from pg_constraint where conname = 'porches_kind_chk' and pg_get_constraintdef(oid) like '%gospel_artist%') then
+       alter table porches drop constraint porches_kind_chk;
+       update porches set kind = 'psalmist' where kind = 'gospel_artist';
+       alter table porches add constraint porches_kind_chk check (kind in ('church', 'ministry', 'psalmist', 'organisation'));
+     end if;
+   end $$`,
+  // M2 (decisions 25 and 27): the membership list. One row per person per porch, with the
+  // details they gave THAT porch (full name, phone, city), shared only with its admins.
+  `create table if not exists porch_members (
+     porch_id integer not null references porches (id) on delete cascade,
+     user_id text not null references profiles (user_id) on delete cascade,
+     full_name text not null default '',
+     phone text not null default '',
+     city text not null default '',
+     shared_at timestamptz,
+     joined_at timestamptz not null default now(),
+     primary key (porch_id, user_id)
+   )`,
+  `create index if not exists porch_members_user_idx on porch_members (user_id)`,
   // One-off steps already done (so they never repeat).
   `create table if not exists porch_steps (step text primary key, done_at timestamptz not null default now())`,
   // Stage 5c: accounts made before verified emails existed count as verified (once).
@@ -84,25 +109,60 @@ const SETUP: string[] = [
   // the accounts made before invite codes; new accounts now join the church whose code they use.
   `with done as (insert into porch_steps (step) values ('legacy-everyone-phaneroo') on conflict (step) do nothing returning step)
    update profiles set porch_id = 1 where porch_id is null and exists (select 1 from done)`,
+  // M2, once: everyone becomes a member of the porch they're in today. Whoever started a porch,
+  // and the admins of ministry, psalmist and organisation porches, become members of those too.
+  `with done as (insert into porch_steps (step) values ('porch-members-v1') on conflict (step) do nothing returning step)
+   insert into porch_members (porch_id, user_id, full_name)
+   select x.porch_id, x.user_id, coalesce(p.display_name, '')
+     from (
+       select porch_id, user_id from profiles where porch_id is not null
+       union select id, created_by from porches where created_by is not null
+       union select a.porch_id, a.user_id from porch_admins a join porches c on c.id = a.porch_id where c.kind <> 'church'
+     ) x
+     join profiles p on p.user_id = x.user_id
+     join porches c on c.id = x.porch_id and c.status <> 'declined'
+    where exists (select 1 from done)
+   on conflict do nothing`,
+  /** A member of that porch. */
+  `create or replace function in_porch(uid text, pid integer) returns boolean language sql stable as $$
+     select exists (select 1 from porch_members where user_id = uid and porch_id = pid)
+   $$`,
+  // Someone who belongs to porches but has none switched to (or left the one they had) gets their first one.
+  `update profiles p set porch_id = (select m.porch_id from porch_members m where m.user_id = p.user_id order by m.joined_at, m.porch_id limit 1)
+    where (p.porch_id is null or not exists (select 1 from porch_members m where m.user_id = p.user_id and m.porch_id = p.porch_id))
+      and exists (select 1 from porch_members m where m.user_id = p.user_id)`,
+  /** An admin of the porch this person has switched to (each screen works on that porch). */
   `create or replace function is_porch_admin(uid text) returns boolean language sql stable as $$
      select exists (
        select 1 from porch_admins a
        join profiles p on p.user_id = a.user_id and p.porch_id = a.porch_id
+       join porch_members m on m.user_id = a.user_id and m.porch_id = a.porch_id
        where a.user_id = uid
+     )
+   $$`,
+  /** An admin (and member) of one particular porch, whichever porch the person has switched to. */
+  `create or replace function is_admin_of(uid text, pid integer) returns boolean language sql stable as $$
+     select exists (
+       select 1 from porch_admins a join porch_members m on m.user_id = a.user_id and m.porch_id = a.porch_id
+       where a.user_id = uid and a.porch_id = pid
      )
    $$`,
   `create or replace function is_platform_owner(uid text) returns boolean language sql stable as $$
      select exists (select 1 from platform_owners where user_id = uid)
    $$`,
-  /** The church porch a person belongs to (null when unknown). */
+  /**
+   * The porch a person has switched to (null when none). It only counts while they're still a
+   * member there, so leaving a porch (or being removed) closes it at once, on every screen.
+   */
   `create or replace function my_porch(uid text) returns integer language sql stable as $$
-     select porch_id from profiles where user_id = uid
+     select p.porch_id from profiles p
+      where p.user_id = uid and exists (select 1 from porch_members m where m.user_id = uid and m.porch_id = p.porch_id)
    $$`,
-  /** Two people in the same church porch (used for profiles, chat and calls). */
+  /** Two people who share at least one porch (decision 33; used for profiles, chat and calls). */
   `create or replace function same_porch(a text, b text) returns boolean language sql stable as $$
      select exists (
-       select 1 from profiles x join profiles y on y.porch_id = x.porch_id
-       where x.user_id = a and y.user_id = b and x.porch_id is not null
+       select 1 from porch_members x join porch_members y on y.porch_id = x.porch_id
+       where x.user_id = a and y.user_id = b
      )
    $$`,
 
@@ -306,9 +366,9 @@ export async function porchTables(
   }
 }
 
-/** The church porch a person belongs to (0 when unknown). */
+/** The porch a person has switched to (0 when none). */
 export async function myPorchId(sql: Sql, userId: string): Promise<number> {
-  const rows = await sql.query<{ porch_id: number | null }>("select porch_id from profiles where user_id = $1", [userId]);
+  const rows = await sql.query<{ porch_id: number | null }>("select my_porch($1) as porch_id", [userId]);
   return Number(rows[0]?.porch_id ?? 0) || 0;
 }
 

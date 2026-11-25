@@ -100,8 +100,8 @@ export const listRoll = createServerFn({ method: "POST" })
               coalesce(string_agg(o.name, ', ' order by o.sort), '') as offices,
               to_char(p.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as joined_at
        from profiles p
-       left join offices o on o.head_user_id = p.user_id
-       where p.porch_id = my_porch($1)
+       left join offices o on o.head_user_id = p.user_id and coalesce((to_jsonb(o) ->> 'porch_id')::int, my_porch($1)) = my_porch($1)
+       where in_porch(p.user_id, my_porch($1))
        group by p.user_id, p.display_name, p.image_url, p.role, p.team, p.created_at
        order by is_porch_admin(p.user_id) desc, lower(p.display_name) asc`,
       [context.userId],
@@ -134,8 +134,8 @@ export const listPorch = createServerFn({ method: "POST" })
       `select p.user_id, p.display_name, p.image_url,
               coalesce(string_agg(o.name, ', ' order by o.sort), '') as offices
        from profiles p
-       left join offices o on o.head_user_id = p.user_id
-       where p.porch_id = my_porch($1)
+       left join offices o on o.head_user_id = p.user_id and coalesce((to_jsonb(o) ->> 'porch_id')::int, my_porch($1)) = my_porch($1)
+       where in_porch(p.user_id, my_porch($1))
        group by p.user_id, p.display_name, p.image_url
        order by lower(p.display_name) asc`,
       [context.userId],
@@ -169,13 +169,31 @@ export const removeMember = createServerFn({ method: "POST" })
       noteAttempt(context.userId, "roll-remove", "Tried to remove someone from the roll.");
       return { ok: false as const, error: "Only an admin can remove someone." };
     }
-    const found = await sql.query<{ email: string | null; is_founder: boolean }>(
-      "select email, is_porch_admin(user_id) as is_founder from profiles where user_id = $1",
-      [data.userId],
+    // Only someone in the admin's own porch (the one they're switched to).
+    const found = await sql.query<{ email: string | null; is_founder: boolean; porch: number; elsewhere: unknown }>(
+      `select email, is_admin_of(user_id, my_porch($2)) as is_founder, my_porch($2) as porch,
+              exists (select 1 from porch_members m where m.user_id = $1 and m.porch_id <> my_porch($2)) as elsewhere
+         from profiles where user_id = $1 and in_porch(user_id, my_porch($2))`,
+      [data.userId, context.userId],
     );
     const person = found[0];
-    if (!person) return { ok: false as const, error: "That person is not on the porch." };
+    if (!person) {
+      noteAttempt(context.userId, "roll-remove", "Tried to remove someone who isn't in their porch.");
+      return { ok: false as const, error: "That person is not on the porch." };
+    }
     if (boolish(person.is_founder)) return { ok: false as const, error: "The admin stays." };
+    // Someone who also belongs to other porches only leaves this one; their account and their
+    // other porches stay (decision 25).
+    if (boolish(person.elsewhere)) {
+      await sql.query("delete from porch_members where porch_id = $1 and user_id = $2", [person.porch, data.userId]);
+      await sql.query("delete from porch_admins where porch_id = $1 and user_id = $2", [person.porch, data.userId]);
+      await sql.query(
+        `update profiles p set porch_id = (select m.porch_id from porch_members m where m.user_id = p.user_id order by m.joined_at, m.porch_id limit 1)
+          where p.user_id = $1 and p.porch_id = $2`,
+        [data.userId, person.porch],
+      );
+      return { ok: true as const };
+    }
     await sql`
       insert into removed_members (user_id, email)
       values (${data.userId}, ${person.email})

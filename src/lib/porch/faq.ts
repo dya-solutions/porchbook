@@ -12,7 +12,7 @@ const START: { section: string; items: [question: string, answer: string, check?
   {
     section: "Getting started",
     items: [
-      ["What is Porchbook?", "Porchbook is your church on your phone. Your church has its own private porch for posts, offices and chat. The public porch shows posts from the churches, ministries, gospel artists and organisations you follow."],
+      ["What is Porchbook?", "Porchbook is your church on your phone. Your church has its own private porch for posts, offices and chat. The public porch shows posts from the churches, ministries, psalmists and organisations you follow."],
       ["How do I join my church's porch?", "Ask your church for its invite code or link. Open it, create your account, and send a join request with your details. Your church's admins look at your request and let you in. A code alone never lets anyone in: an admin always approves.", true],
       ["What details does my church ask for, and why?", "Your full name, nation, phone number and address. Your church uses them to know who you are, to reach you, and for care and visits. Each question says why it is asked. Only the admins allowed to see member details can see them.", true],
       ["Can I use Porchbook without joining a church?", "Yes. With just an account you can use the public porch: find porches, follow them and react to their posts. You only join a church for its private porch.", true],
@@ -44,7 +44,7 @@ const START: { section: string; items: [question: string, answer: string, check?
   {
     section: "Public porch",
     items: [
-      ["What is the public porch?", "A feed of posts from the porches you follow: churches, ministries, gospel artists and organisations. It is coming soon.", true],
+      ["What is the public porch?", "A feed of posts from the porches you follow: churches, ministries, psalmists and organisations. It is coming soon.", true],
       ["How do I follow a porch?", "On the public porch, tap Find porches, search by name, town or type, and tap Follow. You always follow your own church, and its main church if it is a branch.", true],
       ["Why can't I post there?", "Only porches post on the public porch, through their admins, and only once Porchbook has approved them. Members follow and react, but don't post or comment, so it stays calm and safe."],
     ],

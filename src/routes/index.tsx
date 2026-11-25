@@ -54,7 +54,7 @@ function PublicSoon() {
           The Public porch is coming soon
         </h2>
         <p className="pb-quiet" style={{ margin: 0, fontSize: 15, lineHeight: 1.45, maxWidth: 320 }}>
-          Here you&apos;ll see posts from the porches you follow (churches, ministries, gospel artists and organisations) and react to them.
+          Here you&apos;ll see posts from the porches you follow (churches, ministries, psalmists and organisations) and react to them.
         </p>
       </div>
     </div>

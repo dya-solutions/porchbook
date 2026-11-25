@@ -220,7 +220,7 @@ export const listTransportTeam = createServerFn({ method: "POST" })
     const sql = await getSql();
     const who = await canArrange(sql, context.userId);
     if (!who.founder) return { ok: false as const, ids: [] as string[] };
-    const rows = await sql.query<{ user_id: string }>("select user_id from profiles where is_transport and porch_id = my_porch($1)", [context.userId]);
+    const rows = await sql.query<{ user_id: string }>("select user_id from profiles where is_transport and in_porch(user_id, my_porch($1))", [context.userId]);
     return { ok: true as const, ids: rows.map((r) => r.user_id) };
   });
 

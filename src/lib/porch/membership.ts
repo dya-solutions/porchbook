@@ -88,6 +88,13 @@ function ensure(sql: Sql) {
     )`);
     await sql.query("create index if not exists join_requests_porch_idx on join_requests (porch_id, status)");
     await sql.query("create unique index if not exists join_requests_one_waiting on join_requests (user_id) where status = 'waiting'");
+    // M2, once: the phone number a member already gave moves to their row in the membership list.
+    await sql.query(
+      `with done as (insert into porch_steps (step) values ('porch-members-phone-v1') on conflict (step) do nothing returning step)
+       update porch_members m set phone = d.phone
+         from member_details d
+        where d.user_id = m.user_id and d.porch_id = m.porch_id and m.phone = '' and d.phone <> '' and exists (select 1 from done)`,
+    );
   })().catch((error) => {
     ready = null;
     throw error;
@@ -122,15 +129,16 @@ export const accountState = createServerFn({ method: "POST" })
       hide_church: unknown;
       porch_id: number | null;
       porch_name: string | null;
+      starter: unknown;
       nation: string | null;
       phone: string | null;
       address: string | null;
     }>(
-      `select p.display_name, p.email_verified_at::text as verified, p.username, p.hide_church, p.porch_id, c.name as porch_name,
+      `select p.display_name, p.email_verified_at::text as verified, p.username, p.hide_church, my_porch(p.user_id) as porch_id, c.name as porch_name, (c.created_by = p.user_id) as starter,
               d.nation, d.phone, d.address
          from profiles p
-         left join porches c on c.id = p.porch_id
-         left join member_details d on d.user_id = p.user_id and d.porch_id = p.porch_id
+         left join porches c on c.id = my_porch(p.user_id)
+         left join member_details d on d.user_id = p.user_id and d.porch_id = my_porch(p.user_id)
         where p.user_id = $1`,
       [context.userId],
     );
@@ -158,7 +166,8 @@ export const accountState = createServerFn({ method: "POST" })
       waiting: waiting[0] ? { id: waiting[0].id, porchName: waiting[0].porch_name, since: waiting[0].created_at } : null,
       lastDeclined: declined[0]?.porch_name ?? "",
       // A member with details missing is asked for them the next time they open the app.
-      missing: row?.porch_id ? missingIn(details) : [],
+      // (Not for the person who started the porch: the new join details come with M4.)
+      missing: row?.porch_id && !yes(row?.starter) ? missingIn(details) : [],
     };
   });
 
@@ -275,7 +284,7 @@ export const requestToJoin = createServerFn({ method: "POST" })
     );
     const porch = porches[0];
     if (!porch) return { ok: false as const, error: "That invite code isn't right. Check it with your church." };
-    const me = await sql.query<{ porch_id: number | null }>("select porch_id from profiles where user_id = $1", [context.userId]);
+    const me = await sql.query<{ porch_id: number | null }>("select my_porch($1) as porch_id", [context.userId]);
     if (me[0]?.porch_id) return { ok: false as const, error: "You're already a member of a church. Moving church comes soon." };
     await sql.query("update join_requests set status = 'cancelled' where user_id = $1 and status = 'waiting'", [context.userId]);
     await sql.query(
@@ -286,7 +295,7 @@ export const requestToJoin = createServerFn({ method: "POST" })
     // Tell the church's admins.
     try {
       const admins = await sql.query<{ user_id: string }>(
-        "select a.user_id from porch_admins a join profiles p on p.user_id = a.user_id and p.porch_id = a.porch_id where a.porch_id = $1",
+        "select a.user_id from porch_admins a join porch_members m on m.user_id = a.user_id and m.porch_id = a.porch_id where a.porch_id = $1",
         [porch.id],
       );
       const { notifyPeople } = await import("@/lib/porch/push.server");
@@ -380,6 +389,8 @@ export const decideJoinRequest = createServerFn({ method: "POST" })
        on conflict (user_id) do update set porch_id = excluded.porch_id, nation = excluded.nation, phone = excluded.phone, address = excluded.address, updated_at = now()`,
       [request.user_id, request.porch_id, request.nation, request.phone, request.address],
     );
+    const { addMember } = await import("@/lib/porch/porch-join");
+    await addMember(sql, request.porch_id, request.user_id, { fullName: request.full_name, phone: request.phone });
     await sql.query("update join_requests set status = 'let-in', decided_by = $2, decided_at = now() where id = $1", [request.id, context.userId]);
     try {
       const { notifyPeople } = await import("@/lib/porch/push.server");
@@ -397,8 +408,8 @@ export const myDetails = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ensure(sql);
     const rows = await sql.query<{ display_name: string; nation: string | null; phone: string | null; address: string | null; porch_id: number | null; username: string | null; hide_church: unknown }>(
-      `select p.display_name, d.nation, d.phone, d.address, p.porch_id, p.username, p.hide_church
-         from profiles p left join member_details d on d.user_id = p.user_id and d.porch_id = p.porch_id
+      `select p.display_name, d.nation, d.phone, d.address, my_porch(p.user_id) as porch_id, p.username, p.hide_church
+         from profiles p left join member_details d on d.user_id = p.user_id and d.porch_id = my_porch(p.user_id)
         where p.user_id = $1`,
       [context.userId],
     );
@@ -418,7 +429,7 @@ export const saveMyDetails = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     await ensure(sql);
-    const me = await sql.query<{ porch_id: number | null }>("select porch_id from profiles where user_id = $1", [context.userId]);
+    const me = await sql.query<{ porch_id: number | null }>("select my_porch($1) as porch_id", [context.userId]);
     const porch = me[0]?.porch_id;
     if (!porch) return { ok: false as const, error: "Your details are kept once you're a member of a church." };
     const problem = checkDetails(data);
@@ -446,9 +457,9 @@ export const memberDetailsOf = createServerFn({ method: "POST" })
     const rows = await sql.query<{ display_name: string; nation: string | null; phone: string | null; address: string | null; email: string | null }>(
       `select p.display_name, d.nation, d.phone, d.address, u.email
          from profiles p
-         left join member_details d on d.user_id = p.user_id and d.porch_id = p.porch_id
+         left join member_details d on d.user_id = p.user_id and d.porch_id = my_porch($2)
          left join "user" u on u.id = p.user_id
-        where p.user_id = $1 and p.porch_id is not null and p.porch_id = my_porch($2)`,
+        where p.user_id = $1 and in_porch(p.user_id, my_porch($2))`,
       [data.userId, context.userId],
     );
     const row = rows[0];

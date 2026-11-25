@@ -1481,7 +1481,7 @@ export const listLeaders = createServerFn({ method: "POST" })
     await ensureLeaders(sql);
     const me = await leaderFlags(sql, context.userId);
     if (!me.founder) return { ok: false as const, leaderIds: [] as string[] };
-    const rows = await sql<{ user_id: string }>`select user_id from profiles where is_leader = true and porch_id = my_porch(${context.userId})`;
+    const rows = await sql<{ user_id: string }>`select user_id from profiles where is_leader = true and in_porch(user_id, my_porch(${context.userId}))`;
     return { ok: true as const, leaderIds: rows.map((row) => row.user_id) };
   });
 

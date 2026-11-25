@@ -273,11 +273,6 @@ export function JoinChurch({ account: me }: { account: Account }) {
                 </span>
               </p>
             ))}
-            {started.some((porch) => porch.kind !== "church") ? (
-              <p className="pb-quiet" style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>
-                Members for ministry, psalmist and organisation porches come with the next change. Until then, join a church with its code to use the rest of Porchbook.
-              </p>
-            ) : null}
           </div>
         ) : null}
         <Link to="/start" className="pb-btn2" style={{ textDecoration: "none" }}>Start a porch</Link>

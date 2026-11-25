@@ -616,6 +616,65 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
   - **New accounts:** Hope Newcomer (let into Grace Test Church) and Joy Waiting (still waiting to join Grace Test Church).
   - **Test details** were filled in for Test Member and Grace Tester.
 
+### 14. Many porches, steps M1 and M2: Psalmist, members for every porch type, and the membership list (25 Nov 2026)
+- **Decisions recorded:** JT's answers to the three questions became BUILD-BRIEF.md decisions 35 to 37:
+  - 35: nation and address are deleted (only the city is asked now);
+  - 36: one-to-one chats belong to the two people;
+  - 37: you show as online in every porch you belong to.
+- **M1: names and types**
+  - **"Gospel artist" is now "Psalmist"** everywhere: the Start a porch choices, Help and FAQ, the public porch's text, and the stored type. Any porch already saved as a gospel artist becomes a psalmist by itself.
+  - **Every porch type has members and an invite code:** church, ministry, psalmist and organisation alike. Porches that had no code get one.
+  - The church-only rules are gone. Offices can be created in any porch, and Start a porch now says "Every porch has members, and you'll be its first member and admin". The menu says "A church, ministry, psalmist or organisation porch".
+- **M2: the membership list underneath**
+  - A new list, `porch_members`, holds one row per person per porch, with the full name, phone and city they gave that porch.
+  - The profile's porch now means **"the porch you've switched to"**, and it only counts while you're still a member there.
+  - All existing screens follow it unchanged.
+  - **Existing accounts:**
+    - everyone becomes a member of the porch they're in;
+    - whoever started a porch becomes its member and admin (**including JT's Organisation porch**);
+    - the admins of ministry, psalmist and organisation porches become members too;
+    - members' phone numbers are copied across.
+  - **Underneath, for the next steps:** switching porches (refused for a porch you're not in) and "my porches", which the switcher (M3) will use. Two people "share a porch" now means at least one porch in common.
+- **What you see change:**
+  - Someone with no church who started a porch is now **inside their porch**, instead of being stuck on "Join your church's porch".
+  - A starter who already belongs to a porch stays where they are, and is told the new porch is one of their porches.
+  - The person who started the porch isn't asked for nation and address (they're being dropped in M4).
+  - Everything else, Phaneroo included, looks the same.
+- **Two gaps closed on the way:**
+  - "Remove from the porch" (the roll) now only works on someone in the admin's **own** porch.
+  - Someone who is also in other porches only leaves this one; their account stays.
+  - The roll only shows offices of the porch you're in.
+- **Rules changed:**
+  - Decisions 1, 9 and 24–25 (members for all four types).
+  - porchbook-state.md's "one church per person" is replaced.
+- **Files changed:**
+  - `porch-foundation.ts` (the list, the database questions, the one-time moves)
+  - `porch-join.ts` (codes for all types, starting, switching, my porches)
+  - `membership.ts`, `roll.ts`, `offices.ts`, `api.ts`, `groups.ts`, `hoo-reports.ts`, `presence.ts`, `transport-board.ts`
+  - `start-porch.tsx`, `account-screens.tsx`, `frame.tsx`, `faq.ts`, `index.tsx`
+  - the test helper `api/porch-test.ts`, `scripts/online-test-data.mjs`
+- **Checked:**
+  - The type check and the build pass.
+  - **The two-church test: 230 passed, 0 failed.** All of the earlier checks still pass, with three updated for the new rules:
+    - a ministry now has an invite code;
+    - a member may start a second porch;
+    - a made-up code finds nothing.
+  - **New checks with Cara, who is in both Porch A and Porch B:**
+    - switched to B she sees only B, and switched to A only A (feed and people);
+    - what she posts in A stays in A;
+    - switching to a porch she's not in is refused;
+    - A's admin never sees the details she gave B;
+    - Ben and Cara share a porch, but Ben and Abe don't;
+    - B's admin has no power in A;
+    - once she's no longer in A, A closes for her at once.
+  - Psalmist works, and the old "gospel_artist" type is refused.
+  - On this computer, the test account that started three Organisation porches is now inside the first one.
+- **Pictures:** `../after-m1m2/`.
+- **Not done yet (later steps):**
+  - the switcher on screen (M3);
+  - the new join form, and deleting nation and address (M4);
+  - Serve forms are still one per person. They need to become one per porch before the switcher, so one porch's admins can't see a form filled in for another (noted for M4).
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).

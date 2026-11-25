@@ -186,6 +186,15 @@ These **replace** earlier decisions where they clash: in particular decision 1 a
 32. **Creating a porch:** the country is chosen from a **searchable drop-down list**.
 33. **Messages and calls only between people who share at least one porch.**
 34. **Moving church (the old Stage 5b) becomes simply "Leave this porch".** You can leave any porch you belong to. Your other porches are not affected.
+35. **Nation and address are deleted.** The nation and address members already gave are removed. Porchbook only asks for the city now.
+36. **One-to-one chats belong to the two people, not to a porch.**
+    - They show whichever porch you've switched to.
+    - They're allowed while the two people share at least one porch.
+    - They become read-only if the two no longer share any porch.
+    - Group chats and office conversations stay with their own porch.
+37. **"On the porch now":** a person shows as online in **every** porch they belong to.
+    - The "Show me on the porch" switch covers all their porches at once.
+    - The rule "if you hide, you can't see others" stays.
 
 **New order of work:** the many-porches change (planned in PLAN-MULTI-CHURCH.md, section 11) comes next, before Stage 5d (admin levels). Stage 5b is replaced by "Leave this porch" inside that change.
 

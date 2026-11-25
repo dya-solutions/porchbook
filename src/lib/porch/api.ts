@@ -501,7 +501,7 @@ export const getFeed = createServerFn({ method: "POST" })
     const [posts, me, counts] = await Promise.all([
       hydratePosts(sql, page, context.userId),
       loadMe(sql, context.userId),
-      sql<{ n: number }>`select count(*)::int as n from profiles where porch_id = my_porch(${context.userId})`,
+      sql<{ n: number }>`select count(*)::int as n from profiles where in_porch(user_id, my_porch(${context.userId}))`,
     ]);
     let ordered = posts;
     if (!data.before && data.mine) {
@@ -915,7 +915,7 @@ export const listPeople = createServerFn({ method: "POST" })
     const sql = await getSql();
     await touchProfile(sql, context.userId, seed);
     const rows = await sql.query<ProfileRow>(
-      `select ${PROFILE_COLS} from profiles where porch_id = my_porch($1) order by lower(display_name) asc`,
+      `select ${PROFILE_COLS} from profiles where in_porch(user_id, my_porch($1)) order by lower(display_name) asc`,
       [context.userId],
     );
     const people: PublicProfile[] = rows.map((row) => toPublic(row));
@@ -1418,7 +1418,7 @@ export const sendToAll = createServerFn({ method: "POST" })
     const { ensureChat } = await import("@/lib/porch/chat");
     await ensureChat(sql);
     const people = await sql.query<{ user_id: string }>(
-      "select user_id from profiles where user_id <> $1 and porch_id = my_porch($1)",
+      "select user_id from profiles where user_id <> $1 and in_porch(user_id, my_porch($1))",
       [context.userId],
     );
     let sent = 0;

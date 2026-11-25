@@ -149,7 +149,7 @@ try {
   const annDesk = await ann.call("lib/porch/api.ts", "founderDesk");
   record("foundation", "admins", "…and the app gives them no admin tools", annDesk?.isFounder === false);
 
-  const kinds = ["church", "ministry", "gospel_artist", "organisation"];
+  const kinds = ["church", "ministry", "psalmist", "organisation"];
   const made = [];
   for (const kind of kinds) made.push(await helper("createPorch", { name: `Test ${kind}`, kind }));
   record("foundation", "porches", "All four porch types can be created", made.every((m) => m.ok));
@@ -208,8 +208,8 @@ try {
   const caraTwice = await cara.call("lib/porch/porch-join.ts", "joinWithCode", { code: codeA });
   const caraStill = await helper("person", { email: cara.email });
   record("isolation", "joining", "Cara can't hop into Porch A with A's code while she's in Porch B", caraTwice?.ok === false && caraStill.porch_id === porchB);
-  const ministryCode = await cara.call("lib/porch/porch-join.ts", "checkInvite", { code: "MINISTRY-CODE" });
-  record("sanity", "joining", "Only church porches take members by code", ministryCode?.ok === false);
+  const madeUpCode = await cara.call("lib/porch/porch-join.ts", "checkInvite", { code: "MINISTRY-CODE" });
+  record("sanity", "joining", "A made-up code finds no porch", madeUpCode?.ok === false);
   const abeInvite = await abe.call("lib/porch/porch-join.ts", "myInvite");
   const abeReset = await abe.call("lib/porch/porch-join.ts", "resetInvite");
   record("sanity", "joining", "A member sees the invite code but can't reset it", abeInvite?.ok === true && abeInvite?.code === codeA && abeReset?.ok === false);
@@ -237,10 +237,14 @@ try {
   const abeMinistry = await abe.call("lib/porch/porch-join.ts", "startPorch", { kind: "ministry", name: "Abe Ministry", place: "Mbarara, Uganda" });
   const abeAfterMinistry = await helper("person", { email: abe.email });
   const ministry = (await helper("porchInfo", { name: "Abe Ministry" })).porch;
-  record("sanity", "starting", "Abe starts a ministry porch and stays a member of Porch A", abeMinistry?.ok === true && ministry?.kind === "ministry" && ministry?.status === "waiting" && abeAfterMinistry.porch_id === porchA && !ministry?.invite_code);
+  record("sanity", "starting", "Abe starts a ministry porch: he's its first member, and stays switched to Porch A", abeMinistry?.ok === true && abeMinistry?.current === false && ministry?.kind === "ministry" && ministry?.status === "waiting" && abeAfterMinistry.porch_id === porchA && (abeAfterMinistry.porches ?? []).includes(ministry?.id));
   record("isolation", "starting", "Running a ministry porch doesn't make Abe an admin of his church", abeAfterMinistry.admin === false);
-  const abeChurch = await abe.call("lib/porch/porch-join.ts", "startPorch", { kind: "church", name: "Abe's Church", place: "Mbarara, Uganda" });
-  record("sanity", "starting", "A church member can't start a second church (one church each)", abeChurch?.ok === false);
+  const ministryInvite = await cara.call("lib/porch/porch-join.ts", "checkInvite", { code: ministry?.invite_code });
+  record("sanity", "starting", "Every porch type has an invite code now (Abe's ministry too)", /^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/.test(ministry?.invite_code ?? "") && ministryInvite?.ok === true && ministryInvite?.name === "Abe Ministry");
+  const psalmist = await dee.call("lib/porch/porch-join.ts", "startPorch", { kind: "psalmist", name: "Dee Psalms", place: "Gulu, Uganda" });
+  record("sanity", "starting", "A Psalmist porch can be started (the type that was \"Gospel artist\")", psalmist?.ok === true && psalmist?.kind === "psalmist");
+  const oldKind = await dee.call("lib/porch/porch-join.ts", "startPorch", { kind: "gospel_artist", name: "Old Kind", place: "Gulu, Uganda" });
+  record("sanity", "starting", "The old type name \"gospel_artist\" is no longer accepted", oldKind?.ok === false);
   const abePorches = await abe.call("lib/porch/porch-join.ts", "myPorches");
   record("sanity", "starting", "Abe sees his ministry under Your porches", Array.isArray(abePorches) && abePorches.some((p) => p.name === "Abe Ministry" && p.status === "waiting"));
   const eve = await person("Eve Branch", "eve@two-church.test");
@@ -785,6 +789,47 @@ try {
   await ann.call("lib/porch/rhema.ts", "setRhema", { url: "https://www.youtube.com/watch?v=CCCCCCCCCCC" });
   await ben.call("lib/porch/rhema.ts", "setRhema", { url: "" });
   record("isolation", "settings", "Rhemaclip: B removing its clip doesn't remove A's", has(await abe.call("lib/porch/rhema.ts", "getRhema"), "CCCCCCCCCCC"));
+
+  // ---------------- Many porches per person (M2: the membership list underneath) ----------------
+  console.log("\nCara in two porches (Porch A and Porch B)");
+  await ben.call("lib/porch/api.ts", "createPost", { room: "proclaim", body: "A private post in Porch B" });
+  await helper("addMember", { email: cara.email, porchId: porchA });
+  const caraBoth = await helper("person", { email: cara.email });
+  record("sanity", "joining", "Cara is a member of both porches, and stays switched to Porch B", caraBoth.porch_id === porchB && [porchA, porchB].every((id) => (caraBoth.porches ?? []).includes(id)));
+  const caraList = await cara.call("lib/porch/porch-join.ts", "myMemberships");
+  record("sanity", "joining", "Cara's porches list shows A and B, with B as the one she's in now", Array.isArray(caraList) && caraList.length === 2 && caraList.find((p) => p.id === porchB)?.current === true && caraList.find((p) => p.id === porchA)?.current === false);
+  const caraInB = await cara.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  record("isolation", "feed", "Cara switched to B sees B's posts and none of A's", has(caraInB, "A private post in Porch B") && !has(caraInB, "A private post in Porch A"));
+  const caraToA = await cara.call("lib/porch/porch-join.ts", "switchPorch", { porchId: porchA });
+  const caraInA = await cara.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  record("isolation", "feed", "Cara switches to A: she sees A's posts and none of B's", caraToA?.ok === true && has(caraInA, "A private post in Porch A") && !has(caraInA, "A private post in Porch B"));
+  const caraPeopleA = await cara.call("lib/porch/roll.ts", "listPorch");
+  record("isolation", "people", "Cara switched to A sees A's people, not B's", !has(caraPeopleA, "Ben Other") && (has(caraPeopleA, "Ann Admin") || caraPeopleA?.ok === false));
+  const caraPostsA = await cara.call("lib/porch/api.ts", "createPost", { room: "proclaim", body: "Cara's post while in A" });
+  const benAfter = await ben.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  const abeAfter = await abe.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  record("isolation", "feed", "What Cara posts while in A stays in A (Ben never sees it; Abe does)", caraPostsA?.ok === true && !has(benAfter, "Cara's post while in A") && has(abeAfter, "Cara's post while in A"));
+  const caraToD = await cara.call("lib/porch/porch-join.ts", "switchPorch", { porchId: porchD?.id });
+  const caraStillA = await helper("person", { email: cara.email });
+  record("isolation", "joining", "Switching to a porch you're not a member of is refused", caraToD?.ok === false && caraStillA.porch_id === porchA);
+  const annSeesCara = await ann.call("lib/porch/membership.ts", "memberDetailsOf", { userId: cara.userId });
+  record("isolation", "details", "A's admin never sees the details Cara gave Porch B", !has(annSeesCara, "+256700000010") && !has(annSeesCara, "Plot 1, Gulu"));
+  const benCara = await helper("pair", { email: ben.email, other: cara.email, porchId: porchA });
+  const benAbe = await helper("pair", { email: ben.email, other: abe.email, porchId: porchA });
+  record("sanity", "chat", "Ben and Cara share a porch (B), so they may message each other", benCara.same === true);
+  record("isolation", "chat", "Ben and Abe share no porch", benAbe.same === false);
+  record("isolation", "admins", "Being B's admin gives Ben no admin power in A (even though he was once listed there)", benCara.admin_of === false);
+  await cara.call("lib/porch/porch-join.ts", "switchPorch", { porchId: porchB });
+  const benStillAdmin = await ben.call("lib/porch/api.ts", "founderDesk");
+  record("sanity", "admins", "Ben is still B's admin", benStillAdmin?.isFounder === true);
+  await cara.call("lib/porch/porch-join.ts", "switchPorch", { porchId: porchA });
+  await helper("removeMember", { email: cara.email, porchId: porchA });
+  const caraRemoved = await cara.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  const caraRemovedState = await helper("person", { email: cara.email });
+  record("isolation", "feed", "Once Cara is no longer in A, A closes for her at once", !has(caraRemoved, "A private post in Porch A") && !has(caraRemoved, "Cara's post while in A") && (caraRemovedState.porch_id === null || caraRemovedState.porch_id === undefined));
+  const caraBackToB = await cara.call("lib/porch/porch-join.ts", "switchPorch", { porchId: porchB });
+  const caraBackToA = await cara.call("lib/porch/porch-join.ts", "switchPorch", { porchId: porchA });
+  record("isolation", "joining", "…she can still switch to B, and can no longer switch to A", caraBackToB?.ok === true && caraBackToA?.ok === false);
 
   // ---------------- Summary ----------------
   const failed = results.filter((r) => !r.pass && (r.kind !== "isolation" || AREAS_DONE.includes(r.area)));
