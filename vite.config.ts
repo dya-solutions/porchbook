@@ -190,6 +190,8 @@ export default defineConfig(({ command, isPreview }) => ({
       ? [
           nitro({
             preset: "vercel",
+            // Porchbook: run the app's functions in Frankfurt (fra1), next to the Neon database.
+            vercel: { functions: { regions: ["fra1"] } },
             // Auto-registers server/middleware/* (the PWA install page +
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.

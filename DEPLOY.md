@@ -7,9 +7,9 @@
 | Part | Where | Notes |
 | --- | --- | --- |
 | Code | A **private** GitHub repository called `porchbook` | Never make it public: it contains the `bibles-private` folder. |
-| Website | A Vercel project called `porchbook`, in JT's Vercel account | It is separate from the Numbers Radio project. |
+| Website | A Vercel project called `porchbook`, in JT's Vercel account (team DYA) | It is separate from the Numbers Radio project. Its functions run in Frankfurt (fra1), next to the database. |
 | Database | Neon (free), added from the Vercel project's **Storage** tab | Vercel fills in `DATABASE_URL` by itself. The app creates and updates its own tables when it starts. |
-| Photos and files | Vercel Blob (free), added from the **Storage** tab | Vercel fills in `BLOB_READ_WRITE_TOKEN` by itself. Files can't be kept on Vercel's disk, so uploads go here. |
+| Photos and files | Vercel Blob (free), added from the **Storage** tab | Vercel fills in `BLOB_STORE_ID` by itself. Files can't be kept on Vercel's disk, so big uploads go here. |
 | Emails | Brevo (free plan: 300 emails a day), sending from no-reply@porchbook.app as "Porchbook" | Online, codes are always really emailed. The "code on screen" test mode only works on JT's computer. |
 | Address | test.porchbook.app → Vercel | Added as a CNAME record where porchbook.app was bought. porchbook.app itself is unused for now. |
 | Search engines | Told not to list the site | Controlled by the `PORCH_NOINDEX` and `VITE_PORCH_NOINDEX` settings. |
@@ -21,7 +21,8 @@ None of these are ever in the code or in git.
 | Setting | What it is | Where the value comes from |
 | --- | --- | --- |
 | `DATABASE_URL` | The Neon database's address | Added automatically when Neon is connected |
-| `BLOB_READ_WRITE_TOKEN` | Permission to store files in Blob | Added automatically when Blob is connected |
+| `BLOB_STORE_ID` | Which Blob store to use | Added automatically when Blob is connected. Vercel now connects Blob this way, without a separate key. |
+| `BLOB_READ_WRITE_TOKEN` | Lets a phone send a big file straight to Blob | **Not set yet.** Only the "previously" video needs it, and that screen isn't in the app today. Online it says "storage isn't connected" until this is added from the Blob store's page. |
 | `BETTER_AUTH_SECRET` | Keeps sign-ins safe | A long random value, made on JT's computer in `ONLINE-SECRET.txt` (next to the code folder, never uploaded) |
 | `BETTER_AUTH_URL` | The site's own address | `https://test.porchbook.app` |
 | `BREVO_API_KEY` | Lets the site send emails through Brevo | Brevo → your name (top right) → SMTP & API → API Keys → Generate a new API key |
