@@ -219,6 +219,12 @@ export const startPorch = createServerFn({ method: "POST" })
     }
     const waiting = await sql.query<{ n: string }>("select count(*)::text as n from porches where created_by = $1 and status = 'waiting'", [context.userId]);
     if (Number(waiting[0]?.n) >= 3) return { ok: false as const, error: "You already have porches waiting for approval. Wait for those first." };
+    // The same porch sent twice (a double tap, a slow connection): give back the one already made.
+    const same = await sql.query<{ id: number; invite_code: string | null }>(
+      "select id, invite_code from porches where created_by = $1 and lower(name) = lower($2) and kind = $3 and status = 'waiting' order by id limit 1",
+      [context.userId, data.name, data.kind],
+    );
+    if (same[0]) return { ok: true as const, id: same[0].id, name: data.name, kind: data.kind, code: same[0].invite_code };
     let mainPorchId: number | null = null;
     if (data.branch) {
       if (data.kind !== "church") return { ok: false as const, error: "Only a church porch can be a branch." };

@@ -3,7 +3,7 @@
 //      linking branches is Stage 7);
 //   2. your account (skipped when you're already signed in);
 //   3. done: the porch waits for the platform owner's approval.
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { findMainPorches, PORCH_KINDS, startPorch, type PorchKind } from "@/lib/porch/porch-join";
 import { reloadPorchLook } from "@/components/porch/pb-shell";
@@ -36,6 +36,7 @@ export function StartPorch({ account }: { account: (note: ReactNode) => ReactNod
   const { user, isPending } = useCurrentUserState();
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const creating = useRef(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<{ name: string; kind: PorchKind; code: string | null } | null>(null);
@@ -79,12 +80,16 @@ export function StartPorch({ account }: { account: (note: ReactNode) => ReactNod
   const set = (change: Partial<Draft>) => setDraft((current) => ({ ...current, ...change }));
 
   async function create(details: Draft) {
-    if (!user) return;
+    if (!user || creating.current) return;
+    // Only one start at a time: a sign-in refresh mid-way must not send the same porch twice.
+    creating.current = true;
+    keepDraft(null);
     setBusy(true);
     setError("");
     const result = await startPorch({
       data: { ...details, displayName: user.displayName ?? "", email: user.primaryEmail ?? null },
     }).catch(() => null);
+    creating.current = false;
     setBusy(false);
     if (!result?.ok) {
       setError(result?.error ?? "That didn't go through. Try again.");
@@ -103,9 +108,12 @@ export function StartPorch({ account }: { account: (note: ReactNode) => ReactNod
     if (draft.name.trim().length < 3) return setError("Give the porch its name.");
     if (!draft.place.trim()) return setError("Add the town and country.");
     if (draft.branch && !draft.mainPorchId) return setError("Find the main church's porch, or switch off \"This is a branch\".");
-    keepDraft(draft);
+    // The draft is kept only for someone who still has to sign in first.
     if (user) void create(draft);
-    else setStep(2);
+    else {
+      keepDraft(draft);
+      setStep(2);
+    }
   }
 
   const kindName = (kind: PorchKind) => PORCH_KINDS.find((item) => item.key === kind)?.name ?? "Porch";
@@ -252,10 +260,10 @@ export function StartPorch({ account }: { account: (note: ReactNode) => ReactNod
                 </p>
               </div>
             ) : (
-              <p className="pb-quiet" style={{ margin: 0 }}>You stay a member of your own church. You'll find this porch under Your account → Your porches.</p>
+              <p className="pb-quiet" style={{ margin: 0 }}>You'll find this porch under Your account → Your porches. If you're not in a church yet, it's listed on the next screen instead.</p>
             )}
             <button type="button" className="pb-btn" onClick={() => window.location.replace("/?room=all")}>
-              {done.kind === "church" ? "Open your porch" : "Back to my porch"}
+              {done.kind === "church" ? "Open your porch" : "Continue"}
             </button>
           </>
         ) : null}

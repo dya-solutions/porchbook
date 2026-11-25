@@ -8,7 +8,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { signOut } from "@/lib/auth/client";
-import { checkInvite } from "@/lib/porch/porch-join";
+import { checkInvite, myPorches } from "@/lib/porch/porch-join";
 import {
   accountState,
   cancelJoinRequest,
@@ -20,7 +20,7 @@ import {
   type MemberDetails,
 } from "@/lib/porch/membership";
 import { BrandLogo } from "@/components/porch/brand-logo";
-import { reloadPorchLook } from "@/components/porch/pb-shell";
+import { reloadPorchLook, usePorchLook } from "@/components/porch/pb-shell";
 import { keepJoinCode, keptJoinCode } from "@/components/porch/welcome-screen";
 
 export type Account = Awaited<ReturnType<typeof accountState>>;
@@ -191,6 +191,13 @@ export function JoinChurch({ account: me }: { account: Account }) {
   const [details, setDetails] = useState<MemberDetails>({ fullName: user?.displayName ?? "", nation: "", phone: "", address: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // Someone not in a church yet may still run porches (a ministry, psalmist or organisation porch
+  // they started) or be the platform owner: show those here, so this screen is never a dead end.
+  const look = usePorchLook();
+  const [started, setStarted] = useState<{ id: number; name: string; kind: string; status: string }[]>([]);
+  useEffect(() => {
+    myPorches().then(setStarted).catch(() => undefined);
+  }, []);
 
   // A code from an invite link (or typed before making the account) is used straight away.
   useEffect(() => {
@@ -252,6 +259,27 @@ export function JoinChurch({ account: me }: { account: Account }) {
           {error ? <p className="text-danger" style={{ margin: 0, fontSize: 14 }}>{error}</p> : null}
           <button type="submit" className="pb-btn" disabled={busy || !code.trim()}>{busy ? "Checking…" : "Find my church"}</button>
         </form>
+        {look?.owner ? (
+          <Link to="/porches-waiting" className="pb-btn2" style={{ textDecoration: "none" }}>Porches waiting for approval</Link>
+        ) : null}
+        {started.length ? (
+          <div className="pb-card welcome-card">
+            <p className="ofc-lbl" style={{ margin: 0 }}>Porches you started</p>
+            {started.map((porch) => (
+              <p key={porch.id} style={{ margin: 0, fontSize: 15, lineHeight: 1.45 }}>
+                <strong>{porch.name}</strong>{" "}
+                <span className="pb-quiet">
+                  · {porch.status === "waiting" ? "waiting for approval" : porch.status === "approved" ? "approved" : porch.status === "declined" ? "not approved" : porch.status}
+                </span>
+              </p>
+            ))}
+            {started.some((porch) => porch.kind !== "church") ? (
+              <p className="pb-quiet" style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>
+                Members for ministry, psalmist and organisation porches come with the next change. Until then, join a church with its code to use the rest of Porchbook.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         <Link to="/start" className="pb-btn2" style={{ textDecoration: "none" }}>Start a porch</Link>
         <Link to="/" search={{ room: "all", view: "public" } as never} className="pb-link" style={{ alignSelf: "center", color: "var(--pb-main)" }}>
           Look at the public porch meanwhile
