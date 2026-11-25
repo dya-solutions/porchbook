@@ -100,6 +100,15 @@ function toSql(run: Run): Sql {
   return sql;
 }
 
+/** A set-up statement (create/alter/do…) that lost a race with another copy of the app. */
+function isSetupRace(text: string, err: unknown): boolean {
+  if (!/^\s*(create|alter|do|drop|comment|grant)\b/i.test(text)) return false;
+  const code = (err as { code?: string } | null)?.code;
+  // 23505: two copies wrote the same catalog row; 42P07/42710: "already exists";
+  // XX000 "tuple concurrently updated"; 40P01 deadlock.
+  return code === "23505" || code === "42P07" || code === "42710" || code === "XX000" || code === "40P01";
+}
+
 function createNeonSql(): Promise<Sql> {
   globalRef.__pgSqlPromise__ ??= (async () => {
     // Regular Postgres driver: node-postgres (`pg`) — works directly with Neon's
@@ -111,8 +120,18 @@ function createNeonSql(): Promise<Sql> {
     const pool = new Pool({ connectionString: databaseUrl });
     await migrateNeon(pool);
     return toSql(async <T>(text: string, params: unknown[]) => {
-      const res = await pool.query(text, params);
-      return res.rows as T[];
+      // Online, two copies of the app can start at the same moment and set up the same
+      // table or function together; Postgres then refuses one of them. The setup is safe
+      // to repeat, so wait a moment and try again instead of failing the visit.
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          const res = await pool.query(text, params);
+          return res.rows as T[];
+        } catch (err) {
+          if (attempt >= 4 || !isSetupRace(text, err)) throw err;
+          await new Promise((resolve) => setTimeout(resolve, 150 + Math.random() * 350 * (attempt + 1)));
+        }
+      }
     });
   })().catch((err) => {
     globalRef.__pgSqlPromise__ = undefined;
