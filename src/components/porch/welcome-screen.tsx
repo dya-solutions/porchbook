@@ -162,7 +162,7 @@ export function WelcomeScreen({ account, signedIn = false }: { account?: (mode: 
           <Plus /> Start a porch
         </Link>
         <p className="welcome-small" style={{ margin: "-8px 0 0", textAlign: "center", fontSize: 13 }}>
-          For churches, ministries, artists and organisations
+          For churches, ministries, psalmists and organisations
         </p>
         {signedIn ? (
           <p style={{ margin: 0, textAlign: "center", fontSize: 15 }}>
