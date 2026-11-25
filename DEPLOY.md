@@ -34,6 +34,28 @@ None of these are ever in the code or in git.
 
 **Never set `PORCH_TEST_MODE` online.** (The site refuses it anyway.)
 
+## Test data (while JT builds)
+
+Two made-up churches, **Alpha Test Church (TEST)** and **Bravo Test Church (TEST)**, with made-up people. They're added by `scripts/online-test-data.mjs`.
+- **Every test person's email ends in `@test.porchbook.app`.** That is a made-up address nobody can own, so no code is ever emailed to them.
+- **Every test church** is listed in the table `porch_test_data`, and its name ends in "(TEST)".
+- **Their passwords** are only in `TEST-ACCOUNT.md`, next to the code folder (never uploaded).
+
+The script needs the database's address (from Neon: Vercel → Storage → the database → **.env.local** → `DATABASE_URL`). It's kept in `NEON-URL.txt` next to the code folder, as one line `DATABASE_URL=…`, and is never uploaded.
+
+- See what's there: `node --env-file=../NEON-URL.txt scripts/online-test-data.mjs show`
+- Add the test churches: `node --env-file=../NEON-URL.txt scripts/online-test-data.mjs add ../TEST-ACCOUNT.md`
+
+## Before launch
+
+1. **Remove all test data in one go.**
+   - First count what would go (nothing is removed): `node --env-file=../NEON-URL.txt scripts/online-test-data.mjs remove`
+   - Then really remove it: `node --env-file=../NEON-URL.txt scripts/online-test-data.mjs remove --yes`
+   - **What goes:** every `@test.porchbook.app` account, both test churches, and everything posted in them.
+   - **What stays:** real people who joined a test church to try it just leave it; their accounts stay.
+2. Remove `PORCH_NOINDEX` and `VITE_PORCH_NOINDEX` from Vercel's settings and rebuild, so search engines may list the site.
+3. Delete the test passwords section from `TEST-ACCOUNT.md`.
+
 ## How to update the site after a future stage
 
 1. On JT's computer, Claude saves the stage (an undo point) as usual.
