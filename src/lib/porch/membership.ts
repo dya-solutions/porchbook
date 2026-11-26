@@ -235,17 +235,35 @@ async function isVerified(sql: Sql, userId: string) {
 }
 
 /** An optional, unique username (for the public porch). Empty removes it. */
+export const USERNAME_SHAPE = /^[a-z0-9_.]{3,20}$/;
+
+/** Signed out too: is this username free? (Create account, decision 44.) */
+export const usernameFree = createServerFn({ method: "POST" })
+  .validator((input: unknown) => ({ username: text(asRecord(input).username, 40).replace(/^@/, "").toLowerCase() }))
+  .handler(async ({ data }) => {
+    if (!USERNAME_SHAPE.test(data.username)) return { ok: false as const, error: "Use 3 to 20 letters, numbers, dots or underscores, with no spaces." };
+    const sql = await getSql();
+    await ensure(sql);
+    const taken = await sql.query("select 1 from profiles where lower(username) = $1", [data.username]);
+    if (taken.length) return { ok: false as const, error: "Someone already has that username. Try another." };
+    return { ok: true as const, username: data.username };
+  });
+
 export const setUsername = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((input: unknown) => ({ username: text(asRecord(input).username, 40).replace(/^@/, "").toLowerCase() }))
+  .validator((input: unknown) => {
+    const raw = asRecord(input);
+    return { username: text(raw.username, 40).replace(/^@/, "").toLowerCase(), seed: seedOf(raw) };
+  })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     await ensure(sql);
+    await touchProfile(sql, context.userId, data.seed);
     if (!data.username) {
       await sql.query("update profiles set username = null where user_id = $1", [context.userId]);
       return { ok: true as const, username: "" };
     }
-    if (!/^[a-z0-9_.]{3,20}$/.test(data.username)) {
+    if (!USERNAME_SHAPE.test(data.username)) {
       return { ok: false as const, error: "Use 3 to 20 letters, numbers, dots or underscores, with no spaces." };
     }
     const taken = await sql.query("select 1 from profiles where lower(username) = $1 and user_id <> $2", [data.username, context.userId]);
@@ -375,7 +393,7 @@ export const decideJoinRequest = createServerFn({ method: "POST" })
       }
       return { ok: true as const };
     }
-    const joined = await sql.query<{ user_id: string }>("update profiles set porch_id = $2, display_name = $3 where user_id = $1 and porch_id is null returning user_id", [
+    const joined = await sql.query<{ user_id: string }>("update profiles set porch_id = $2, display_name = $3 where user_id = $1 and my_porch(user_id) is null returning user_id", [
       request.user_id,
       request.porch_id,
       request.full_name,

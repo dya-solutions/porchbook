@@ -341,7 +341,9 @@ This is several weeks of careful work in small stages. Phaneroo keeps working th
 
 ---
 
-## 11. The many-porches change (plan, 25 November — not built yet)
+## 11. The many-porches change (plan, 25 November; partly replaced by section 12 on 26 November)
+
+> **26 November:** decisions 38–46 changed direction (only churches have members, one church each; ministries have admins only). Steps M1 and M2 were built; **M3 to M9 are replaced by section 12.**
 
 This follows BUILD-BRIEF.md decisions 24–34. They replace "one church per person", "only churches have members", nation and address on join requests, and Stage 5b (moving church). **It comes next, before Stage 5d (admin levels).**
 
@@ -475,3 +477,48 @@ The questions were:
 1. **Nation and address already given** by members: delete them (recommended, since they're no longer asked for or agreed to) or keep them hidden?
 2. **A private chat between two people who share two porches:** it belongs to the porch where it was started (recommended), or shows in both?
 3. **"On the porch now":** you appear only in the porch you've switched to (recommended), or in all your porches at once?
+
+---
+
+## 12. Churches with members, ministries with admins (plan, 26 November)
+
+This follows BUILD-BRIEF.md decisions 38–46, which **replace much of section 11**.
+
+**What's kept from section 11:** the membership list (`porch_members`, built in M2), the database question "the porch this person is in" (`my_porch`, which checks the membership list), and steps M1 and M2 as built.
+
+**What changes:**
+- **Only churches have members, and only one church each.** So the "My porches" switcher (M3) and requests to several porches (M4) are dropped.
+- **Ministries have an admin team and followers only.** The person switches between "Me" and the ministry they run.
+
+### 12.1 The new steps
+
+- **N1. Types, starting and signing up** (built 26 November).
+  - Church or Ministry (Music, Teaching, Other); existing Psalmist and Organisation porches become Ministry, type Other.
+  - One church each; ministries have no members, no invite code and no join requests.
+  - The landing page has only Log in and Create account. Create account asks for email, username and password, then the email code.
+  - Start a porch lives inside the app: name, then a searchable country list; for a ministry, its type and description.
+  - The approval list shows the ministry's type and description.
+- **N2. Joining a church** with full name, phone and city.
+  - The details are shared only with that church's admins.
+  - Nation and address are deleted (decision 35).
+  - Serve forms belong to the church.
+- **N3. "Me / Continue as [ministry]".** Tapping your picture or the porch badge switches between you and a ministry you run.
+  - A ministry's admins see the ministry's own page: its description, its admins, and later its public posts.
+  - "Leave this church" goes under Your account.
+- **N4. Names.** Full name inside the church, username on the public porch.
+- **N5. Find porches and Follow.** Search churches and ministries.
+  - Follow either kind.
+  - "Ask to join" appears for churches only.
+- **N6. Invites.** QR code (show and download) and the invite link flow, churches only.
+- **N7. Messages and calls** only between members of the same church, and between a ministry's own admins.
+- **Then:** the online test churches, then Stage 5d (admin levels), then Stage 6 (the public porch, where ministries post).
+
+### 12.2 How the two-church test changes
+
+- **Kept:** Porch A and Porch B, with Ann, Abe and Ben, and every isolation check.
+- **Removed:** Cara's two-porch checks from M2, since one church each makes them impossible. They're replaced by checks that:
+  - nobody can be in two churches;
+  - a ministry can't get members or join requests;
+  - a ministry's description and type reach the approval list.
+- **Later steps add:** "Me / Continue as" (a ministry admin acting as the ministry can't see the church's private posts), and messages between churches being refused.
+

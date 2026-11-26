@@ -14,6 +14,7 @@ import { LiteKey, LiteOffer } from "@/components/porch/lite-bits";
 import { NoteBell } from "@/components/porch/note-bell";
 import { WelcomeScreen } from "@/components/porch/welcome-screen";
 import { JoinChurch, MissingDetails, VerifyEmail, WaitingToJoin, detailsSkipped, useAccount } from "@/components/porch/account-screens";
+import { setUsername, usernameFree } from "@/lib/porch/membership";
 import { BrandLoading } from "@/components/porch/brand-logo";
 import { BottomNav, LookModeChoice, PbIcon, TopBar, usePorchLook } from "@/components/porch/pb-shell";
 import { NuggetLink } from "@/components/porch/nugget-bits";
@@ -134,15 +135,21 @@ export function AuthCard({ startMode = "join", note }: { startMode?: "join" | "e
       setError("Use at least 8 characters.");
       return;
     }
-    if (mode === "join" && name.trim().split(/\s+/).length < 2) {
-      setError("Add your full name (first and last name).");
-      return;
-    }
+    // Create account (decision 44): email, a unique username and a password, then the email code.
+    const username = name.trim().replace(/^@/, "").toLowerCase();
     setPending(true);
+    if (mode === "join") {
+      const free = await usernameFree({ data: { username } }).catch(() => null);
+      if (!free?.ok) {
+        setPending(false);
+        setError(free?.error ?? "Couldn't check that username. Try again.");
+        return;
+      }
+    }
     const result =
       mode === "join"
         ? await authClient.signUp.email({
-            name: name.trim(),
+            name: username,
             email: cleanEmail,
             password,
           })
@@ -160,19 +167,23 @@ export function AuthCard({ startMode = "join", note }: { startMode?: "join" | "e
       setPending(false);
       setMode("enter");
       setError("Account created. Sign in with that email.");
+      return;
+    }
+    if (mode === "join") {
+      await setUsername({ data: { username, displayName: username, email: cleanEmail } }).catch(() => undefined);
     }
   }
 
   return (
     <div className="rounded-3xl glass-edge bg-card p-5 shadow-sm sm:p-6">
-      <h2 className="font-display text-2xl text-ink">{mode === "join" ? "Create your account" : "Welcome back"}</h2>
+      <h2 className="font-display text-2xl text-ink">{mode === "join" ? "Create your account" : "Log in"}</h2>
       {note}
       <p className="mt-1 text-sm text-muted">
         {GROK_PROVIDERS.length > 0
           ? "Sign in with work Google, X, or an email just for this team."
           : mode === "join"
-            ? "Your email and a password you choose."
-            : "Sign in with your email and password."}
+            ? "Your email, a username and a password. We'll email you a 6-digit code to confirm it's you."
+            : "Log in with your email and password."}
       </p>
       {GROK_PROVIDERS.length > 0 && (
       <>
@@ -199,14 +210,19 @@ export function AuthCard({ startMode = "join", note }: { startMode?: "join" | "e
       <form onSubmit={onSubmit} className="grid gap-3">
         {mode === "join" ? (
           <label className="grid gap-1 text-sm font-medium text-ink">
-            Full name
+            Username
             <input
               className={fieldClass}
               value={name}
-              onChange={(event) => setName(event.target.value)}
-              autoComplete="name"
-              maxLength={60}
+              onChange={(event) => setName(event.target.value.replace(/\s/g, "").toLowerCase())}
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="e.g. grace.k"
+              maxLength={20}
             />
+            <span className="text-xs font-normal text-muted">Letters, numbers, dots or underscores. Shown on the public porch.</span>
           </label>
         ) : null}
         <label className="grid gap-1 text-sm font-medium text-ink">
@@ -249,7 +265,7 @@ export function AuthCard({ startMode = "join", note }: { startMode?: "join" | "e
         </label>
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         <button type="submit" className={primaryButtonClass} disabled={pending}>
-          {pending ? "One moment…" : mode === "join" ? "Create account" : "Sign in"}
+          {pending ? "One moment…" : mode === "join" ? "Create account" : "Log in"}
         </button>
       </form>
       <button
@@ -260,7 +276,7 @@ export function AuthCard({ startMode = "join", note }: { startMode?: "join" | "e
           setError("");
         }}
       >
-        {mode === "join" ? "Already have an account? Sign in" : "New here? Create an account"}
+        {mode === "join" ? "Already have an account? Log in" : "New here? Create an account"}
       </button>
       <Link to="/privacy" className="mt-1 flex min-h-11 items-center text-sm font-medium text-muted">
         Privacy
@@ -1238,7 +1254,7 @@ export function AccountCard({ user }: { user: AppUser }) {
         <Link to="/start">
           <Users className="size-5" aria-hidden="true" />
           Start a porch
-          <small>A church, ministry, psalmist or organisation porch</small>
+          <small>A church or a ministry porch</small>
         </Link>
         {admin ? (
           <Link to="/porch-settings">

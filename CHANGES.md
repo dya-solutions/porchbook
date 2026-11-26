@@ -675,6 +675,64 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
   - the new join form, and deleting nation and address (M4);
   - Serve forms are still one per person. They need to become one per porch before the switcher, so one porch's admins can't see a form filled in for another (noted for M4).
 
+### 15. Change of direction, step N1: churches with members, ministries with admins, a new landing page (26 Nov 2026)
+- **Decisions recorded:** BUILD-BRIEF.md decisions 38–46 (section 8d) replace decisions 24–34 where they clash. PLAN-MULTI-CHURCH.md has a new section 12 with steps N1 to N7; M3 to M9 are dropped.
+- **Porch types:**
+  - **Church**, or **Ministry**, with a ministry type: Music, Teaching, or Other (the person names it).
+  - The list of ministry types is one short list in `porch-kinds.ts`, so more can be added later.
+  - Psalmist and Organisation are gone.
+- **Existing porches converted:** every Psalmist or Organisation porch became **Ministry, type Other**, and its old type's name ("Organisation" or "Psalmist") became the "Other" name.
+  - The change is recorded, and the platform owner sees the list under "Changed to Ministry on 26 November" on "Porches waiting for approval".
+  - Converted porches have no description yet, because they were started before descriptions existed.
+  - On this computer: the three test porches of the local "org starter" (Test Org Porch twice, and Second Test Org).
+  - Online: JT's Organisation porch (the list on porchbook.app shows exactly which).
+- **One church each; ministries have admins only:**
+  - Only church porches have members, and a person is a member of one church only. The database itself refuses a second church or a ministry membership.
+  - A ministry has no members, no invite code and no join requests. Anyone listed as a "member" of a converted porch was taken off that list; its admins stay.
+  - A church member can't start a second church, but can start (and run) ministries.
+- **Landing page:** only **Create account** and **Log in**.
+  - The invite-code box and "Start a porch" moved inside the app.
+  - An invite link still names the church that invited you.
+- **Create account:** username (unique, checked before the account is made), email and password, then the 6-digit email code. No full name at sign-up any more: that comes with joining a church.
+- **Start a porch, inside the app:**
+  - It's under Your account → Start a porch, on the no-church screen, and as a "Start a porch" card on the public porch for people with no church. Signed out, /start shows the landing page.
+  - **Step 1:** Church or Ministry, the name, and the **country** from a searchable list of all nations (type a few letters, e.g. "ug" finds Uganda; "UK" or "USA" work too). There's no town any more. A church can still say it's a branch.
+  - **Step 2 (ministry only):** its type, and a description of what it does (20 to 400 letters).
+- **Porches waiting for approval:** shows a ministry's type and its description ("What it does") before you approve.
+- **FAQ:**
+  - New section "For ministries", with "What is a ministry porch?" and "How do I start a ministry porch?".
+  - Updated answers: "What is Porchbook?", "Can I use Porchbook without joining a church?", "What is the public porch?" and "How do I start a porch for my church?". Answers JT has edited himself are left alone.
+- **Rules changed:**
+  - Decisions 24, 25, 29, 31 and 33 (replaced by 38–46).
+  - The Stage 5a welcome screen (join with a code on the landing page) is replaced by decision 44.
+- **Not in this step** (planned in section 12):
+  - joining with full name, phone and city, and deleting nation and address (N2);
+  - "Me / Continue as [ministry]" (N3);
+  - messages and calls only within a church (N7).
+- **Files changed:**
+  - `porch-foundation.ts`, `porch-join.ts`, `membership.ts`, `faq.ts`
+  - new: `porch-kinds.ts`, `countries.ts`, `country-picker.tsx`
+  - `start-porch.tsx` (rewritten), `welcome-screen.tsx`, `frame.tsx` (Create account), `porch-approvals.tsx`, `account-screens.tsx`, `routes/index.tsx`, `routes/start.tsx`
+  - the test helper `api/porch-test.ts`, `scripts/two-church-test.mjs`
+- **Checked:**
+  - The type check and the build pass.
+  - **The two-church test: 230 passed, 0 failed.** The checks that relied on many memberships were replaced. The new checks prove:
+    - nobody can be in two churches, even straight in the database;
+    - a member of B can't ask to join A;
+    - a ministry can't get members, even straight in the database;
+    - a ministry has no invite code;
+    - its starter stays in their own church;
+    - a church member can't start a second church;
+    - a ministry needs a description, a named "Other" type, and a country from the list;
+    - Psalmist and Organisation can't be started;
+    - **a ministry's type and description reach the approval list**;
+    - B's admin has no power in A, and A's admin none over a member's ministry.
+  - On this computer:
+    - the conversion worked on the real local copy;
+    - Create account was tried end to end: the username is saved, and the email-code screen follows.
+- **Pictures:** `../after-n1/` (landing, Create account, the no-church screen, the public porch's Start a porch, the country list, a ministry's type and description, and the approval list).
+- **Test data on this computer:** a new account, n1check@porch.test (in `../TEST-ACCOUNT.md`, with the org starter account).
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).

@@ -47,9 +47,9 @@ export const Route = createFileRoute("/api/porch-test")({
                 [String(body.name ?? "Test porch"), String(body.kind ?? "church")],
               );
               await sql.query("insert into porch_settings (porch_id) values ($1) on conflict do nothing", [rows[0].id]);
-              // Every porch has an invite code (M1).
-              const code = newCode();
-              await sql.query("update porches set invite_code = $2 where id = $1", [rows[0].id, code]);
+              // Only churches have an invite code (decision 40).
+              const code = String(body.kind ?? "church") === "church" ? newCode() : null;
+              if (code) await sql.query("update porches set invite_code = $2 where id = $1", [rows[0].id, code]);
               return json({ ok: true, id: rows[0].id, code });
             }
             case "person": {
@@ -62,6 +62,8 @@ export const Route = createFileRoute("/api/porch-test")({
             }
             case "joinPorch": {
               const userId = await userIdOf(body.email);
+              // One church each: joining here moves the person (they leave the church they were in).
+              await sql.query("delete from porch_members where user_id = $1 and porch_id <> $2", [userId, Number(body.porchId)]);
               await sql.query("insert into porch_members (porch_id, user_id, full_name) select $2, user_id, display_name from profiles where user_id = $1 on conflict do nothing", [userId, Number(body.porchId)]);
               await sql.query("update profiles set porch_id = $2 where user_id = $1", [userId, Number(body.porchId)]);
               return json({ ok: true });
@@ -69,7 +71,8 @@ export const Route = createFileRoute("/api/porch-test")({
             case "addMember": {
               // A second (or third) porch: a membership only. The porch they're switched to stays.
               const userId = await userIdOf(body.email);
-              await sql.query("insert into porch_members (porch_id, user_id, full_name) select $2, user_id, display_name from profiles where user_id = $1 on conflict do nothing", [userId, Number(body.porchId)]);
+              // No "on conflict": the database must refuse a second church, or a ministry, out loud.
+              await sql.query("insert into porch_members (porch_id, user_id, full_name) select $2, user_id, display_name from profiles where user_id = $1", [userId, Number(body.porchId)]);
               return json({ ok: true });
             }
             case "removeMember": {

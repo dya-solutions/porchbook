@@ -12,10 +12,10 @@ const START: { section: string; items: [question: string, answer: string, check?
   {
     section: "Getting started",
     items: [
-      ["What is Porchbook?", "Porchbook is your church on your phone. Your church has its own private porch for posts, offices and chat. The public porch shows posts from the churches, ministries, psalmists and organisations you follow."],
+      ["What is Porchbook?", "Porchbook is your church on your phone. Your church has its own private porch for posts, offices and chat. The public porch shows posts from the churches and ministries you follow."],
       ["How do I join my church's porch?", "Ask your church for its invite code or link. Open it, create your account, and send a join request with your details. Your church's admins look at your request and let you in. A code alone never lets anyone in: an admin always approves.", true],
       ["What details does my church ask for, and why?", "Your full name, nation, phone number and address. Your church uses them to know who you are, to reach you, and for care and visits. Each question says why it is asked. Only the admins allowed to see member details can see them.", true],
-      ["Can I use Porchbook without joining a church?", "Yes. With just an account you can use the public porch: find porches, follow them and react to their posts. You only join a church for its private porch.", true],
+      ["Can I use Porchbook without joining a church?", "Yes. With just an account you can use the public porch: find churches and ministries, follow them and react to their posts. You only join a church for its private porch. You can also start a church or a ministry porch from there.", true],
     ],
   },
   {
@@ -44,7 +44,7 @@ const START: { section: string; items: [question: string, answer: string, check?
   {
     section: "Public porch",
     items: [
-      ["What is the public porch?", "A feed of posts from the porches you follow: churches, ministries, psalmists and organisations. It is coming soon.", true],
+      ["What is the public porch?", "A feed of posts from the churches and ministries you follow. It is coming soon.", true],
       ["How do I follow a porch?", "On the public porch, tap Find porches, search by name, town or type, and tap Follow. You always follow your own church, and its main church if it is a branch.", true],
       ["Why can't I post there?", "Only porches post on the public porch, through their admins, and only once Porchbook has approved them. Members follow and react, but don't post or comment, so it stays calm and safe."],
     ],
@@ -59,9 +59,16 @@ const START: { section: string; items: [question: string, answer: string, check?
     ],
   },
   {
+    section: "For ministries",
+    items: [
+      ["What is a ministry porch?", "A porch for a ministry: music, teaching, or another kind of ministry. It is run by a team of admins and has followers, not members. Its admins post for it on the public porch, and anyone can follow it. A church member can also be an admin of one or more ministries."],
+      ["How do I start a ministry porch?", "Your account → Start a porch (or Start a porch on the public porch). Choose Ministry, give its name and choose the country from the list. Then choose its type (Music, Teaching, or Other, and name it) and describe in a sentence or two what it does. Porchbook reads the description before approving it. You stay a member of your own church."],
+    ],
+  },
+  {
     section: "For churches",
     items: [
-      ["How do I start a porch for my church?", "On the Welcome screen tap Start a porch (or Your account → Start a porch). Choose Church, give its name, town and country, and say if it is a branch. You become its first member and admin, and you get an invite code to share."],
+      ["How do I start a porch for my church?", "Inside the app: Your account → Start a porch (or, if you're not in a church yet, Start a porch on the public porch). Choose Church, give its name, choose the country from the list, and say if it is a branch. You become its first member and admin, and you get an invite code to share. A person belongs to one church, so you can't start a church while you're a member of another."],
       ["How long does approval take?", "Porchbook checks every new porch by hand, usually within a few days. Until then your porch works privately for your members, but it can't post on the public porch.", true],
     ],
   },
@@ -85,6 +92,18 @@ const NOW_TRUE_5C: [question: string, answer: string][] = [
     "How do I change my details?",
     "Open your profile (your picture at the top right), then Your account → My details. You can correct your full name, nation, phone number and address, and choose a username for the public porch.",
   ],
+];
+
+/** 26 November (decisions 38-46): church or ministry; Start a porch moves inside the app. */
+const NOW_TRUE_26NOV: [question: string, oldAnswer: string, answer: string][] = [
+  ["What is Porchbook?", "Porchbook is your church on your phone. Your church has its own private porch for posts, offices and chat. The public porch shows posts from the churches, ministries, psalmists and organisations you follow.", "Porchbook is your church on your phone. Your church has its own private porch for posts, offices and chat. The public porch shows posts from the churches and ministries you follow."],
+  ["Can I use Porchbook without joining a church?", "Yes. With just an account you can use the public porch: find porches, follow them and react to their posts. You only join a church for its private porch.", "Yes. With just an account you can use the public porch: find churches and ministries, follow them and react to their posts. You only join a church for its private porch. You can also start a church or a ministry porch from there."],
+  ["What is the public porch?", "A feed of posts from the porches you follow: churches, ministries, psalmists and organisations. It is coming soon.", "A feed of posts from the churches and ministries you follow. It is coming soon."],
+  ["How do I start a porch for my church?", "On the Welcome screen tap Start a porch (or Your account → Start a porch). Choose Church, give its name, town and country, and say if it is a branch. You become its first member and admin, and you get an invite code to share.", "Inside the app: Your account → Start a porch (or, if you're not in a church yet, Start a porch on the public porch). Choose Church, give its name, choose the country from the list, and say if it is a branch. You become its first member and admin, and you get an invite code to share. A person belongs to one church, so you can't start a church while you're a member of another."],
+];
+const NEW_26NOV: [question: string, answer: string][] = [
+  ["What is a ministry porch?", "A porch for a ministry: music, teaching, or another kind of ministry. It is run by a team of admins and has followers, not members. Its admins post for it on the public porch, and anyone can follow it. A church member can also be an admin of one or more ministries."],
+  ["How do I start a ministry porch?", "Your account → Start a porch (or Start a porch on the public porch). Choose Ministry, give its name and choose the country from the list. Then choose its type (Music, Teaching, or Other, and name it) and describe in a sentence or two what it does. Porchbook reads the description before approving it. You stay a member of your own church."],
 ];
 
 let ready: Promise<void> | null = null;
@@ -115,6 +134,20 @@ function ensure(sql: Sql) {
     if (later.length) {
       for (const [question, answer] of NOW_TRUE_5C) {
         await sql.query("update faq_items set answer = $2, needs_check = false, updated_at = now() where question = $1 and needs_check", [question, answer]);
+      }
+    }
+    // 26 November: changed answers (only where JT hasn't edited them) and the two ministry questions.
+    const nov26 = await sql.query<{ step: string }>("insert into porch_steps (step) values ('faq-26nov-v1') on conflict do nothing returning step");
+    if (nov26.length) {
+      for (const [question, oldAnswer, answer] of NOW_TRUE_26NOV) {
+        await sql.query("update faq_items set answer = $3, updated_at = now() where question = $1 and answer = $2", [question, oldAnswer, answer]);
+      }
+      const top = await sql.query<{ sort: number | null }>("select min(sort) as sort from faq_items where section = 'For churches'");
+      let sort = Number(top[0]?.sort ?? 1000) - 2;
+      for (const [question, answer] of NEW_26NOV) {
+        const there = await sql.query("select 1 from faq_items where question = $1", [question]);
+        if (!there.length) await sql.query("insert into faq_items (section, question, answer, sort, needs_check) values ('For ministries', $1, $2, $3, false)", [question, answer, sort]);
+        sort += 1;
       }
     }
   })().catch((error) => {

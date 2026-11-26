@@ -3,11 +3,13 @@ import type { Sql } from "@/lib/db";
 /**
  * The porch foundation (BUILD-BRIEF.md, Stage 2).
  *
- * - `porches`: every porch. Four types: church, ministry, psalmist, organisation (decision 24).
- *   Every type has members, admins and an invite code.
- * - `porch_members`: one row per person per porch (decision 25: a person can be in many porches).
- * - `profiles.porch_id`: the CURRENT porch, the one the person has switched to. It only counts
- *   while they're still a member there (my_porch checks that).
+ * - `porches`: every porch. Two types (decision 38): church, or ministry (with a ministry type:
+ *   music, teaching or other, and a description). Only churches have members and invite codes;
+ *   a ministry has an admin team and followers only (decision 40).
+ * - `porch_members`: the members of each church, with the details they gave it. A person can be a
+ *   member of ONE church only (decision 39; the database refuses a second one, or a ministry).
+ * - `profiles.porch_id`: the person's church. It only counts while they're still a member there
+ *   (my_porch checks that).
  * - `porch_admins`: who runs which porch (replaces the single "founder").
  * - `platform_owners`: above all porches (JT).
  * - Phaneroo Ministries Mbarara is porch 1, and every account without a porch joins it.
@@ -37,7 +39,7 @@ const SETUP: string[] = [
      invite_code text unique,
      created_by text,
      created_at timestamptz not null default now(),
-     constraint porches_kind_chk check (kind in ('church', 'ministry', 'psalmist', 'organisation')),
+     constraint porches_kind_chk check (kind in ('church', 'ministry')),
      constraint porches_status_chk check (status in ('waiting', 'approved', 'suspended'))
    )`,
   `create table if not exists porch_settings (
@@ -81,6 +83,31 @@ const SETUP: string[] = [
        alter table porches add constraint porches_kind_chk check (kind in ('church', 'ministry', 'psalmist', 'organisation'));
      end if;
    end $$`,
+  // Decisions 38 and 41: a ministry has a type (music, teaching, other + its name) and a description.
+  `alter table porches add column if not exists ministry_type text not null default ''`,
+  `alter table porches add column if not exists ministry_other text not null default ''`,
+  `alter table porches add column if not exists description text not null default ''`,
+  // Which porches changed type on 26 November (shown to the platform owner).
+  `create table if not exists porch_kind_changes (
+     porch_id integer primary key references porches (id) on delete cascade,
+     old_kind text not null,
+     changed_at timestamptz not null default now()
+   )`,
+  // Decision 38, once: Psalmist and Organisation porches become Ministry, type Other (named after the old type).
+  `do $$ begin
+     if exists (select 1 from pg_constraint where conname = 'porches_kind_chk' and pg_get_constraintdef(oid) like '%psalmist%') then
+       alter table porches drop constraint porches_kind_chk;
+       insert into porch_kind_changes (porch_id, old_kind) select id, kind from porches where kind in ('psalmist', 'organisation', 'gospel_artist') on conflict do nothing;
+       update porches set ministry_type = 'other',
+              ministry_other = case kind when 'organisation' then 'Organisation' else 'Psalmist' end,
+              kind = 'ministry'
+        where kind in ('psalmist', 'organisation', 'gospel_artist');
+       update porches set ministry_type = 'other' where kind = 'ministry' and ministry_type = '';
+       alter table porches add constraint porches_kind_chk check (kind in ('church', 'ministry'));
+     end if;
+   end $$`,
+  // Ministries have no invite code (nobody joins a ministry).
+  `update porches set invite_code = null where kind = 'ministry' and invite_code is not null`,
   // M2 (decisions 25 and 27): the membership list. One row per person per porch, with the
   // details they gave THAT porch (full name, phone, city), shared only with its admins.
   `create table if not exists porch_members (
@@ -94,6 +121,28 @@ const SETUP: string[] = [
      primary key (porch_id, user_id)
    )`,
   `create index if not exists porch_members_user_idx on porch_members (user_id)`,
+  // Decisions 39 and 40: only churches have members, and one church each. Anyone in a ministry's
+  // list leaves it (they stay its admin); anyone in two churches keeps the one they're in now
+  // (or else the first they joined).
+  `delete from porch_members m using porches c where c.id = m.porch_id and c.kind <> 'church'`,
+  `delete from porch_members m
+    where exists (
+      select 1 from porch_members o
+       where o.user_id = m.user_id and o.porch_id <> m.porch_id
+         and (o.porch_id = (select porch_id from profiles where user_id = m.user_id)
+              or (m.porch_id is distinct from (select porch_id from profiles where user_id = m.user_id)
+                  and (o.joined_at, o.porch_id) < (m.joined_at, m.porch_id)))
+    )`,
+  `create unique index if not exists porch_members_one_church on porch_members (user_id)`,
+  `create or replace function porch_members_church_only() returns trigger language plpgsql as $$
+   begin
+     if not exists (select 1 from porches where id = new.porch_id and kind = 'church') then
+       raise exception 'Only a church porch has members';
+     end if;
+     return new;
+   end $$`,
+  `drop trigger if exists porch_members_church_only on porch_members`,
+  `create trigger porch_members_church_only before insert or update on porch_members for each row execute function porch_members_church_only()`,
   // One-off steps already done (so they never repeat).
   `create table if not exists porch_steps (step text primary key, done_at timestamptz not null default now())`,
   // Stage 5c: accounts made before verified emails existed count as verified (once).
@@ -116,12 +165,12 @@ const SETUP: string[] = [
    select x.porch_id, x.user_id, coalesce(p.display_name, '')
      from (
        select porch_id, user_id from profiles where porch_id is not null
-       union select id, created_by from porches where created_by is not null
-       union select a.porch_id, a.user_id from porch_admins a join porches c on c.id = a.porch_id where c.kind <> 'church'
+       union select id, created_by from porches where created_by is not null and kind = 'church'
      ) x
      join profiles p on p.user_id = x.user_id
-     join porches c on c.id = x.porch_id and c.status <> 'declined'
-    where exists (select 1 from done)
+     join porches c on c.id = x.porch_id and c.status <> 'declined' and c.kind = 'church'
+    where not exists (select 1 from porch_members o where o.user_id = x.user_id)
+      and exists (select 1 from done)
    on conflict do nothing`,
   /** A member of that porch. */
   `create or replace function in_porch(uid text, pid integer) returns boolean language sql stable as $$

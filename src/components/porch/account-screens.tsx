@@ -191,7 +191,7 @@ export function JoinChurch({ account: me }: { account: Account }) {
   const [details, setDetails] = useState<MemberDetails>({ fullName: user?.displayName ?? "", nation: "", phone: "", address: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  // Someone not in a church yet may still run porches (a ministry, psalmist or organisation porch
+  // Someone not in a church yet may still run porches (a ministry porch, or a church still waiting
   // they started) or be the platform owner: show those here, so this screen is never a dead end.
   const look = usePorchLook();
   const [started, setStarted] = useState<{ id: number; name: string; kind: string; status: string }[]>([]);
@@ -269,7 +269,7 @@ export function JoinChurch({ account: me }: { account: Account }) {
               <p key={porch.id} style={{ margin: 0, fontSize: 15, lineHeight: 1.45 }}>
                 <strong>{porch.name}</strong>{" "}
                 <span className="pb-quiet">
-                  · {porch.status === "waiting" ? "waiting for approval" : porch.status === "approved" ? "approved" : porch.status === "declined" ? "not approved" : porch.status}
+                  · {porch.kind === "ministry" ? "Ministry · " : ""}{porch.status === "waiting" ? "waiting for approval" : porch.status === "approved" ? "approved" : porch.status === "declined" ? "not approved" : porch.status}
                 </span>
               </p>
             ))}

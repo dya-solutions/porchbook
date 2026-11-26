@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useAccount } from "@/components/porch/account-screens";
+import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { BrandLogo } from "@/components/porch/brand-logo";
 import { useCallback } from "react";
 import { AppFrame } from "@/components/porch/frame";
@@ -43,6 +45,10 @@ function Home() {
 
 /** The Public porch arrives in Stage 6. */
 function PublicSoon() {
+  const user = useCurrentUser();
+  const account = useAccount(user?.id);
+  // Decision 44: someone with no church can start a porch from here.
+  const noChurch = account ? !account.member : false;
   return (
     <div className="pb-body">
       <div className="pb-card" style={{ padding: "28px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
@@ -54,9 +60,20 @@ function PublicSoon() {
           The Public porch is coming soon
         </h2>
         <p className="pb-quiet" style={{ margin: 0, fontSize: 15, lineHeight: 1.45, maxWidth: 320 }}>
-          Here you&apos;ll see posts from the porches you follow (churches, ministries, psalmists and organisations) and react to them.
+          Here you&apos;ll see posts from the churches and ministries you follow, and react to them.
         </p>
       </div>
+      {noChurch ? (
+        <div className="pb-card" style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+          <p style={{ margin: 0, fontWeight: 700, fontSize: 16 }}>Lead a church or a ministry?</p>
+          <p className="pb-quiet" style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>
+            Start its porch. It's checked before it can post publicly.
+          </p>
+          <Link to="/start" className="pb-btn" style={{ textDecoration: "none" }}>
+            Start a porch
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }

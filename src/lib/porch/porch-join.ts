@@ -1,7 +1,9 @@
 // Stage 5a: joining and starting a porch.
-// - Every porch has an invite code (and link). A code only finds the porch; its admins let people in.
-// - Anyone can start a porch of any type (church, ministry, psalmist, organisation). They become
-//   its first member and admin (M1, decision 24). A person can be in many porches (decision 25).
+// - Two types (decision 38): a church, or a ministry (music, teaching, or other) with a description.
+// - Each church has an invite code (and link). A code only finds the church; its admins let people in.
+//   A person is a member of one church only (decision 39).
+// - A ministry has an admin team and followers only: no members, no code, no join requests
+//   (decision 40). A church member can also run ministries (decision 42).
 // - New porches wait for the platform owner's approval. Until then they work privately but can't
 //   post publicly (public posting is Stage 6).
 import { createServerFn } from "@tanstack/react-start";
@@ -10,14 +12,12 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
 import { touchProfile } from "@/lib/porch/api";
 
-export const PORCH_KINDS = [
-  { key: "church", name: "Church" },
-  { key: "ministry", name: "Ministry" },
-  { key: "psalmist", name: "Psalmist" },
-  { key: "organisation", name: "Organisation" },
-] as const;
-export type PorchKind = (typeof PORCH_KINDS)[number]["key"];
+import { DESCRIPTION_MAX, DESCRIPTION_MIN, MINISTRY_TYPES, PORCH_KINDS, ministryTypeName, type MinistryType, type PorchKind } from "@/lib/porch/porch-kinds";
+import { knownCountry } from "@/lib/porch/countries";
+
+export { PORCH_KINDS, type PorchKind };
 const KINDS = new Set<string>(PORCH_KINDS.map((kind) => kind.key));
+const TYPES = new Set<string>(MINISTRY_TYPES.map((type) => type.key));
 
 function asRecord(input: unknown): Record<string, unknown> {
   return input && typeof input === "object" ? (input as Record<string, unknown>) : {};
@@ -57,12 +57,12 @@ function ensure(sql: Sql) {
     await sql.query("alter table porches add column if not exists decided_at timestamptz");
     await sql.query("alter table porches drop constraint if exists porches_status_chk");
     await sql.query("alter table porches add constraint porches_status_chk check (status in ('waiting', 'approved', 'suspended', 'declined'))");
-    // Every porch has an invite code (M1: all four types, not only churches).
+    // Every church has an invite code (ministries have none: nobody joins a ministry).
     // Once (Stage 4e): every porch's old name-based code (like PHANEROO-MBARARA) is replaced by a
     // random one. Old codes and links stop working; admins share the new one from Invite.
     const once = await sql.query<{ step: string }>("insert into porch_steps (step) values ('random-invite-codes-v1') on conflict do nothing returning step");
     if (once.length) await sql.query("update porches set invite_code = null where kind = 'church'");
-    const missing = await sql.query<{ id: number; name: string }>("select id, name from porches where coalesce(invite_code, '') = ''");
+    const missing = await sql.query<{ id: number; name: string }>("select id, name from porches where kind = 'church' and coalesce(invite_code, '') = ''");
     for (const porch of missing) await sql.query("update porches set invite_code = $2 where id = $1", [porch.id, newCode(porch.name)]);
   })().catch((error) => {
     ready = null;
@@ -88,7 +88,7 @@ export const checkInvite = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ensure(sql);
     const rows = await sql.query<{ name: string; town: string; country: string }>(
-      "select name, town, country from porches where upper(invite_code) = $1 and status in ('approved', 'waiting')",
+      "select name, town, country from porches where upper(invite_code) = $1 and kind = 'church' and status in ('approved', 'waiting')",
       [data.code],
     );
     if (!rows[0]) return { ok: false as const, error: "That invite code isn't right. Check it with your church." };
@@ -110,7 +110,7 @@ export const joinWithCode = createServerFn({ method: "POST" })
     await ensure(sql);
     await touchProfile(sql, context.userId, data.seed);
     const porches = await sql.query<{ id: number; name: string }>(
-      "select id, name from porches where upper(invite_code) = $1 and status in ('approved', 'waiting')",
+      "select id, name from porches where upper(invite_code) = $1 and kind = 'church' and status in ('approved', 'waiting')",
       [data.code],
     );
     const porch = porches[0];
@@ -122,7 +122,7 @@ export const joinWithCode = createServerFn({ method: "POST" })
       [context.userId],
     );
     const current = me[0]?.porch_id ?? null;
-    // Joining a second porch by request comes with the new join form (M4).
+    // One church each (decision 39). Leaving a church comes with a later step.
     if (current !== null) {
       return { ok: false as const, error: `You're a member of ${me[0]?.name ?? "another church"}. Moving to another church comes soon.` };
     }
@@ -138,11 +138,11 @@ export const myInvite = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ensure(sql);
     const rows = await sql.query<{ name: string; invite_code: string | null; admin: unknown; status: string }>(
-      "select name, invite_code, status, is_porch_admin($1) as admin from porches where id = my_porch($1)",
+      "select name, invite_code, status, is_porch_admin($1) as admin from porches where id = my_porch($1) and kind = 'church'",
       [context.userId],
     );
     const row = rows[0];
-    if (!row) return { ok: false as const, error: "You're not in a porch yet." };
+    if (!row) return { ok: false as const, error: "You're not in a church porch yet." };
     return { ok: true as const, name: row.name, code: row.invite_code ?? "", admin: yes(row.admin), waiting: row.status === "waiting" };
   });
 
@@ -153,7 +153,7 @@ export const resetInvite = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ensure(sql);
     const rows = await sql.query<{ id: number; name: string; admin: unknown }>(
-      "select id, name, is_porch_admin($1) as admin from porches where id = my_porch($1)",
+      "select id, name, is_porch_admin($1) as admin from porches where id = my_porch($1) and kind = 'church'",
       [context.userId],
     );
     if (!rows[0] || !yes(rows[0].admin)) {
@@ -187,13 +187,14 @@ export const startPorch = createServerFn({ method: "POST" })
   .validator((input: unknown) => {
     const raw = asRecord(input);
     const kind = typeof raw.kind === "string" && KINDS.has(raw.kind) ? (raw.kind as PorchKind) : null;
-    const place = text(raw.place, 80);
-    const [town = "", ...rest] = place.split(",");
+    const ministryType = typeof raw.ministryType === "string" && TYPES.has(raw.ministryType) ? (raw.ministryType as MinistryType) : null;
     return {
       kind,
       name: text(raw.name, 80),
-      town: town.trim(),
-      country: rest.join(",").trim(),
+      country: knownCountry(raw.country),
+      ministryType,
+      ministryOther: text(raw.ministryOther, 40),
+      description: typeof raw.description === "string" ? raw.description.replace(/[ \t]+/g, " ").trim().slice(0, DESCRIPTION_MAX) : "",
       branch: raw.branch === true,
       mainPorchId: Number(raw.mainPorchId) || 0,
       seed: { displayName: text(raw.displayName, 80), email: typeof raw.email === "string" ? raw.email.slice(0, 200) : null, imageUrl: null },
@@ -202,15 +203,24 @@ export const startPorch = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     if (!data.kind) return { ok: false as const, error: "Choose what kind of porch it is." };
     if (data.name.length < 3) return { ok: false as const, error: "Give the porch its name." };
-    if (!data.town) return { ok: false as const, error: "Add the town and country." };
+    if (!data.country) return { ok: false as const, error: "Choose the country from the list." };
+    if (data.kind === "ministry") {
+      if (!data.ministryType) return { ok: false as const, error: "Choose what type of ministry it is." };
+      if (data.ministryType === "other" && data.ministryOther.length < 2) return { ok: false as const, error: "Name the type of ministry." };
+      if (data.description.length < DESCRIPTION_MIN) return { ok: false as const, error: "Describe what the ministry does, in a sentence or two." };
+    }
     const sql = await getSql();
     await ensure(sql);
     await touchProfile(sql, context.userId, data.seed);
     // Stage 5c: only accounts with a confirmed email can start a porch.
     const confirmed = await sql.query<{ v: string | null }>("select email_verified_at::text as v from profiles where user_id = $1", [context.userId]);
     if (!confirmed[0]?.v) return { ok: false as const, error: "Confirm your email first." };
-    const me = await sql.query<{ porch_id: number | null }>("select my_porch($1) as porch_id", [context.userId]);
+    const me = await sql.query<{ porch_id: number | null; name: string | null }>("select my_porch($1) as porch_id, (select name from porches where id = my_porch($1)) as name", [context.userId]);
     const current = me[0]?.porch_id ?? null;
+    // One church each (decision 39): a church member can start ministries, not a second church.
+    if (data.kind === "church" && current !== null) {
+      return { ok: false as const, error: `You're a member of ${me[0]?.name ?? "a church"}. A person belongs to one church, so you can't start another. You can start a ministry.` };
+    }
     const waiting = await sql.query<{ n: string }>("select count(*)::text as n from porches where created_by = $1 and status = 'waiting'", [context.userId]);
     if (Number(waiting[0]?.n) >= 3) return { ok: false as const, error: "You already have porches waiting for approval. Wait for those first." };
     // The same porch sent twice (a double tap, a slow connection): give back the one already made.
@@ -218,7 +228,7 @@ export const startPorch = createServerFn({ method: "POST" })
       "select id, invite_code from porches where created_by = $1 and lower(name) = lower($2) and kind = $3 and status = 'waiting' order by id limit 1",
       [context.userId, data.name, data.kind],
     );
-    if (same[0]) return { ok: true as const, id: same[0].id, name: data.name, kind: data.kind, code: same[0].invite_code, current: current === null || current === same[0].id };
+    if (same[0]) return { ok: true as const, id: same[0].id, name: data.name, kind: data.kind, code: same[0].invite_code, current: data.kind === "church" };
     let mainPorchId: number | null = null;
     if (data.branch) {
       if (data.kind !== "church") return { ok: false as const, error: "Only a church porch can be a branch." };
@@ -226,20 +236,32 @@ export const startPorch = createServerFn({ method: "POST" })
       if (!main[0]) return { ok: false as const, error: "Find the main church's porch, or switch off \"This is a branch\"." };
       mainPorchId = main[0].id;
     }
-    const code = await uniqueCode(sql, data.name);
+    const church = data.kind === "church";
+    const code = church ? await uniqueCode(sql, data.name) : null;
     const made = await sql.query<{ id: number }>(
-      `insert into porches (name, short_name, kind, town, country, status, verified, invite_code, created_by, main_porch_id)
-       values ($1, $1, $2, $3, $4, 'waiting', false, $5, $6, $7) returning id`,
-      [data.name, data.kind, data.town, data.country, code, context.userId, mainPorchId],
+      `insert into porches (name, short_name, kind, town, country, status, verified, invite_code, created_by, main_porch_id, ministry_type, ministry_other, description)
+       values ($1, $1, $2, '', $3, 'waiting', false, $4, $5, $6, $7, $8, $9) returning id`,
+      [
+        data.name,
+        data.kind,
+        data.country,
+        code,
+        context.userId,
+        mainPorchId,
+        church ? "" : data.ministryType,
+        !church && data.ministryType === "other" ? data.ministryOther : "",
+        church ? "" : data.description,
+      ],
     );
     const porchId = made[0].id;
     await sql.query("insert into porch_settings (porch_id) values ($1) on conflict do nothing", [porchId]);
     await sql.query("insert into porch_admins (porch_id, user_id, added_by) values ($1, $2, 'started it') on conflict do nothing", [porchId, context.userId]);
-    // The person who starts a porch (any type) is its first member. If they're in no porch yet,
-    // it becomes the porch they're switched to; otherwise they stay where they are.
-    await addMember(sql, porchId, context.userId);
-    if (current === null) await sql.query("update profiles set porch_id = $2 where user_id = $1", [context.userId, porchId]);
-    return { ok: true as const, id: porchId, name: data.name, kind: data.kind, code, current: current === null };
+    // Whoever starts a church is its first member (and admin). A ministry has admins only.
+    if (church) {
+      await addMember(sql, porchId, context.userId);
+      await sql.query("update profiles set porch_id = $2 where user_id = $1", [context.userId, porchId]);
+    }
+    return { ok: true as const, id: porchId, name: data.name, kind: data.kind, code, current: church };
   });
 
 /** The porches this person runs (as an admin), with where each stands. */
@@ -261,6 +283,15 @@ async function isOwner(sql: Sql, userId: string) {
   return yes(rows[0]?.owner);
 }
 
+/** The porches that became Ministry, type Other, on 26 November (decision 38). */
+async function changedToMinistry(sql: Sql) {
+  const rows = await sql.query<{ id: number; name: string; old_kind: string; status: string; ministry_other: string }>(
+    `select p.id, p.name, k.old_kind, p.status, p.ministry_other from porch_kind_changes k join porches p on p.id = k.porch_id order by p.id`,
+  );
+  const was = (kind: string) => (kind === "organisation" ? "Organisation" : "Psalmist");
+  return rows.map((row) => ({ id: row.id, name: row.name, was: was(row.old_kind), status: row.status, typeName: row.ministry_other || "Other" }));
+}
+
 /** The platform owner's list: porches waiting for approval. */
 export const waitingPorches = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -277,8 +308,11 @@ export const waitingPorches = createServerFn({ method: "POST" })
       starter: string | null;
       main_name: string | null;
       created_at: string;
+      ministry_type: string;
+      ministry_other: string;
+      description: string;
     }>(
-      `select p.id, p.name, p.kind, p.town, p.country, s.display_name as starter, m.name as main_name,
+      `select p.id, p.name, p.kind, p.town, p.country, s.display_name as starter, m.name as main_name, p.ministry_type, p.ministry_other, p.description,
               to_char(p.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
          from porches p
          left join profiles s on s.user_id = p.created_by
@@ -296,7 +330,10 @@ export const waitingPorches = createServerFn({ method: "POST" })
         starter: row.starter ?? "",
         mainName: row.main_name ?? "",
         createdAt: row.created_at,
+        ministryType: row.kind === "ministry" ? ministryTypeName(row.ministry_type, row.ministry_other) : "",
+        description: row.description ?? "",
       })),
+      changed: await changedToMinistry(sql),
     };
   });
 
@@ -338,10 +375,14 @@ export const decidePorch = createServerFn({ method: "POST" })
  * when they start the porch. Their full name and phone start from what they gave before.
  */
 export async function addMember(sql: Sql, porchId: number, userId: string, details?: { fullName?: string; phone?: string; city?: string }) {
+  // Only a church has members, and a person is in one church only (decisions 39 and 40).
   await sql.query(
     `insert into porch_members (porch_id, user_id, full_name, phone, city, shared_at)
      select $1, p.user_id, coalesce(nullif($3, ''), p.display_name, ''), coalesce($4, ''), coalesce($5, ''), case when $3 is null then null else now() end
-       from profiles p where p.user_id = $2
+       from profiles p
+      where p.user_id = $2
+        and exists (select 1 from porches c where c.id = $1 and c.kind = 'church')
+        and not exists (select 1 from porch_members o where o.user_id = $2 and o.porch_id <> $1)
      on conflict (porch_id, user_id) do update set
        full_name = coalesce(nullif(excluded.full_name, ''), porch_members.full_name),
        phone = coalesce(nullif(excluded.phone, ''), porch_members.phone),

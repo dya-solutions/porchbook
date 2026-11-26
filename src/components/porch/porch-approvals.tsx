@@ -1,16 +1,18 @@
 // Stage 5a: the platform owner's "Porches waiting for approval" list, and "Your porches" for
 // anyone who started or runs a porch.
 import { useEffect, useState } from "react";
-import { decidePorch, myPorches, PORCH_KINDS, waitingPorches } from "@/lib/porch/porch-join";
-
-const kindName = (kind: string) => PORCH_KINDS.find((item) => item.key === kind)?.name ?? "Porch";
+import { Link } from "@tanstack/react-router";
+import { decidePorch, myPorches, waitingPorches } from "@/lib/porch/porch-join";
+import { kindName } from "@/lib/porch/porch-kinds";
 const statusName = (status: string) =>
   status === "waiting" ? "Waiting for approval" : status === "approved" ? "Approved" : status === "declined" ? "Declined" : "Paused";
 
-type Waiting = Extract<Awaited<ReturnType<typeof waitingPorches>>, { ok: true }>["porches"][number];
+type Ready = Extract<Awaited<ReturnType<typeof waitingPorches>>, { ok: true }>;
+type Waiting = Ready["porches"][number];
 
 export function PorchApprovals() {
   const [porches, setPorches] = useState<Waiting[] | null>(null);
+  const [changed, setChanged] = useState<Ready["changed"]>([]);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(0);
@@ -19,7 +21,10 @@ export function PorchApprovals() {
     waitingPorches()
       .then((result) => {
         if (!result.ok) setError(result.error);
-        else setPorches(result.porches);
+        else {
+          setPorches(result.porches);
+          setChanged(result.changed);
+        }
       })
       .catch(() => setError("Couldn't load the list."));
   useEffect(() => {
@@ -60,9 +65,16 @@ export function PorchApprovals() {
             <p className="ofc-name">{porch.name}</p>
             <p className="ofc-hint" style={{ whiteSpace: "normal" }}>
               {kindName(porch.kind)}
+              {porch.ministryType ? ` · ${porch.ministryType}` : ""}
               {porch.place ? ` · ${porch.place}` : ""}
               {porch.starter ? ` · started by ${porch.starter}` : ""}
             </p>
+            {porch.description ? (
+              <p style={{ margin: "8px 0 0", fontSize: 15, lineHeight: 1.45, whiteSpace: "pre-wrap" }}>
+                <span className="ofc-lbl" style={{ display: "block", margin: "0 0 2px" }}>What it does</span>
+                {porch.description}
+              </p>
+            ) : null}
             {porch.mainName ? (
               <p className="ofc-hint" style={{ whiteSpace: "normal" }}>Says it is a branch of {porch.mainName} (linking comes later)</p>
             ) : null}
@@ -77,6 +89,22 @@ export function PorchApprovals() {
           </div>
         </div>
       ))}
+      {changed.length ? (
+        <div className="pb-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 6 }}>
+          <p style={{ margin: 0, fontWeight: 700 }}>Changed to Ministry on 26 November</p>
+          <p className="pb-quiet" style={{ margin: 0, fontSize: 14 }}>
+            Psalmist and Organisation porches are now ministries of the type "Other", named after their old type. Their admins stay; they have no members.
+          </p>
+          {changed.map((porch) => (
+            <p key={porch.id} style={{ margin: 0, fontSize: 15 }}>
+              <strong>{porch.name}</strong> <span className="pb-quiet">· was {porch.was} · now Ministry ({porch.typeName}) · {statusName(porch.status).toLowerCase()}</span>
+            </p>
+          ))}
+        </div>
+      ) : null}
+      <Link to="/" search={{ room: "all" } as never} className="pb-link" style={{ alignSelf: "flex-start" }}>
+        ← Back
+      </Link>
     </div>
   );
 }

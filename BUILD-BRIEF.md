@@ -198,6 +198,26 @@ These **replace** earlier decisions where they clash: in particular decision 1 a
 
 **New order of work:** the many-porches change (planned in PLAN-MULTI-CHURCH.md, section 11) comes next, before Stage 5d (admin levels). Stage 5b is replaced by "Leave this porch" inside that change.
 
+## 8d. Decisions, 26 November: churches with members, ministries with admins
+
+These **replace** decisions 24–34 where they clash (in particular 24, 25, 29, 31 and 33). Decisions 26–28, 30, 32 and 34–37 still apply, as narrowed below. The membership list built in M2 stays and follows these rules.
+
+38. **Two porch types: Church, or Ministry.**
+    - A ministry has a **ministry type**: Music, Teaching, or Other (and the person names the type).
+    - "Psalmist" and "Organisation" are gone. Existing psalmist and organisation porches became **Ministry, type Other**, keeping their old type's name as the "Other" name until their admins change it.
+    - More ministry types will be added later; the list is kept in one place in the code.
+39. **Only church porches have members, and a person can be a member of one church only.** Joining still needs the church's admins to let them in, with full name, phone and city.
+40. **Ministry porches have only an admin team and followers:** no members, no private porch, no join requests. Their admins post on the public porch for the ministry (Stage 6).
+41. **Every ministry writes a short description of what it does** (and "Other" names its type). The platform owner sees it in "Porches waiting for approval" before approving.
+42. **A church member can also be an admin of one or more ministry porches.**
+43. **One login for everyone.** People who run a porch switch inside the app between "Me" and the porch they run: tapping their picture or the porch badge shows "Continue as me / Continue as [porch]". This replaces the "My porches" switcher (decision 29) for church membership.
+44. **The landing page has only two options: Log in and Create account.** "Start a porch" moves inside the app: under Your account, and as an easy button on the public porch for people with no church.
+    - **Create account:** email, username (unique), password, then the 6-digit email code.
+45. **Starting a porch:** the name, then the **country only** (no town), chosen from a searchable drop-down list of all nations (type a few letters to find it). Then, for a ministry, its type and description.
+46. **Messages and calls only between members of the same church** (and between a ministry's own admins). This replaces decision 33 ("share at least one porch").
+
+**What this changes in the plan:** the "My porches" switcher, joining many porches, and Follow plus Request to join for every type are replaced by the steps in PLAN-MULTI-CHURCH.md, section 12.
+
 ## 9. Stage 9: Porch stations (future, after Stage 8)
 
 Every porch can have its own radio station that its members tune into while they're on the porch. It reuses the on-hold radio code, which must first get church tags and pass the two-church test (decision 8).
