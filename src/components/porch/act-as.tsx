@@ -4,7 +4,8 @@
 // "Acting as" bar), and their church's private porch is closed until they're "me" again.
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { actAs, ministryHome } from "@/lib/porch/porch-join";
+import { actAs, ministryHome, ministryTeamMessages, sendMinistryTeamMessage } from "@/lib/porch/porch-join";
+import { formatWhen } from "@/lib/porch/model";
 import { initialsOf } from "@/components/porch/pb-shell";
 import type { Account } from "@/components/porch/account-screens";
 import { BrandLogo } from "@/components/porch/brand-logo";
@@ -134,14 +135,15 @@ export function MinistryShell({ account, me }: { account: Account; me: { id: str
         </div>
         <div className="pb-card welcome-card">
           <p className="ofc-lbl" style={{ margin: 0 }}>The admin team</p>
+          <p className="pb-quiet" style={{ margin: 0, fontSize: 13 }}>A ministry is public, so its admins show by their usernames.</p>
           {(home?.admins ?? []).map((admin) => (
             <p key={admin.userId} style={{ margin: 0, fontSize: 15 }}>
-              {admin.name}
-              {admin.username ? <span className="pb-quiet"> · @{admin.username}</span> : null}
+              {admin.username ? `@${admin.username}` : admin.name}
               {admin.userId === me.id ? <span className="pb-quiet"> (you)</span> : null}
             </p>
           ))}
         </div>
+        <TeamMessages ministryName={ministry.name} />
         <div className="pb-card welcome-card">
           <p className="ofc-lbl" style={{ margin: 0 }}>Coming with the public porch</p>
           <p className="pb-quiet" style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>
@@ -157,5 +159,65 @@ export function MinistryShell({ account, me }: { account: Account; me: { id: str
       </div>
       {sheet ? <ActAsSheet account={account} me={me} churchName={account.porchName} onClose={() => setSheet(false)} /> : null}
     </main>
+  );
+}
+
+type TeamMessage = Extract<Awaited<ReturnType<typeof ministryTeamMessages>>, { ok: true }>["messages"][number];
+
+/** N7: the ministry's admins write to each other here (nobody else can read it). */
+function TeamMessages({ ministryName }: { ministryName: string }) {
+  const [messages, setMessages] = useState<TeamMessage[]>([]);
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const load = () =>
+    ministryTeamMessages()
+      .then((result) => result.ok && setMessages(result.messages))
+      .catch(() => undefined);
+  useEffect(() => {
+    void load();
+    const timer = window.setInterval(() => void load(), 15000);
+    return () => window.clearInterval(timer);
+  }, []);
+  async function send(event: React.FormEvent) {
+    event.preventDefault();
+    if (!body.trim()) return;
+    setBusy(true);
+    setError("");
+    const result = await sendMinistryTeamMessage({ data: { body } }).catch(() => null);
+    setBusy(false);
+    if (!result?.ok) {
+      setError(result?.error ?? "That didn't send. Try again.");
+      return;
+    }
+    setBody("");
+    void load();
+  }
+  return (
+    <div className="pb-card welcome-card">
+      <p className="ofc-lbl" style={{ margin: 0 }}>Team messages</p>
+      <p className="pb-quiet" style={{ margin: 0, fontSize: 13 }}>Only {ministryName}'s admins can read and write here.</p>
+      {messages.length ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
+          {messages.map((message) => (
+            <div key={message.id} style={{ alignSelf: message.mine ? "flex-end" : "flex-start", maxWidth: "85%", background: message.mine ? "var(--pb-main-soft, #e6ecd9)" : "var(--pb-raised)", borderRadius: 14, padding: "8px 12px" }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700 }}>
+                {message.mine ? "You" : `@${message.name}`} <span className="pb-quiet" style={{ fontWeight: 400 }}>· {formatWhen(message.at)}</span>
+              </p>
+              <p style={{ margin: "2px 0 0", fontSize: 15, whiteSpace: "pre-wrap" }}>{message.body}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="pb-quiet" style={{ margin: 0, fontSize: 14 }}>No messages yet.</p>
+      )}
+      <form onSubmit={send} style={{ display: "flex", gap: 8 }}>
+        <input className="ofc-input" style={{ flex: 1 }} value={body} maxLength={1000} placeholder="Write to the team" onChange={(event) => setBody(event.target.value)} />
+        <button type="submit" className="pb-btn" style={{ width: "auto", padding: "0 18px" }} disabled={busy || !body.trim()}>
+          Send
+        </button>
+      </form>
+      {error ? <p className="text-danger" style={{ margin: 0, fontSize: 14 }}>{error}</p> : null}
+    </div>
   );
 }

@@ -215,6 +215,19 @@ const SETUP: string[] = [
       where p.user_id = uid and p.acting_porch_id is null
         and exists (select 1 from porch_members m where m.user_id = uid and m.porch_id = p.porch_id)
    $$`,
+  /**
+   * N4 (decision 28): the name shown on anything public (the public porch, a ministry's admin
+   * team, follows) is the username, never the full name a person gave their church.
+   */
+  `create or replace function public_name(uid text) returns text language sql stable as $$
+     select coalesce(nullif(username, ''), 'A Porchbook member') from profiles where user_id = uid
+   $$`,
+  // N4, once: inside a church people show by the full name they gave it (the membership list).
+  `with done as (insert into porch_steps (step) values ('church-names-v1') on conflict (step) do nothing returning step)
+   update profiles p set display_name = m.full_name
+     from porch_members m
+    where m.user_id = p.user_id and m.porch_id = p.porch_id and m.full_name <> '' and p.display_name <> m.full_name
+      and exists (select 1 from done)`,
   /** An admin of that ministry (decision 42: church members can run ministries). */
   `create or replace function runs_ministry(uid text, pid integer) returns boolean language sql stable as $$
      select exists (
@@ -222,13 +235,28 @@ const SETUP: string[] = [
         where a.user_id = uid and a.porch_id = pid and c.kind = 'ministry' and c.status <> 'declined'
      )
    $$`,
-  /** Two people who share at least one porch (decision 33; used for profiles, chat and calls). */
+  /**
+   * N7 (decision 46): two members of the same church, both there as themselves (not acting as a
+   * ministry). Used for profiles, private messages and calls: nobody can message or call across
+   * churches, and a one-to-one chat goes quiet (read-only) once the two no longer share a church.
+   */
   `create or replace function same_porch(a text, b text) returns boolean language sql stable as $$
      select exists (
        select 1 from porch_members x join porch_members y on y.porch_id = x.porch_id
+       join profiles px on px.user_id = x.user_id and px.acting_porch_id is null
+       join profiles py on py.user_id = y.user_id and py.acting_porch_id is null
        where x.user_id = a and y.user_id = b
      )
    $$`,
+  // N7: a ministry's admins message each other on the ministry's own screen ("Team messages").
+  `create table if not exists ministry_team_messages (
+     id serial primary key,
+     porch_id integer not null references porches (id) on delete cascade,
+     author_id text not null references profiles (user_id) on delete cascade,
+     body text not null,
+     created_at timestamptz not null default now()
+   )`,
+  `create index if not exists ministry_team_messages_porch_idx on ministry_team_messages (porch_id, created_at desc)`,
 
   // ---- Stage 3a: the feed. Posts carry their church porch; comments and reactions carry their post's. ----
   `alter table posts add column if not exists porch_id integer references porches (id)`,

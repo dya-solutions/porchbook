@@ -7,7 +7,10 @@
 //
 // How test data is marked, so it can all be found and removed in one go before launch:
 //   - every test person's email ends in @test.porchbook.app (a made-up address nobody can own);
-//   - every test church is listed in the table porch_test_data, and its name ends in "(TEST)".
+//   - every test church (and the test ministry) is listed in the table porch_test_data, and its
+//     name ends in "(TEST)".
+// The shape follows decisions 38-46: one church each (the membership list porch_members holds
+// full name, phone and city); a ministry has admins only, no members, no invite code.
 // Passwords are written only to the file given to "add" (TEST-ACCOUNT.md, outside the code folder).
 // The script never prints the database address.
 
@@ -34,7 +37,7 @@ const churches = [
     accent: "teal",
     people: [
       { name: "Pastor Alpha Tester", user: "alpha.pastor", admin: true },
-      { name: "Ada Testmember", user: "alpha.ada" },
+      { name: "Ada Testmember", user: "alpha.ada", runsMinistry: true },
       { name: "Ben Testmember", user: "alpha.ben" },
       { name: "Wanda Waiting Tester", user: "alpha.wanda", waiting: true },
       { name: "Walter Waiting Tester", user: "alpha.walter", waiting: true },
@@ -53,6 +56,13 @@ const churches = [
     ],
   },
 ];
+
+/** A made-up ministry, run by Ada (a member of Alpha), to try "Continue as [ministry]". */
+const ministry = {
+  name: "Alpha Worship Team (TEST)",
+  type: "music",
+  description: "A made-up music ministry for testing. We lead worship nights and teach young singers.",
+};
 
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ2345679"; // same 31 characters as the app's invite codes
 function inviteCode() {
@@ -76,10 +86,10 @@ async function show() {
   try {
     await markTable(client);
     const people = await client.query(`select count(*)::int as n from "user" where lower(email) like $1`, [`%${TEST_DOMAIN}`]);
-    const porches = await client.query("select p.id, p.name, p.status, p.invite_code from porches p join porch_test_data t on t.porch_id = p.id order by p.id");
+    const porches = await client.query("select p.id, p.name, p.kind, p.status, p.invite_code from porches p join porch_test_data t on t.porch_id = p.id order by p.id");
     const all = await client.query(`select count(*)::int as n from "user"`);
     console.log(`Test people: ${people.rows[0].n} (of ${all.rows[0].n} accounts in all)`);
-    for (const p of porches.rows) console.log(`Test church #${p.id}: ${p.name} (${p.status}), invite code ${p.invite_code}`);
+    for (const p of porches.rows) console.log(`Test ${p.kind} #${p.id}: ${p.name} (${p.status})${p.invite_code ? `, invite code ${p.invite_code}` : ""}`);
     if (!porches.rows.length) console.log("Test churches: none");
   } finally {
     client.release();
@@ -94,7 +104,12 @@ async function add(passwordsFile) {
     await markTable(client);
     const existing = await client.query(`select count(*)::int as n from "user" where lower(email) like $1`, [`%${TEST_DOMAIN}`]);
     if (existing.rows[0].n > 0) throw new Error("Test data is already there. Run \"remove --yes\" first if you want it fresh.");
+    const kinds = await client.query("select pg_get_constraintdef(oid) as def from pg_constraint where conname = 'porches_kind_chk'");
+    if (!String(kinds.rows[0]?.def ?? "").includes("ministry") || String(kinds.rows[0]?.def ?? "").includes("psalmist")) {
+      throw new Error("The online database isn't on the new version yet. Open porchbook.app once after the update, then run this again.");
+    }
     await client.query("begin");
+    let ministryAdmin = "";
     for (const church of churches) {
       const code = inviteCode();
       const porch = await client.query(
@@ -114,7 +129,6 @@ async function add(passwordsFile) {
         const pass = password();
         const hash = await hashPassword(pass);
         const phone = `+256 700 000 ${String(church.key === "alpha" ? 100 + n : 200 + n)}`;
-        const address = `${n} Pretend Road, ${church.town}`;
         await client.query(`insert into "user" (id, name, email, "emailVerified") values ($1, $2, $3, true)`, [id, person.name, email]);
         await client.query(
           `insert into "account" (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
@@ -128,24 +142,34 @@ async function add(passwordsFile) {
         );
         if (person.waiting) {
           await client.query(
-            "insert into join_requests (porch_id, user_id, full_name, nation, phone, address) values ($1, $2, $3, 'Uganda', $4, $5)",
-            [porchId, id, person.name, phone, address],
+            "insert into join_requests (porch_id, user_id, full_name, nation, phone, address, city) values ($1, $2, $3, '', $4, '', $5)",
+            [porchId, id, person.name, phone, church.town],
           );
         } else {
-          await client.query(
-            "insert into member_details (user_id, porch_id, nation, phone, address) values ($1, $2, 'Uganda', $3, $4)",
-            [id, porchId, phone, address],
-          );
-          // M2: membership is the porch_members list (profiles.porch_id is only the porch they're switched to).
+          // Membership (one church each): full name, phone and city, shared with this church's admins.
           await client.query(
             "insert into porch_members (porch_id, user_id, full_name, phone, city, shared_at) values ($1, $2, $3, $4, $5, now())",
             [porchId, id, person.name, phone, church.town],
           );
         }
+        if (person.runsMinistry) ministryAdmin = id;
         if (person.admin) await client.query("insert into porch_admins (porch_id, user_id, added_by) values ($1, $2, 'test-data')", [porchId, id]);
-        const what = person.admin ? "Admin (pastor)" : person.waiting ? "Waiting to join" : "Member";
+        const what = person.admin ? "Admin (pastor)" : person.waiting ? "Waiting to join" : person.runsMinistry ? `Member; runs ${ministry.name}` : "Member";
         lines.push(`| ${person.name} | ${email} | \`${pass}\` | ${what} |`);
       }
+    }
+    // The test ministry: admins only (Ada), no members, no invite code.
+    if (ministryAdmin) {
+      const made = await client.query(
+        `insert into porches (name, short_name, kind, town, country, status, verified, invite_code, created_by, decided_at, ministry_type, description)
+         values ($1, $1, 'ministry', '', 'Uganda', 'approved', false, null, $2, now(), $3, $4) returning id`,
+        [ministry.name, ministryAdmin, ministry.type, ministry.description],
+      );
+      const ministryId = made.rows[0].id;
+      await client.query("insert into porch_test_data (porch_id) values ($1)", [ministryId]);
+      await client.query("insert into porch_settings (porch_id, accent) values ($1, 'gold') on conflict (porch_id) do nothing", [ministryId]);
+      await client.query("insert into porch_admins (porch_id, user_id, added_by) values ($1, $2, 'test-data')", [ministryId, ministryAdmin]);
+      lines.push("", `### ${ministry.name}`, "", "A made-up music ministry (approved). Its admin is Ada Testmember (above): she can \"Continue as\" it.");
     }
     await client.query("commit");
   } catch (error) {
@@ -212,6 +236,8 @@ async function remove(really) {
       total += removed;
       if (!removed) break;
     }
+    // Nobody stays "acting as" a test ministry that's about to go.
+    await client.query("update profiles set acting_porch_id = null where acting_porch_id = any($1)", [porchIds]);
     // Members of other churches are never touched: only test churches and test people go.
     // A real person who joined a test church just leaves it (their account stays).
     const moved = await client.query("update profiles set porch_id = null where porch_id = any($1) and not (user_id = any($2))", [porchIds, ids]);

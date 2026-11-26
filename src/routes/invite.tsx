@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AppFrame } from "@/components/porch/frame";
 import { primaryButtonClass } from "@/components/porch/bits";
 import { myInvite, resetInvite } from "@/lib/porch/porch-join";
+import { InviteQr } from "@/components/porch/invite-qr";
 
 export const Route = createFileRoute("/invite")({
   component: InvitePage,
@@ -88,6 +89,7 @@ function InviteView() {
           {link || "Preparing the link…"}
         </p>
       )}
+      {invite?.admin && link ? <InviteQr link={link} churchName={invite.name} code={invite.code} /> : null}
       <div className="mt-6 grid gap-2">
         <a
           className={`${primaryButtonClass} w-full ${link ? "" : "pointer-events-none opacity-50"}`}

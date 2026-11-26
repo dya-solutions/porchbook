@@ -36,9 +36,14 @@ None of these are ever in the code or in git.
 
 ## Test data (while JT builds)
 
-Two made-up churches, **Alpha Test Church (TEST)** and **Bravo Test Church (TEST)**, with made-up people. They're added by `scripts/online-test-data.mjs`.
+Two made-up churches, **Alpha Test Church (TEST)** and **Bravo Test Church (TEST)**, with made-up people, and one made-up ministry, **Alpha Worship Team (TEST)**, run by Ada (a member of Alpha). They're added by `scripts/online-test-data.mjs`.
+- **Who's in them:**
+  - **Alpha:** Pastor Alpha (admin), Ada and Ben (members), and Wanda and Walter (waiting to join).
+  - **Bravo:** Pastor Bravo (admin), Cora (member), and Wesley (waiting to join).
 - **Every test person's email ends in `@test.porchbook.app`.** That is a made-up address nobody can own, so no code is ever emailed to them.
-- **Every test church** is listed in the table `porch_test_data`, and its name ends in "(TEST)".
+- **Every test church and the test ministry** are listed in the table `porch_test_data`, and their names end in "(TEST)".
+- **Rehearsed on 26 November** on a copy of JT's local database: add, show, the "count only" remove and the real remove all worked, and the made-up people could log in and saw the right things.
+- It only runs once the online site is on the 26 November version (it checks, and says so if not).
 - **Their passwords** are only in `TEST-ACCOUNT.md`, next to the code folder (never uploaded).
 
 The script needs the database's address (from Neon: Vercel → Storage → the database → **.env.local** → `DATABASE_URL`). It's kept in `NEON-URL.txt` next to the code folder, as one line `DATABASE_URL=…`, and is never uploaded.

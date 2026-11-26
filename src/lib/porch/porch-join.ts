@@ -473,7 +473,7 @@ export const ministryHome = createServerFn({ method: "POST" })
     const ministry = rows[0];
     if (!ministry) return { ok: false as const, error: "You're not acting as a ministry." };
     const admins = await sql.query<{ user_id: string; name: string; username: string | null }>(
-      `select p.user_id, coalesce(nullif(p.display_name, ''), p.username, 'Someone') as name, p.username
+      `select p.user_id, public_name(p.user_id) as name, p.username
          from porch_admins a join profiles p on p.user_id = a.user_id where a.porch_id = $1 order by a.added_at`,
       [ministry.id],
     );
@@ -488,4 +488,51 @@ export const ministryHome = createServerFn({ method: "POST" })
       since: ministry.created_at,
       admins: admins.map((a) => ({ userId: a.user_id, name: a.name, username: a.username ?? "" })),
     };
+  });
+
+/** N7: the ministry's team messages (only its admins, while acting as it). */
+async function actingMinistry(sql: Sql, userId: string): Promise<number> {
+  const rows = await sql.query<{ id: number | null }>(
+    "select p.acting_porch_id as id from profiles p where p.user_id = $1 and runs_ministry($1, p.acting_porch_id)",
+    [userId],
+  );
+  return Number(rows[0]?.id ?? 0) || 0;
+}
+
+export const ministryTeamMessages = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await getSql();
+    await ensure(sql);
+    const ministry = await actingMinistry(sql, context.userId);
+    if (!ministry) return { ok: false as const, error: "Continue as the ministry to see its team messages.", messages: [] };
+    const rows = await sql.query<{ id: number; author_id: string; name: string; body: string; created_at: string }>(
+      `select t.id, t.author_id, public_name(t.author_id) as name, t.body,
+              to_char(t.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
+         from ministry_team_messages t where t.porch_id = $1 order by t.created_at desc limit 60`,
+      [ministry],
+    );
+    return {
+      ok: true as const,
+      messages: rows.reverse().map((row) => ({ id: row.id, mine: row.author_id === context.userId, name: row.name, body: row.body, at: row.created_at })),
+    };
+  });
+
+export const sendMinistryTeamMessage = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => {
+    const raw = asRecord(input).body;
+    return { body: typeof raw === "string" ? raw.trim().slice(0, 1000) : "" };
+  })
+  .handler(async ({ context, data }) => {
+    if (!data.body) return { ok: false as const, error: "Write a message." };
+    const sql = await getSql();
+    await ensure(sql);
+    const ministry = await actingMinistry(sql, context.userId);
+    if (!ministry) {
+      noteAttempt(context.userId, "ministry-team", "Tried to write to a ministry team they're not acting for.");
+      return { ok: false as const, error: "Only the ministry's admins, acting as it, can write here." };
+    }
+    await sql.query("insert into ministry_team_messages (porch_id, author_id, body) values ($1, $2, $3)", [ministry, context.userId, data.body]);
+    return { ok: true as const };
   });

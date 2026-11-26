@@ -1047,3 +1047,33 @@ button.pb-me { border: 0; padding: 0; cursor: pointer; font: inherit; font-weigh
   font-weight: 600;
   cursor: pointer;
 }
+
+/* ---- N6: the invite QR code, big enough to scan from the back of a room ---- */
+.qr-big {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  background: #ffffff;
+  color: #1f2a14;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2vmin;
+  padding: 3vmin;
+}
+.qr-big img { width: min(92vw, 78vh); height: min(92vw, 78vh); image-rendering: pixelated; }
+.qr-big-name { margin: 0; font-family: Fredoka, "Source Sans 3", sans-serif; font-size: clamp(22px, 4.5vmin, 54px); font-weight: 600; text-align: center; }
+.qr-big-code { margin: 0; font-size: clamp(16px, 3vmin, 34px); font-weight: 600; text-align: center; }
+.qr-big-close {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  right: 12px;
+  border: 1px solid #c9cfbf;
+  background: #ffffff;
+  color: #1f2a14;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font: inherit;
+  font-weight: 600;
+}

@@ -505,12 +505,12 @@ This follows BUILD-BRIEF.md decisions 38–46, which **replace much of section 1
 - **N3. "Me / Continue as [ministry]"** (built 26 November). Tapping your picture or the porch badge switches between you and a ministry you run.
   - A ministry's admins see the ministry's own page: its description, its admins, and later its public posts.
   - "Leave this church" goes under Your account.
-- **N4. Names.** Full name inside the church, username on the public porch.
+- **N4. Names** (built 26 November). Full name inside the church, username on the public porch.
 - **N5. Find porches and Follow.** Search churches and ministries.
   - Follow either kind.
   - "Ask to join" appears for churches only.
-- **N6. Invites.** QR code (show and download) and the invite link flow, churches only.
-- **N7. Messages and calls** only between members of the same church, and between a ministry's own admins.
+- **N6. Invites** (built 26 November). QR code (show and download) and the invite link flow, churches only.
+- **N7. Messages and calls** (built 26 November; calls between a ministry's admins not yet) only between members of the same church, and between a ministry's own admins.
 - **Then:** the online test churches, then Stage 5d (admin levels), then Stage 6 (the public porch, where ministries post).
 
 ### 12.2 How the two-church test changes

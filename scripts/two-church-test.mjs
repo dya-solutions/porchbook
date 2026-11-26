@@ -842,10 +842,23 @@ try {
   const annActs = await ann.call("lib/porch/porch-join.ts", "actAs", { porchId: ministry?.id });
   const annActState = await ann.call("lib/porch/membership.ts", "accountState");
   record("isolation", "accounts", "Ann can't act as Abe's ministry (she isn't one of its admins)", annActs?.ok === false && annActState?.acting === null);
+  await abe.call("lib/porch/membership.ts", "setUsername", { username: "abe.m" });
   const abeActs = await abe.call("lib/porch/porch-join.ts", "actAs", { porchId: ministry?.id });
   const abeActing = await abe.call("lib/porch/membership.ts", "accountState");
   const abeHome = await abe.call("lib/porch/porch-join.ts", "ministryHome");
   record("sanity", "accounts", "Abe continues as Abe Ministry: its own screen shows its description and admins", abeActs?.ok === true && abeActing?.acting?.name === "Abe Ministry" && abeHome?.ok === true && abeHome?.description === ABE_WHAT && (abeHome?.admins ?? []).some((a) => a.userId === abe.userId));
+  record("sanity", "people", "N4: a ministry is public, so its admin team shows Abe by his username", (abeHome?.admins ?? []).some((a) => a.userId === abe.userId && a.name === "abe.m"));
+  // N7: while Abe acts as the ministry, nobody reaches him as a church member, and he reaches nobody.
+  const annToActing = await ann.call("lib/porch/api.ts", "sendMessage", { userId: abe.userId, body: "Are you there, Abe?" });
+  const actingToAnn = await abe.call("lib/porch/api.ts", "sendMessage", { userId: ann.userId, body: "Sent as the ministry" });
+  const actingRings = await abe.call("lib/porch/call-ask.ts", "ringPerson", { userId: ann.userId, video: false });
+  record("isolation", "chat", "N7: acting as a ministry, Abe can't message or call his church (and Ann can't message him)", annToActing?.ok === false && actingToAnn?.ok === false && actingRings?.ok === false);
+  const teamNote = await abe.call("lib/porch/porch-join.ts", "sendMinistryTeamMessage", { body: "Team note from Abe" });
+  const teamList = await abe.call("lib/porch/porch-join.ts", "ministryTeamMessages");
+  record("sanity", "chat", "N7: the ministry's admins write to each other in Team messages", teamNote?.ok === true && has(teamList, "Team note from Abe"));
+  const annTeamRead = await ann.call("lib/porch/porch-join.ts", "ministryTeamMessages");
+  const annTeamWrite = await ann.call("lib/porch/porch-join.ts", "sendMinistryTeamMessage", { body: "Ann sneaking in" });
+  record("isolation", "chat", "N7: someone who isn't one of its admins can't read or write the ministry's Team messages", annTeamRead?.ok === false && !has(annTeamRead, "Team note from Abe") && annTeamWrite?.ok === false);
   const actingFeed = await abe.call("lib/porch/api.ts", "getFeed", { filter: "all" });
   const actingServe = await abe.call("lib/porch/serve.ts", "loadServe");
   record("isolation", "feed", "While acting as the ministry, Abe's church porch is closed (no A posts, no A Serve form)", !has(actingFeed, "A private post in Porch A") && actingServe?.sent === false);
@@ -855,6 +868,14 @@ try {
   const abeBack = await abe.call("lib/porch/porch-join.ts", "actAs", { porchId: 0 });
   const abeFeedBack = await abe.call("lib/porch/api.ts", "getFeed", { filter: "all" });
   record("sanity", "feed", "Continue as me: Abe is back in Porch A and sees its posts", abeBack?.ok === true && has(abeFeedBack, "A private post in Porch A"));
+  const annToAbeAgain = await ann.call("lib/porch/api.ts", "sendMessage", { userId: abe.userId, body: "Welcome back, Abe" });
+  record("sanity", "chat", "N7: back as himself, Abe can be messaged by Ann again (same church)", annToAbeAgain?.ok === true);
+  // N4: inside the church, people show by their full name, never their username.
+  const annPeople = await ann.call("lib/porch/roll.ts", "listPorch");
+  record("isolation", "people", "N4: inside Porch A, Abe shows by his full name, not his username", has(annPeople, "Abe Member") && !has(annPeople, "abe.m"));
+  await abe.call("lib/porch/api.ts", "updateMe", { displayName: "Abe M. Member" });
+  const annSeesAbe = await ann.call("lib/porch/membership.ts", "memberDetailsOf", { userId: abe.userId });
+  record("sanity", "details", "N4: changing his name on his profile changes the name Porch A knows (one name inside the church)", annSeesAbe?.ok === true && annSeesAbe?.details?.fullName === "Abe M. Member");
 
   // ---------------- N3: Leave this church ----------------
   console.log("\nLeaving a church (N3)");
@@ -872,6 +893,8 @@ try {
   const annSeesFayeAfter = await ann.call("lib/porch/membership.ts", "memberDetailsOf", { userId: faye.userId });
   const annServeAfter = await ann.call("lib/porch/serve.ts", "downloadServe");
   const fayeServeAfter = await faye.call("lib/porch/serve.ts", "loadServe");
+  const annToFaye = await ann.call("lib/porch/api.ts", "sendMessage", { userId: faye.userId, body: "Still there, Faye?" });
+  record("isolation", "chat", "N7: once Faye has left, Ann can't message her (no shared church: their chat goes quiet)", annToFaye?.ok === false);
   record("isolation", "details", "Her details and her Serve form are gone from Porch A", annSeesFayeAfter?.ok === false && !has(annSeesFayeAfter, "Eldoret") && !pdfText(annServeAfter).includes("Volunteer") && fayeServeAfter?.sent === false);
   const fayeRejoin = await faye.call("lib/porch/membership.ts", "requestToJoin", { code: codeA, fullName: "Faye Joiner", phone: "+254711000002", city: "Eldoret" });
   record("sanity", "joining", "After leaving she can ask to join a church again (it waits for the admins)", fayeRejoin?.ok === true);

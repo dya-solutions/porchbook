@@ -1008,6 +1008,8 @@ export const updateMe = createServerFn({ method: "POST" })
       returning user_id
     `;
     if (!rows.length) return { ok: false as const, error: "Profile isn't ready yet." };
+    // N4: inside the church, people show by the full name they gave it. Keep the two the same.
+    await sql`update porch_members set full_name = ${data.displayName} where user_id = ${context.userId} and porch_id = church_of(${context.userId})`;
     return { ok: true as const };
   });
 

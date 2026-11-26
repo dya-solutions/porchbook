@@ -802,6 +802,57 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
   6. My details;
   7. Leave this church's "are you sure".
 
+### 17. Steps N4, N6 and N7: names, the invite QR code, messages and calls within a church (26 Nov 2026)
+- **N4: names (decision 28)**
+  - **Inside a church, people show by their full name**, the one they gave their church. Changing your name on your profile now changes the name your church knows too, so there's only ever one name inside the church.
+  - Accounts whose profile name had drifted from the name their church knows were matched once.
+  - **On anything public, people show by their username.** The first public place is a ministry's admin team. The public porch (Stage 6) will use the same "public name".
+- **N6: the invite QR code (decision 31)**
+  - On **Invite**, a church's admins see a QR code under the invite code and link. Two buttons:
+    - **Show it big:** fills the screen, with the church's name and the code under it, big enough to scan from the back of a room on a projector or TV;
+    - **Download:** a printable picture with the church's name, "Scan to ask to join our porch on Porchbook", the QR code, the invite code and the link.
+  - The QR code is made on the phone with a small free library (`qrcode`, MIT licence). There's no outside service.
+  - **Scanning it** opens the invite link:
+    - **someone new** sees "You're invited to join [church]", creates an account, confirms the email, and lands straight on the join form (tried on this computer with a brand-new account);
+    - **someone signed in with no church** goes straight to the join form;
+    - **someone already in a church** is told so ("A person belongs to one church…"), and the invite isn't kept.
+- **N7: messages and calls (decision 46)**
+  - Private messages and calls only work between **members of the same church**. It's checked on the server, in every place a message, call or ring starts.
+  - Once two people no longer share a church (for example after one leaves), they can't message each other any more.
+  - **While someone acts as a ministry**, they can't message or call their church, and the church can't reach them, until they "Continue as me".
+  - **A ministry's admins write to each other in "Team messages"** on the ministry's own screen. Nobody else can read or write there. Calls between a ministry's admins aren't built yet.
+- **The online test data script** follows the new shape:
+  - one church each, with full name, phone and city;
+  - join requests with a city;
+  - a made-up ministry, Alpha Worship Team (TEST), run by Ada, so "Continue as" can be tried.
+  - **It was rehearsed on a copy of this computer's database:** add, show, the "count only" remove and the real remove all worked. The made-up people could log in and saw the right things (the pastor sees who's waiting, Ada runs the ministry, Wanda is waiting).
+  - It now also checks that the online site is on the new version before adding anything.
+- **Rules changed:** decisions 28, 31 and 46 are now built.
+- **Files changed:**
+  - new: `invite-qr.tsx`
+  - `routes/invite.tsx`, `routes/join/$code.tsx`, `act-as.tsx`, `porch-foundation.ts` (public_name, same_porch, team messages), `porch-join.ts`, `api.ts`, `pb.css`
+  - `scripts/online-test-data.mjs`, `scripts/two-church-test.mjs`
+  - `package.json` (qrcode)
+  - DEPLOY.md
+- **Checked:**
+  - The type check and the build pass.
+  - **The two-church test: 251 passed, 0 failed** (8 new checks):
+    - a ministry's admin team shows usernames;
+    - inside a church, full names, never usernames;
+    - a profile name change reaches the church;
+    - acting as a ministry blocks messages and calls both ways, and coming back opens them again;
+    - Team messages work for the ministry's admins and are closed to anyone else;
+    - after Faye leaves, Ann can't message her.
+- **Pictures:** `../after-n4-n6-n7/`:
+  1. Invite with the QR code;
+  2. the downloaded picture;
+  3. the QR shown big;
+  4. scanned by someone already in a church;
+  5. scanned by someone new;
+  6. the new account landing on the join form;
+  7. a ministry's Team messages.
+- **Test data on this computer:** four "scan check" accounts (in `../TEST-ACCOUNT.md`).
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).
