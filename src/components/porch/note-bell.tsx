@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ComponentType } from "react";
+import { Link } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
 import { bellCount, bellNotes, bellSeen, type BellNote } from "@/lib/porch/notes";
 import { getOnePost } from "@/lib/porch/api";
@@ -74,6 +75,7 @@ function sentence(line: Line) {
 export function NoteBell({ userId, seed }: { userId: string; seed: Seed }) {
   const [shown, setShown] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [waiting, setWaiting] = useState(0);
   const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState<BellNote[] | null>(null);
   const [more, setMore] = useState(false);
@@ -88,6 +90,7 @@ export function NoteBell({ userId, seed }: { userId: string; seed: Seed }) {
         setShown(r.show);
         setBellOn(r.show);
         setUnread(r.unread);
+        setWaiting(r.show && "waiting" in r ? Number(r.waiting ?? 0) : 0);
       })
       .catch(() => undefined);
   }, []);
@@ -162,13 +165,18 @@ export function NoteBell({ userId, seed }: { userId: string; seed: Seed }) {
   if (!shown) return null;
   return (
     <>
-      <button type="button" className="note-bell" aria-label={unread ? `${unread} new notifications` : "Notifications"} onClick={() => void openList()}>
+      <button
+        type="button"
+        className="note-bell"
+        aria-label={unread || waiting ? `${unread} new notifications${waiting ? `, ${waiting} waiting to join` : ""}` : "Notifications"}
+        onClick={() => void openList()}
+      >
         {/* The design's outline bell (Stage 4a). */}
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M6 16v-5a6 6 0 1 1 12 0v5l2 2H4z" />
           <path d="M10 21h4" />
         </svg>
-        {unread ? <b>{unread > 99 ? "99+" : unread}</b> : null}
+        {unread + waiting ? <b>{unread + waiting > 99 ? "99+" : unread + waiting}</b> : null}
       </button>
       {open && typeof document !== "undefined"
         ? createPortal(
@@ -195,8 +203,19 @@ export function NoteBell({ userId, seed }: { userId: string; seed: Seed }) {
                   ))}
                 </div>
                 <div className="note-list">
+                  {waiting ? (
+                    <Link to="/waiting-to-join" className="note-waiting" onClick={() => setOpen(false)}>
+                      <span>
+                        <strong>
+                          {waiting} {waiting === 1 ? "person" : "people"} waiting to join
+                        </strong>
+                        <small>Let them in, or decline</small>
+                      </span>
+                      <span className="note-waiting-go">Review</span>
+                    </Link>
+                  ) : null}
                   {notes === null ? <p className="note-empty">Loading…</p> : null}
-                  {notes && !days.length ? (
+                  {notes && !days.length && !waiting ? (
                     <p className="note-empty">Nothing yet. When someone reacts to your posts, replies or asks you something, it shows here.</p>
                   ) : null}
                   {days.map((group) => (

@@ -301,6 +301,12 @@ try {
   const benWaiting2 = await ben.call("lib/porch/membership.ts", "waitingToJoin");
   const abeWaiting = await abe.call("lib/porch/membership.ts", "waitingToJoin");
   const fayeRequest = (annWaiting?.people ?? []).find((p) => p.fullName === "Faye Joiner");
+  const annCount = await ann.call("lib/porch/membership.ts", "waitingJoinCount");
+  const benCount = await ben.call("lib/porch/membership.ts", "waitingJoinCount");
+  const abeCount = await abe.call("lib/porch/membership.ts", "waitingJoinCount");
+  const annBellNow = await ann.call("lib/porch/notes.ts", "bellCount");
+  record("sanity", "joining", "Ann (A's admin) sees how many are waiting to join, on My porch and on the bell", annCount?.count === (annWaiting?.people ?? []).length && annCount?.count >= 1 && annBellNow?.waiting === annCount?.count);
+  record("isolation", "joining", "The waiting count is only for that church's admins (B's admin and a plain member see none of A's)", benCount?.count === 0 && abeCount?.count === 0);
   record("sanity", "joining", "Ann (A's admin) sees Faye's request with her phone and city", Boolean(fayeRequest) && fayeRequest?.phone === "+254711000001" && fayeRequest?.city === "Kisumu");
   record("sanity", "joining", "Nation and address are never kept, even when a phone still sends them", !has(annWaiting, "Kenya") && !has(annWaiting, "Secret Lane"));
   record("isolation", "joining", "A request to Porch A never shows in Porch B's waiting list", benWaiting2?.ok === true && !has(benWaiting2, "Faye Joiner") && !has(benWaiting2, "Kisumu"));

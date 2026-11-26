@@ -1077,3 +1077,47 @@ button.pb-me { border: 0; padding: 0; cursor: pointer; font: inherit; font-weigh
   font: inherit;
   font-weight: 600;
 }
+
+/* ---- The app's one scrolling area (frame.tsx). Older iPhones need momentum scrolling switched on;
+   "contain" stops a long swipe from dragging the whole app (and the bars) with it. ---- */
+.app-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
+
+/* ---- Admins: people waiting to join (top of My porch, and the bell's first row) ---- */
+.pb-waiting-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border: 1px solid color-mix(in srgb, var(--pb-main) 45%, transparent);
+  background: color-mix(in srgb, var(--pb-main) 8%, var(--pb-card, #fff));
+}
+.pb-waiting-card strong { display: block; font-size: 16px; }
+.pb-waiting-card small { display: block; font-size: 13px; color: var(--pb-quiet); margin-top: 2px; }
+.pb-waiting-dot {
+  min-width: 34px;
+  height: 34px;
+  border-radius: 17px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pb-main);
+  color: #fff;
+  font-weight: 700;
+}
+.pb-waiting-go { font-weight: 700; color: var(--pb-main); }
+.note-waiting {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 14px 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, #5a6e33 12%, #fff);
+  color: #1f2a14;
+  text-decoration: none;
+}
+.note-waiting span:first-child { flex: 1; display: flex; flex-direction: column; }
+.note-waiting small { font-size: 13px; opacity: 0.75; }
+.note-waiting-go { font-weight: 700; }

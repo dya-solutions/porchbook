@@ -36,7 +36,17 @@ export const bellCount = createServerFn({ method: "POST" })
     const who = await shownTo(sql, context.userId);
     if (!who.show) return { show: false as const, unread: 0 };
     const rows = await sql.query<{ n: number }>("select count(*)::int as n from notifications where user_id = $1 and not seen and porch_id = my_porch($1)", [context.userId]);
-    return { show: true as const, unread: Number(rows[0]?.n ?? 0), founder: who.founder, live: who.live };
+    // Admins: people waiting to join their church count on the bell until they're let in or declined.
+    let waiting = 0;
+    if (who.founder) {
+      try {
+        const { waitingCountFor } = await import("@/lib/porch/membership");
+        waiting = await waitingCountFor(sql, context.userId);
+      } catch {
+        waiting = 0;
+      }
+    }
+    return { show: true as const, unread: Number(rows[0]?.n ?? 0), waiting, founder: who.founder, live: who.live };
   });
 
 export const bellNotes = createServerFn({ method: "POST" })

@@ -14,7 +14,7 @@ import { LiteKey, LiteOffer } from "@/components/porch/lite-bits";
 import { NoteBell } from "@/components/porch/note-bell";
 import { WelcomeScreen } from "@/components/porch/welcome-screen";
 import { JoinChurch, MissingDetails, VerifyEmail, WaitingToJoin, detailsSkipped, useAccount } from "@/components/porch/account-screens";
-import { setUsername, usernameFree } from "@/lib/porch/membership";
+import { setUsername, usernameFree, waitingJoinCount } from "@/lib/porch/membership";
 import { ActAsSheet, MinistryShell } from "@/components/porch/act-as";
 import { BrandLoading } from "@/components/porch/brand-logo";
 import { BottomNav, LookModeChoice, PbIcon, TopBar, usePorchLook } from "@/components/porch/pb-shell";
@@ -1063,15 +1063,17 @@ export function AppFrame({
       </HeadMeasure>
       <div
         className={
+          // The scroll chain (phones, Safari included): every level has a definite height, so the
+          // inner area is exactly the space between the top bar and the bottom bar, and scrolls.
           guy
-            ? "relative mx-auto min-h-0 w-full max-w-none flex-1 overflow-hidden"
+            ? "relative mx-auto flex min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden"
             : newScreen
-              ? "min-h-0 w-full flex-1 overflow-hidden"
-              : `mx-auto grid min-h-0 w-full flex-1 gap-4 overflow-hidden ${pathname === "/next" ? "tour-page-shell max-w-6xl px-4 py-3 lg:px-6" : `max-w-6xl px-4 py-3 lg:px-6 lg:grid-cols-[minmax(0,1fr)_16rem]${pathname === "/read" ? " pc-read" : ""}${pathname.startsWith("/messages") ? " pc-wide" : ""}`}`
+              ? "flex min-h-0 w-full flex-1 flex-col overflow-hidden"
+              : `mx-auto grid min-h-0 w-full flex-1 grid-rows-[minmax(0,1fr)] gap-4 overflow-hidden ${pathname === "/next" ? "tour-page-shell max-w-6xl px-4 py-3 lg:px-6" : `max-w-6xl px-4 py-3 lg:px-6 lg:grid-cols-[minmax(0,1fr)_16rem]${pathname === "/read" ? " pc-read" : ""}${pathname.startsWith("/messages") ? " pc-wide" : ""}`}`
         }
       >
-        <main className="min-h-0 overflow-hidden">
-          <div key={`${pathname}#${refreshKey}`} className="pb pb-legacy rise h-full min-h-0 overflow-y-auto">
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div key={`${pathname}#${refreshKey}`} className="pb pb-legacy rise app-scroll min-h-0 flex-1 overflow-y-auto">
             <div className={newScreen ? "pb pb-column" : undefined}>
               <FounderDesk user={user} home={pathname === "/"} />
               {children}
@@ -1186,6 +1188,7 @@ export function AccountCard({ user }: { user: AppUser }) {
   const [alerts, setAlerts] = useState<NotificationPermission | "unsupported">("unsupported");
   const [alertNote, setAlertNote] = useState("");
   const [admin, setAdmin] = useState(false);
+  const [waitingCount, setWaitingCount] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const accountLook = usePorchLook();
   const navigate = useNavigate();
@@ -1193,7 +1196,10 @@ export function AccountCard({ user }: { user: AppUser }) {
   useEffect(() => {
     setAlerts(alertPermission());
     founderDesk({ data: seed })
-      .then((result) => setAdmin(result.isFounder))
+      .then((result) => {
+        setAdmin(result.isFounder);
+        if (result.isFounder) void waitingJoinCount().then((r) => setWaitingCount(r.count)).catch(() => undefined);
+      })
       .catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id]);
@@ -1265,7 +1271,7 @@ export function AccountCard({ user }: { user: AppUser }) {
           <Link to="/waiting-to-join">
             <Users className="size-5" aria-hidden="true" />
             People waiting to join
-            <small>Let in or decline join requests</small>
+            <small>{waitingCount ? `${waitingCount} waiting · let in or decline` : "Let in or decline join requests"}</small>
           </Link>
         ) : null}
         <Link to="/faq">

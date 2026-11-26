@@ -551,3 +551,20 @@ export const leaveChurch = createServerFn({ method: "POST" })
     }
     return { ok: true as const, name: church.name ?? "" };
   });
+
+/** Admins: how many people are waiting to join their church (0 for anyone else). */
+export async function waitingCountFor(sql: Sql, userId: string): Promise<number> {
+  const rows = await sql.query<{ n: number }>(
+    "select case when is_porch_admin($1) then (select count(*)::int from join_requests where porch_id = my_porch($1) and status = 'waiting') else 0 end as n",
+    [userId],
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
+export const waitingJoinCount = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await getSql();
+    await ensure(sql);
+    return { count: await waitingCountFor(sql, context.userId) };
+  });

@@ -860,6 +860,33 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
   - JT's own account is untouched.
   - The one-go removal (count only) finds exactly the 8 test people and 3 test porches.
 
+### 18. Two fixes from JT's phone test: scrolling on phones, and people waiting to join (26 Nov 2026)
+- **1. Pages didn't scroll on JT's phone.**
+  - **Why:** most screens sit in one scrolling area between the top bar and the bottom bar. That area was told to be "100% tall" inside boxes whose height was never fixed. Chrome on a computer guesses the right height; iPhones (Safari) don't. They let the area grow as tall as its contents, so there was nothing to scroll, and the bottom of the page was cut off (Your account, the profile, My details, and so on). My porch had the same weakness; it only looked fine while the feed was short.
+  - **The fix:** every level of that chain now has a definite height (`frame.tsx`). The inner area is always exactly the space between the bars, on every screen at once. It also scrolls with momentum on older iPhones, and a long swipe no longer drags the whole app.
+  - **Checked at phone size (390×844, touch), with real finger swipes** on all 21 screens: the 18 screens a church member sees, plus, for someone with no church, the home, the ministry screen while acting as one, and the "Continue as" sheet.
+    - A tall block was added to the end of every screen, so each was longer than the phone.
+    - Every screen scrolled, and its end could be reached above the bottom bar.
+    - The only exception is Calls, a full-screen dialler that's meant to fill exactly one screen. It scrolls; the test block just adds empty space under it.
+  - The first measuring tool I tried turned out not to scroll even a plain page, so its results were thrown away. The real check uses finger-by-finger touch events, which were first proven on a plain page.
+- **2. People waiting to join were hard to find.**
+  - **JT's request did arrive:** it's waiting in Alpha Test Church (TEST), sent at 14:56 with phone and city, alongside Wanda and Walter (3 waiting).
+  - **New, for a church's admins:**
+    - **a card at the top of My porch**, "3 people waiting to join · Review", with a big count, one tap from the list;
+    - **the bell's number includes them**, and the bell's list starts with "N people waiting to join · Review". Each new request also still sends the admins a phone notification if they've turned alerts on. The count stays until each person is let in or declined.
+    - **Your account → People waiting to join** stays, and now shows how many are waiting.
+  - Tapping Review stays inside the app (no reload), so it goes straight to the list.
+- **Files changed:** `frame.tsx`, `pb.css`, `routes/index.tsx`, `note-bell.tsx`, `notes.ts`, `membership.ts`, `scripts/two-church-test.mjs`.
+- **Checked:**
+  - The type check and the build pass.
+  - **The two-church test: 253 passed, 0 failed** (2 new checks): Ann sees the right waiting count on My porch and on the bell; B's admin and a plain member see none of A's.
+- **Pictures:** `../after-scroll-fix/`:
+  - the waiting card with the bell's number;
+  - the bell opened;
+  - Review opening the list;
+  - every screen at phone size after scrolling to its end (in `after/`).
+- **Test data on this computer:** two of the "scan check" accounts asked to join Phaneroo, for the pictures.
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).

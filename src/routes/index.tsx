@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAccount } from "@/components/porch/account-screens";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { BrandLogo } from "@/components/porch/brand-logo";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { waitingJoinCount } from "@/lib/porch/membership";
 import { AppFrame } from "@/components/porch/frame";
 import { FeedView } from "@/components/porch/feed-view";
 import { PbIcon, PorchSwitch, PresenceStrip } from "@/components/porch/pb-shell";
@@ -33,6 +34,7 @@ function Home() {
           <PublicSoon />
         ) : (
           <div className="pb-body">
+            <WaitingToJoinCard />
             <PresenceStrip />
             <OfficeAnnouncements />
             <FeedView filter={room} onMeta={onMeta} />
@@ -75,5 +77,32 @@ function PublicSoon() {
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** Admins: people waiting to join, at the top of My porch, one tap from the list. */
+function WaitingToJoinCard() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    const load = () => void waitingJoinCount().then((r) => setCount(r.count)).catch(() => undefined);
+    load();
+    const back = () => document.visibilityState === "visible" && load();
+    document.addEventListener("visibilitychange", back);
+    const timer = window.setInterval(back, 60_000);
+    return () => {
+      document.removeEventListener("visibilitychange", back);
+      window.clearInterval(timer);
+    };
+  }, []);
+  if (!count) return null;
+  return (
+    <Link to="/waiting-to-join" className="pb-card pb-waiting-card">
+      <span className="pb-waiting-dot" aria-hidden="true">{count > 99 ? "99+" : count}</span>
+      <span style={{ flex: 1 }}>
+        <strong>{count} {count === 1 ? "person" : "people"} waiting to join</strong>
+        <small>They're asking to join your church</small>
+      </span>
+      <span className="pb-waiting-go">Review</span>
+    </Link>
   );
 }
