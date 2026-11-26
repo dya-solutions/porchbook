@@ -46,7 +46,9 @@ Two made-up churches, **Alpha Test Church (TEST)** and **Bravo Test Church (TEST
 - It only runs once the online site is on the 26 November version (it checks, and says so if not).
 - **Their passwords** are only in `TEST-ACCOUNT.md`, next to the code folder (never uploaded).
 
-The script needs the database's address (from Neon: Vercel → Storage → the database → **.env.local** → `DATABASE_URL`). It's kept in `NEON-URL.txt` next to the code folder, as one line `DATABASE_URL=…`, and is never uploaded.
+The script needs the address of the database **the live site uses** (its Production branch). It's kept in `NEON-URL.txt` next to the code folder, as one line `DATABASE_URL=postgresql://…`, and is never uploaded.
+- **Where to copy it:** Vercel → Storage → porchbook → **Open in Neon**. In Neon, choose **Connect**, pick the branch the live site uses (the Production one, usually called `main` or `production`, not a preview or development branch, and not `before-m1-m2`), and copy the connection string.
+- **The script checks first.** If the address belongs to another copy (one without the live site's newest tables), it says so and changes nothing. That happened on 26 November: the first address copied was an older development copy. Nothing was written to it.
 
 - See what's there: `node --env-file=../NEON-URL.txt scripts/online-test-data.mjs show`
 - Add the test churches: `node --env-file=../NEON-URL.txt scripts/online-test-data.mjs add ../TEST-ACCOUNT.md`

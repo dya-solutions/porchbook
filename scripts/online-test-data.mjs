@@ -81,9 +81,25 @@ async function markTable(client) {
   await client.query("create table if not exists porch_test_data (porch_id integer primary key, added_at timestamptz not null default now())");
 }
 
+/**
+ * Is this the live site's database, on the 26 November version? The live site creates these tables
+ * itself when it starts. A database without them is another copy (a preview or development branch,
+ * or an old backup): nothing is written there.
+ */
+async function upToDate(client) {
+  const r = await client.query("select to_regclass('porch_members') is not null as members, to_regclass('ministry_team_messages') is not null as team");
+  return Boolean(r.rows[0]?.members && r.rows[0]?.team);
+}
+const WRONG_DB =
+  "This database isn't the one porchbook.app uses now (it doesn't have the 26 November tables). It may be a preview or development copy. Copy the Production DATABASE_URL instead (see DEPLOY.md). Nothing was changed.";
+
 async function show() {
   const client = await pool.connect();
   try {
+    if (!(await upToDate(client))) {
+      console.log(WRONG_DB);
+      return;
+    }
     await markTable(client);
     const people = await client.query(`select count(*)::int as n from "user" where lower(email) like $1`, [`%${TEST_DOMAIN}`]);
     const porches = await client.query("select p.id, p.name, p.kind, p.status, p.invite_code from porches p join porch_test_data t on t.porch_id = p.id order by p.id");
@@ -101,6 +117,7 @@ async function add(passwordsFile) {
   const client = await pool.connect();
   const lines = [];
   try {
+    if (!(await upToDate(client))) throw new Error(WRONG_DB);
     await markTable(client);
     const existing = await client.query(`select count(*)::int as n from "user" where lower(email) like $1`, [`%${TEST_DOMAIN}`]);
     if (existing.rows[0].n > 0) throw new Error("Test data is already there. Run \"remove --yes\" first if you want it fresh.");
