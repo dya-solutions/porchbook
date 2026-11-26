@@ -853,6 +853,13 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
   7. a ministry's Team messages.
 - **Test data on this computer:** four "scan check" accounts (in `../TEST-ACCOUNT.md`).
 
+- **Online test churches added (26 Nov, after the check):**
+  - The script first confirmed the address was the live site's database (it has the 26 November tables). The first address JT copied was an older development copy, and the script refused it without changing anything.
+  - Now online: **Alpha Test Church (TEST)** (3 members including its admin, 2 waiting), **Bravo Test Church (TEST)** (2 members including its admin, 1 waiting) and **Alpha Worship Team (TEST)** (a ministry with 1 admin, Ada).
+  - Every member has full name, phone and city. Invite codes and passwords are only in `../TEST-ACCOUNT.md`.
+  - JT's own account is untouched.
+  - The one-go removal (count only) finds exactly the 8 test people and 3 test porches.
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).
