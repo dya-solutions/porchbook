@@ -733,6 +733,75 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
 - **Pictures:** `../after-n1/` (landing, Create account, the no-church screen, the public porch's Start a porch, the country list, a ministry's type and description, and the approval list).
 - **Test data on this computer:** a new account, n1check@porch.test (in `../TEST-ACCOUNT.md`, with the org starter account).
 
+### 16. Steps N2 and N3: joining with name, phone and city; "Continue as [ministry]"; Leave this church; a friendly home (26 Nov 2026)
+- **N2: joining a church**
+  - **The join request asks for full name, phone number and city**, each with one line saying why. It no longer asks for nation or address, and if an old phone still sends them they're ignored.
+  - The church's admins see the phone and city in "People waiting to join" and on a member's profile.
+  - **Nation and address are deleted (decision 35):**
+    - the old details table (nation, phone, address) is emptied; the phone numbers were already copied to the membership list in M2;
+    - nation and address are blanked on every join request.
+  - The details now live in the membership list, one row for the person's church.
+  - **Existing members are asked once for their city** (the "A few details for your church" screen, with "Not now"). My details now has full name, phone and city.
+  - **Serve forms belong to the church.**
+    - A form is saved for the church you're in.
+    - Only that church's admins get it in the volunteer list.
+    - Old forms were given their owner's church once.
+    - Leaving the church deletes the form.
+- **N3: "Me / Continue as [ministry]" (decision 43)**
+  - For anyone who runs a ministry, tapping **their picture or the porch badge** opens **"Continue as"**. It lists "Me" (with your church) and each ministry you run, with a "Now" mark on the current one.
+  - **Acting as a ministry is unmistakable:** a dark bar at the very top says "Acting as [ministry]", with a "Continue as me" button. The badge and your picture get gold rings.
+  - **The ministry's own screen** shows its description, its country and approval status, the admin team, and what's coming with the public porch (posting for it, followers).
+  - **While you act as a ministry, your church's private porch is closed**: no church posts, no Serve form, and posting is refused. Nothing you do as the ministry can land in your church.
+  - People with no church get a "Continue as [ministry]" button on their home screen.
+- **N3: Leave this church**
+  - It's under Your account → Leave this church (on My details).
+  - **"Are you sure"** says plainly what happens:
+    - your posts, comments and messages stay in the church's porch under your name, and you can no longer see them;
+    - the details you gave it, and your Serve form, are deleted;
+    - any admin or office-head role there ends;
+    - your account, username and ministries stay;
+    - coming back needs the admins' yes.
+  - A church's only admin can't leave while it has other members.
+- **A friendly home for people with no church:**
+  - "Welcome, @username" and a short welcome.
+  - **Find your church** (an invite code, or paste the invite link; searching by name comes later).
+  - **Porches you run**, with "Continue as".
+  - **Start a porch**, and Porches waiting for approval for the platform owner.
+  - **Help and FAQ**, and the public porch (coming soon).
+- **FAQ:**
+  - Updated answers: joining, what details are asked, who can see them (now "Who can see my details?"), changing them, and leaving a church.
+  - New question: "How do I act as my ministry?".
+  - Answers JT has edited himself are left alone.
+- **Also:** a post can only be written in a church porch. Someone with no church, or acting as a ministry, is told so instead of the post being saved nowhere.
+- **Rules changed:**
+  - Decision 14 (nation and address on join requests) and Stage 5b (moving church).
+  - porchbook-state.md's join details.
+- **Files changed:**
+  - `porch-foundation.ts` (acting as, church_of, my_porch), `membership.ts`, `porch-join.ts`, `serve.ts`, `api.ts`, `faq.ts`, `pb.css`
+  - new: `act-as.tsx`
+  - `account-screens.tsx`, `member-pages.tsx`, `pb-shell.tsx`, `frame.tsx`
+  - `scripts/two-church-test.mjs`
+- **Checked:**
+  - The type check and the build pass. The one style-checker error is old (a line in `serve.ts` I didn't change).
+  - **The two-church test: 243 passed, 0 failed** (13 new checks):
+    - a join request needs full name, phone and city; nation and address are never kept; the admin sees phone and city;
+    - a Serve form belongs to its church;
+    - the ministry's runner can act as it, someone else can't, and its screen shows its description and admins;
+    - while acting, the church porch is closed and a post is refused; "Continue as me" opens it again;
+    - the only admin can't leave; leaving closes the church, keeps the posts, and deletes the details and Serve form; the person can ask to join again.
+  - On this computer:
+    - the real local copy updated itself;
+    - existing members are asked for their city;
+    - the org starter account can continue as its ministries and come back.
+- **Pictures:** `../after-n2-n3/`, in seven screens:
+  1. the home for someone with no church;
+  2. acting as a ministry;
+  3. the "Continue as" sheet;
+  4. the join form;
+  5. members being asked for their city;
+  6. My details;
+  7. Leave this church's "are you sure".
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).

@@ -498,11 +498,11 @@ This follows BUILD-BRIEF.md decisions 38–46, which **replace much of section 1
   - The landing page has only Log in and Create account. Create account asks for email, username and password, then the email code.
   - Start a porch lives inside the app: name, then a searchable country list; for a ministry, its type and description.
   - The approval list shows the ministry's type and description.
-- **N2. Joining a church** with full name, phone and city.
+- **N2. Joining a church** (built 26 November) with full name, phone and city.
   - The details are shared only with that church's admins.
   - Nation and address are deleted (decision 35).
   - Serve forms belong to the church.
-- **N3. "Me / Continue as [ministry]".** Tapping your picture or the porch badge switches between you and a ministry you run.
+- **N3. "Me / Continue as [ministry]"** (built 26 November). Tapping your picture or the porch badge switches between you and a ministry you run.
   - A ministry's admins see the ministry's own page: its description, its admins, and later its public posts.
   - "Leave this church" goes under Your account.
 - **N4. Names.** Full name inside the church, username on the public porch.

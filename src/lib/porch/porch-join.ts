@@ -124,7 +124,7 @@ export const joinWithCode = createServerFn({ method: "POST" })
     const current = me[0]?.porch_id ?? null;
     // One church each (decision 39). Leaving a church comes with a later step.
     if (current !== null) {
-      return { ok: false as const, error: `You're a member of ${me[0]?.name ?? "another church"}. Moving to another church comes soon.` };
+      return { ok: false as const, error: `You're a member of ${me[0]?.name ?? "another church"}. A person belongs to one church: leave yours first (Your account → Leave this church).` };
     }
     // Stage 5c (decision 14): a code only finds the church. Joining is by a request that the
     // church's admins approve (membership.ts: requestToJoin).
@@ -429,4 +429,63 @@ export const switchPorch = createServerFn({ method: "POST" })
       return { ok: false as const, error: "You're not a member of that porch." };
     }
     return { ok: true as const, name: rows[0].name };
+  });
+
+/**
+ * N3 (decision 43): "Continue as me" (porchId 0) or "Continue as [ministry]" for a ministry this
+ * person runs. While acting as a ministry, their church's private porch is closed (my_porch is
+ * none), so nothing they do as the ministry can reach or show their church.
+ */
+export const actAs = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => ({ porchId: Number(asRecord(input).porchId) || 0 }))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await ensure(sql);
+    if (!data.porchId) {
+      await sql.query("update profiles set acting_porch_id = null where user_id = $1", [context.userId]);
+      return { ok: true as const, name: "" };
+    }
+    const rows = await sql.query<{ name: string }>(
+      "update profiles set acting_porch_id = $2 where user_id = $1 and runs_ministry($1, $2) returning (select name from porches where id = $2) as name",
+      [context.userId, data.porchId],
+    );
+    if (!rows[0]) {
+      noteAttempt(context.userId, "act-as", "Tried to act as a ministry they don't run.");
+      return { ok: false as const, error: "You're not an admin of that ministry." };
+    }
+    return { ok: true as const, name: rows[0].name };
+  });
+
+/** The ministry this person is acting as: what its own page shows (its admins only see this). */
+export const ministryHome = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await getSql();
+    await ensure(sql);
+    const rows = await sql.query<{ id: number; name: string; status: string; country: string; ministry_type: string; ministry_other: string; description: string; created_at: string }>(
+      `select c.id, c.name, c.status, c.country, c.ministry_type, c.ministry_other, c.description,
+              to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
+         from profiles p join porches c on c.id = p.acting_porch_id
+        where p.user_id = $1 and runs_ministry($1, c.id)`,
+      [context.userId],
+    );
+    const ministry = rows[0];
+    if (!ministry) return { ok: false as const, error: "You're not acting as a ministry." };
+    const admins = await sql.query<{ user_id: string; name: string; username: string | null }>(
+      `select p.user_id, coalesce(nullif(p.display_name, ''), p.username, 'Someone') as name, p.username
+         from porch_admins a join profiles p on p.user_id = a.user_id where a.porch_id = $1 order by a.added_at`,
+      [ministry.id],
+    );
+    return {
+      ok: true as const,
+      id: ministry.id,
+      name: ministry.name,
+      status: ministry.status,
+      country: ministry.country,
+      typeName: ministryTypeName(ministry.ministry_type, ministry.ministry_other),
+      description: ministry.description,
+      since: ministry.created_at,
+      admins: admins.map((a) => ({ userId: a.user_id, name: a.name, username: a.username ?? "" })),
+    };
   });

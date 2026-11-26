@@ -11,6 +11,7 @@ import {
   waitingToJoin,
   type MemberDetails,
   type WaitingPerson,
+  leaveChurch,
 } from "@/lib/porch/membership";
 import { DetailsFields, reloadAccount } from "@/components/porch/account-screens";
 import { formatWhen } from "@/lib/porch/model";
@@ -65,12 +66,10 @@ export function WaitingList() {
             <p className="ofc-hint" style={{ whiteSpace: "normal" }}>Asked {formatWhen(person.since)}</p>
           </div>
           <dl className="acct-dl">
-            <dt>Nation</dt>
-            <dd>{person.nation}</dd>
             <dt>Phone</dt>
             <dd>{person.phone}</dd>
-            <dt>Address</dt>
-            <dd>{person.address}</dd>
+            <dt>City</dt>
+            <dd>{person.city || "Not given"}</dd>
             <dt>Email</dt>
             <dd>{person.email}</dd>
           </dl>
@@ -88,6 +87,7 @@ export function WaitingList() {
 export function MyDetailsPage() {
   const [details, setDetails] = useState<MemberDetails | null>(null);
   const [member, setMember] = useState(false);
+  const [churchName, setChurchName] = useState("");
   const [username, setName] = useState("");
   const [hide, setHide] = useState(false);
   const [note, setNote] = useState("");
@@ -98,6 +98,7 @@ export function MyDetailsPage() {
       .then((result) => {
         setDetails(result.details);
         setMember(result.member);
+        setChurchName(result.porchName);
         setName(result.username);
         setHide(result.hideChurch);
       })
@@ -133,7 +134,7 @@ export function MyDetailsPage() {
       <div>
         <h1 className="pb-ttl" style={{ fontSize: 28 }}>My details</h1>
         <p className="pb-quiet" style={{ margin: "4px 0 0", fontSize: 15 }}>
-          Only you and your church's admins can see your nation, phone and address. They are deleted if you leave your church.
+          Only you and your church's admins can see your full name, phone and city. They are deleted if you leave your church.
         </p>
       </div>
       {details && member ? (
@@ -168,7 +169,56 @@ export function MyDetailsPage() {
           </label>
         </form>
       </section>
+      {member && churchName ? <LeaveChurch churchName={churchName} /> : null}
     </div>
+  );
+}
+
+/* ---------- N3: Leave this church, with a clear "are you sure" ---------- */
+function LeaveChurch({ churchName }: { churchName: string }) {
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function leave() {
+    setBusy(true);
+    setError("");
+    const result = await leaveChurch().catch(() => null);
+    setBusy(false);
+    if (!result?.ok) {
+      setError(result?.error ?? "That didn't go through. Try again.");
+      return;
+    }
+    window.location.replace("/?room=all");
+  }
+  return (
+    <section id="leave">
+      <p className="ofc-sec">Your church</p>
+      <div className="pb-card ofc-form">
+        {!asking ? (
+          <>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.45 }}>
+              You're a member of <strong>{churchName}</strong>. A person belongs to one church; to join another, leave this one first.
+            </p>
+            <button type="button" className="pb-btn2" onClick={() => setAsking(true)}>Leave this church</button>
+          </>
+        ) : (
+          <>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 17 }}>Leave {churchName}?</p>
+            <ul style={{ margin: 0, paddingLeft: 20, fontSize: 15, lineHeight: 1.5, display: "flex", flexDirection: "column", gap: 4 }}>
+              <li><strong>Your posts, comments and messages stay</strong> in {churchName}'s porch, under your name. You won't be able to see them after you leave.</li>
+              <li><strong>The details you gave {churchName}</strong> (full name, phone and city) <strong>are deleted</strong>, and so is your Serve form.</li>
+              <li>If you're an admin or head an office there, <strong>that ends</strong>.</li>
+              <li>Your account, your username and the porches you run stay. You can join another church with its invite code. Coming back to {churchName} needs its admins' yes again.</li>
+            </ul>
+            {error ? <p className="text-danger" style={{ margin: 0, fontSize: 14 }}>{error}</p> : null}
+            <div className="ofc-admin">
+              <button type="button" className="pb-btn" style={{ background: "var(--pb-danger, #b3261e)", borderColor: "transparent" }} disabled={busy} onClick={() => void leave()}>{busy ? "Leaving…" : "Yes, leave"}</button>
+              <button type="button" className="pb-btn2" disabled={busy} onClick={() => setAsking(false)}>Stay</button>
+            </div>
+          </>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -187,12 +237,12 @@ export function MemberDetailsCard({ userId }: { userId: string }) {
     <section className="pb pb-card" style={{ padding: 16 }}>
       <p className="ofc-sec" style={{ margin: "0 0 8px" }}>Member details · admins only</p>
       <dl className="acct-dl">
-        <dt>Nation</dt>
-        <dd>{state.details.nation || "Not given yet"}</dd>
+        <dt>Full name</dt>
+        <dd>{state.details.fullName || "Not given yet"}</dd>
         <dt>Phone</dt>
         <dd>{state.details.phone || "Not given yet"}</dd>
-        <dt>Address</dt>
-        <dd>{state.details.address || "Not given yet"}</dd>
+        <dt>City</dt>
+        <dd>{state.details.city || "Not given yet"}</dd>
         <dt>Email</dt>
         <dd>{state.email}</dd>
       </dl>

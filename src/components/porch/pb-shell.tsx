@@ -262,25 +262,40 @@ export function TopBar({
   subtitle,
   bell,
   me,
+  onSwitch,
 }: {
   look: PorchLook | null;
   subtitle: string;
   bell: ReactNode;
   me: { id: string; name: string; imageUrl: string | null };
+  /** N3: for people who run a ministry, the badge and the picture open "Continue as". */
+  onSwitch?: () => void;
 }) {
   return (
     <header className="pb pb-top">
-      <div className="pb-logo" aria-hidden="true">
-        {look?.initials ?? ""}
-      </div>
+      {onSwitch ? (
+        <button type="button" className="pb-logo" aria-label="Continue as me or as a ministry you run" onClick={onSwitch}>
+          {look?.initials ?? ""}
+        </button>
+      ) : (
+        <div className="pb-logo" aria-hidden="true">
+          {look?.initials ?? ""}
+        </div>
+      )}
       <div className="pb-top-name">
         <p className="pb-ttl">{look?.shortName ?? "Porchbook"}</p>
         <p>{subtitle}</p>
       </div>
       {bell}
-      <Link to="/people/$userId" params={{ userId: me.id }} className="pb-me" aria-label="My profile">
-        {me.imageUrl ? <img src={me.imageUrl} alt="" draggable={false} /> : initialsOf(me.name)}
-      </Link>
+      {onSwitch ? (
+        <button type="button" className="pb-me" aria-label="Continue as me or as a ministry you run" onClick={onSwitch}>
+          {me.imageUrl ? <img src={me.imageUrl} alt="" draggable={false} /> : initialsOf(me.name)}
+        </button>
+      ) : (
+        <Link to="/people/$userId" params={{ userId: me.id }} className="pb-me" aria-label="My profile">
+          {me.imageUrl ? <img src={me.imageUrl} alt="" draggable={false} /> : initialsOf(me.name)}
+        </Link>
+      )}
     </header>
   );
 }

@@ -13,8 +13,8 @@ const START: { section: string; items: [question: string, answer: string, check?
     section: "Getting started",
     items: [
       ["What is Porchbook?", "Porchbook is your church on your phone. Your church has its own private porch for posts, offices and chat. The public porch shows posts from the churches and ministries you follow."],
-      ["How do I join my church's porch?", "Ask your church for its invite code or link. Open it, create your account, and send a join request with your details. Your church's admins look at your request and let you in. A code alone never lets anyone in: an admin always approves.", true],
-      ["What details does my church ask for, and why?", "Your full name, nation, phone number and address. Your church uses them to know who you are, to reach you, and for care and visits. Each question says why it is asked. Only the admins allowed to see member details can see them.", true],
+      ["How do I join my church's porch?", "Ask your church for its invite code or link. Make your account and confirm your email with the code we send you. Then, on your home screen, type the code or paste the link under Find your church, and send a join request with your full name, phone number and city. Your church's admins look at it and let you in. A code alone never lets anyone in. A person belongs to one church.", true],
+      ["What details does my church ask for, and why?", "Your full name, phone number and city. Each question says why: your name so your church family knows you, your phone so the church can reach you for care and urgent news, and your city so it can link you with a group near you. Porchbook no longer asks for your nation or address; the ones given before were deleted.", true],
       ["Can I use Porchbook without joining a church?", "Yes. With just an account you can use the public porch: find churches and ministries, follow them and react to their posts. You only join a church for its private porch. You can also start a church or a ministry porch from there.", true],
     ],
   },
@@ -52,9 +52,9 @@ const START: { section: string; items: [question: string, answer: string, check?
   {
     section: "Privacy and account",
     items: [
-      ["Who can see my phone number and address?", "Only you, and the admins of your church whose role allows them to see member details. Other members can't, and they never appear on the public porch. They are deleted if you leave your church.", true],
-      ["How do I change my details?", "Tap your picture at the top right to open your profile, then Edit profile. You'll also be able to correct your phone number and address there once join requests arrive.", true],
-      ["How do I leave my church or move to another one?", "This is coming soon. You'll be able to leave and send a join request to another church. Your old posts and messages stay with your old church; your notebook and Bible reading come with you.", true],
+      ["Who can see my details?", "Only you and your church's admins. Other members can't, other churches can't, and your details never appear on the public porch. They are deleted if you leave your church.", true],
+      ["How do I change my details?", "Your account → My details. You can correct your full name, phone number and city, and change your username for the public porch.", true],
+      ["How do I leave my church or move to another one?", "Your account → Leave this church. Porchbook tells you first what happens: your posts, comments and messages stay in that church's porch under your name; the details you gave it and your Serve form are deleted; any admin or office role there ends. Then you can join another church with its invite code.", true],
       ["How do I switch between light and dark?", "Open your profile, then Your account → Look, and choose Light or Dark. Dawn, Dusk and Night on the Tour page dim the screen gently."],
     ],
   },
@@ -62,6 +62,7 @@ const START: { section: string; items: [question: string, answer: string, check?
     section: "For ministries",
     items: [
       ["What is a ministry porch?", "A porch for a ministry: music, teaching, or another kind of ministry. It is run by a team of admins and has followers, not members. Its admins post for it on the public porch, and anyone can follow it. A church member can also be an admin of one or more ministries."],
+      ["How do I act as my ministry?","If you run a ministry, tap your picture or the porch badge at the top and choose Continue as [your ministry]. A dark bar at the top shows that you're acting as the ministry. Tap Continue as me to come back. While you act as a ministry, your church's private porch is closed, so the two never mix."],
       ["How do I start a ministry porch?", "Your account → Start a porch (or Start a porch on the public porch). Choose Ministry, give its name and choose the country from the list. Then choose its type (Music, Teaching, or Other, and name it) and describe in a sentence or two what it does. Porchbook reads the description before approving it. You stay a member of your own church."],
     ],
   },
@@ -106,6 +107,16 @@ const NEW_26NOV: [question: string, answer: string][] = [
   ["How do I start a ministry porch?", "Your account → Start a porch (or Start a porch on the public porch). Choose Ministry, give its name and choose the country from the list. Then choose its type (Music, Teaching, or Other, and name it) and describe in a sentence or two what it does. Porchbook reads the description before approving it. You stay a member of your own church."],
 ];
 
+/** N2 and N3 (26 November): full name, phone and city; leaving a church; acting as a ministry. */
+const NOW_TRUE_N2N3: [question: string, oldAnswers: string[], newQuestion: string, answer: string][] = [
+  ["How do I join my church's porch?", ["Ask your church for its invite code or link. Open it, create your account, and send a join request with your details. Your church's admins look at your request and let you in. A code alone never lets anyone in: an admin always approves.","Ask your church for its invite code or link. Make your account and confirm your email with the code we send you. Then send a join request with your full name, nation, phone number and address. Your church's admins look at it and let you in. A code alone never lets anyone in."], "How do I join my church's porch?", "Ask your church for its invite code or link. Make your account and confirm your email with the code we send you. Then, on your home screen, type the code or paste the link under Find your church, and send a join request with your full name, phone number and city. Your church's admins look at it and let you in. A code alone never lets anyone in. A person belongs to one church."],
+  ["What details does my church ask for, and why?", ["Your full name, nation, phone number and address. Your church uses them to know who you are, to reach you, and for care and visits. Each question says why it is asked. Only the admins allowed to see member details can see them.","Your full name, nation, phone number and address. Each question says why: your name so your church family knows you, your nation so the church can welcome you well, your phone so the church can reach you, and your address for visits and nearby groups."], "What details does my church ask for, and why?", "Your full name, phone number and city. Each question says why: your name so your church family knows you, your phone so the church can reach you for care and urgent news, and your city so it can link you with a group near you. Porchbook no longer asks for your nation or address; the ones given before were deleted."],
+  ["Who can see my phone number and address?", ["Only you, and the admins of your church whose role allows them to see member details. Other members can't, and they never appear on the public porch. They are deleted if you leave your church.","Only you and your church's admins. Other members can't see them, and they never appear on the public porch. They are deleted if you leave your church."], "Who can see my details?", "Only you and your church's admins. Other members can't, other churches can't, and your details never appear on the public porch. They are deleted if you leave your church."],
+  ["How do I change my details?", ["Tap your picture at the top right to open your profile, then Edit profile. You'll also be able to correct your phone number and address there once join requests arrive.","Open your profile (your picture at the top right), then Your account → My details. You can correct your full name, nation, phone number and address, and choose a username for the public porch."], "How do I change my details?", "Your account → My details. You can correct your full name, phone number and city, and change your username for the public porch."],
+  ["How do I leave my church or move to another one?", ["This is coming soon. You'll be able to leave and send a join request to another church. Your old posts and messages stay with your old church; your notebook and Bible reading come with you."], "How do I leave my church or move to another one?", "Your account → Leave this church. Porchbook tells you first what happens: your posts, comments and messages stay in that church's porch under your name; the details you gave it and your Serve form are deleted; any admin or office role there ends. Then you can join another church with its invite code."],
+];
+const ACT_AS_QUESTION: [question: string, answer: string] = ["How do I act as my ministry?","If you run a ministry, tap your picture or the porch badge at the top and choose Continue as [your ministry]. A dark bar at the top shows that you're acting as the ministry. Tap Continue as me to come back. While you act as a ministry, your church's private porch is closed, so the two never mix."];
+
 let ready: Promise<void> | null = null;
 function ensure(sql: Sql) {
   ready ??= (async () => {
@@ -149,6 +160,17 @@ function ensure(sql: Sql) {
         if (!there.length) await sql.query("insert into faq_items (section, question, answer, sort, needs_check) values ('For ministries', $1, $2, $3, false)", [question, answer, sort]);
         sort += 1;
       }
+    }
+    // N2 and N3: changed answers (only where JT hasn't edited them), and acting as a ministry.
+    const n2n3 = await sql.query<{ step: string }>("insert into porch_steps (step) values ('faq-n2n3-v1') on conflict do nothing returning step");
+    if (n2n3.length) {
+      for (const [question, oldAnswers, newQuestion, answer] of NOW_TRUE_N2N3) {
+        await sql.query("update faq_items set question = $3, answer = $4, needs_check = false, updated_at = now() where question = $1 and answer = any($2::text[])", [question, oldAnswers, newQuestion, answer]);
+      }
+      const [question, answer] = ACT_AS_QUESTION;
+      const there = await sql.query("select 1 from faq_items where question = $1", [question]);
+      const last = await sql.query<{ sort: number | null }>("select max(sort) as sort from faq_items where section = 'For ministries'");
+      if (!there.length) await sql.query("insert into faq_items (section, question, answer, sort, needs_check) values ('For ministries', $1, $2, $3, false)", [question, answer, Number(last[0]?.sort ?? 1000) + 1]);
     }
   })().catch((error) => {
     ready = null;

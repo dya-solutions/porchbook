@@ -1,14 +1,15 @@
 // Stage 5c: the account steps, in the brand look.
 //   1. Confirm your email (a 6-digit code sent through Brevo).
-//   2. Not in a church: type your church's invite code, then send a join request with your full
-//      name, nation, phone and address (each with one line saying why). Admins let you in.
+//   2. Not in a church: a friendly home (find your church with its invite code or link, start a
+//      porch, the porches you run, the FAQ). Then a join request with full name, phone and city
+//      (each with one line saying why; N2). Admins let you in.
 //   3. Waiting: "Your request is with [church]'s admins".
 //   4. Members with details missing are asked for them the next time they open the app.
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { signOut } from "@/lib/auth/client";
-import { checkInvite, myPorches } from "@/lib/porch/porch-join";
+import { actAs, checkInvite, cleanCode, myPorches } from "@/lib/porch/porch-join";
 import {
   accountState,
   cancelJoinRequest,
@@ -164,19 +165,15 @@ function DetailsFields({ details, onChange, only }: { details: MemberDetails; on
         <label key={field.key} className="ofc-lbl">
           {field.label}
           <span className="acct-why">{field.why}</span>
-          {field.key === "address" ? (
-            <textarea className="ofc-input" style={{ minHeight: 76, padding: 12 }} value={details[field.key]} maxLength={200} onChange={(event) => onChange({ ...details, [field.key]: event.target.value })} />
-          ) : (
-            <input
-              className="ofc-input"
-              value={details[field.key]}
-              maxLength={field.key === "phone" ? 30 : 80}
-              inputMode={field.key === "phone" ? "tel" : undefined}
-              autoComplete={field.key === "fullName" ? "name" : field.key === "phone" ? "tel" : field.key === "nation" ? "country-name" : "street-address"}
-              onChange={(event) => onChange({ ...details, [field.key]: event.target.value })}
-              placeholder={field.key === "phone" ? "+256 700 000000" : field.key === "nation" ? "e.g. Uganda" : undefined}
-            />
-          )}
+          <input
+            className="ofc-input"
+            value={details[field.key]}
+            maxLength={field.key === "phone" ? 30 : field.key === "city" ? 60 : 80}
+            inputMode={field.key === "phone" ? "tel" : undefined}
+            autoComplete={field.key === "fullName" ? "name" : field.key === "phone" ? "tel" : "address-level2"}
+            onChange={(event) => onChange({ ...details, [field.key]: event.target.value })}
+            placeholder={field.key === "phone" ? "+256 700 000000" : field.key === "city" ? "e.g. Mbarara" : "First and last name"}
+          />
         </label>
       ))}
     </>
@@ -188,7 +185,7 @@ export function JoinChurch({ account: me }: { account: Account }) {
   const user = useCurrentUser();
   const [code, setCode] = useState("");
   const [church, setChurch] = useState<{ code: string; name: string; place: string } | null>(null);
-  const [details, setDetails] = useState<MemberDetails>({ fullName: user?.displayName ?? "", nation: "", phone: "", address: "" });
+  const [details, setDetails] = useState<MemberDetails>({ fullName: me.fullName && me.fullName !== me.username ? me.fullName : "", phone: "", city: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   // Someone not in a church yet may still run porches (a ministry porch, or a church still waiting
@@ -239,45 +236,73 @@ export function JoinChurch({ account: me }: { account: Account }) {
   }
 
   if (!church) {
+    const ministries = me.ministries;
+    const churchesStarted = started.filter((porch) => porch.kind === "church");
     return (
-      <StepPage title="Join your church's porch">
-        {me.lastDeclined ? (
-          <p className="acct-note">Your request to join {me.lastDeclined} wasn't accepted. You can ask your church about it, or join with another code.</p>
-        ) : null}
+      <StepPage title={me.username ? `Welcome, @${me.username}` : "Welcome to Porchbook"}>
         <p className="pb-quiet" style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}>
-          Type the invite code your church gave you. Your church's admins look at your request and let you in.
+          Porchbook is your church on your phone: its posts, offices and chat, in one private porch. Find your church to join it, or start a porch of your own.
         </p>
+        {me.lastDeclined ? (
+          <p className="acct-note">Your request to join {me.lastDeclined} wasn't accepted. You can ask your church about it, or try another church.</p>
+        ) : null}
         <form
           className="pb-card welcome-card"
           onSubmit={(event) => {
             event.preventDefault();
-            if (code.trim()) void check(code);
+            const typed = code.trim();
+            if (typed) void check(cleanCode(typed.includes("/join/") ? typed.split("/join/")[1] ?? "" : typed));
           }}
         >
-          <label className="ofc-lbl" htmlFor="join-code" style={{ margin: 0 }}>Invite code</label>
-          <input id="join-code" className="ofc-input" value={code} placeholder="e.g. K7QM-4XPA" autoCapitalize="characters" autoComplete="off" spellCheck={false} onChange={(event) => setCode(event.target.value.toUpperCase())} />
+          <p className="ofc-lbl" style={{ margin: 0, fontSize: 17 }}>Find your church</p>
+          <p className="pb-quiet" style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>
+            Type the invite code, or paste the invite link, your church gave you. Its admins look at your request and let you in. Searching for churches by name comes soon.
+          </p>
+          <label className="sr-only" htmlFor="join-code">Invite code or link</label>
+          <input id="join-code" className="ofc-input" value={code} placeholder="e.g. K7QM-4XPA" autoCapitalize="characters" autoComplete="off" spellCheck={false} onChange={(event) => setCode(event.target.value)} />
           {error ? <p className="text-danger" style={{ margin: 0, fontSize: 14 }}>{error}</p> : null}
           <button type="submit" className="pb-btn" disabled={busy || !code.trim()}>{busy ? "Checking…" : "Find my church"}</button>
         </form>
-        {look?.owner ? (
-          <Link to="/porches-waiting" className="pb-btn2" style={{ textDecoration: "none" }}>Porches waiting for approval</Link>
-        ) : null}
-        {started.length ? (
+        {ministries.length || churchesStarted.length ? (
           <div className="pb-card welcome-card">
-            <p className="ofc-lbl" style={{ margin: 0 }}>Porches you started</p>
-            {started.map((porch) => (
+            <p className="ofc-lbl" style={{ margin: 0, fontSize: 17 }}>Porches you run</p>
+            {ministries.map((ministry) => (
+              <div key={ministry.id} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <p style={{ margin: 0, fontSize: 15, lineHeight: 1.45 }}>
+                  <strong>{ministry.name}</strong>{" "}
+                  <span className="pb-quiet">· Ministry ({ministry.typeName}) · {statusWords(ministry.status)}</span>
+                </p>
+                <button type="button" className="pb-btn2" onClick={() => void actAs({ data: { porchId: ministry.id } }).then(() => window.location.replace("/?room=all"))}>
+                  Continue as {ministry.name}
+                </button>
+              </div>
+            ))}
+            {churchesStarted.map((porch) => (
               <p key={porch.id} style={{ margin: 0, fontSize: 15, lineHeight: 1.45 }}>
-                <strong>{porch.name}</strong>{" "}
-                <span className="pb-quiet">
-                  · {porch.kind === "ministry" ? "Ministry · " : ""}{porch.status === "waiting" ? "waiting for approval" : porch.status === "approved" ? "approved" : porch.status === "declined" ? "not approved" : porch.status}
-                </span>
+                <strong>{porch.name}</strong> <span className="pb-quiet">· Church · {statusWords(porch.status)}</span>
               </p>
             ))}
           </div>
         ) : null}
-        <Link to="/start" className="pb-btn2" style={{ textDecoration: "none" }}>Start a porch</Link>
+        <div className="pb-card welcome-card">
+          <p className="ofc-lbl" style={{ margin: 0, fontSize: 17 }}>Start a porch</p>
+          <p className="pb-quiet" style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>
+            For a church (with members) or a ministry (run by its admins, with followers). Porchbook checks every new porch before it can post publicly.
+          </p>
+          <Link to="/start" className="pb-btn2" style={{ textDecoration: "none" }}>Start a porch</Link>
+        </div>
+        {look?.owner ? (
+          <Link to="/porches-waiting" className="pb-btn2" style={{ textDecoration: "none" }}>Porches waiting for approval</Link>
+        ) : null}
+        <div className="pb-card welcome-card">
+          <p className="ofc-lbl" style={{ margin: 0, fontSize: 17 }}>Questions?</p>
+          <p className="pb-quiet" style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>
+            How joining works, what a ministry porch is, and who can see your details.
+          </p>
+          <Link to="/faq" className="pb-btn2" style={{ textDecoration: "none" }}>Help and FAQ</Link>
+        </div>
         <Link to="/" search={{ room: "all", view: "public" } as never} className="pb-link" style={{ alignSelf: "center", color: "var(--pb-main)" }}>
-          Look at the public porch meanwhile
+          The public porch (coming soon)
         </Link>
       </StepPage>
     );
@@ -290,7 +315,7 @@ export function JoinChurch({ account: me }: { account: Account }) {
         {church.place ? ` · ${church.place}` : ""}
       </p>
       <p className="pb-quiet" style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}>
-        Your church asks for these details. Only you and your church's admins can see your nation, phone and address.
+        {church.name} asks for these three details. Only you and {church.name}'s admins can see them. They're never shown to another church or on the public porch.
       </p>
       <form className="pb-card ofc-form" onSubmit={send}>
         <DetailsFields details={details} onChange={setDetails} />
@@ -311,6 +336,10 @@ export function JoinChurch({ account: me }: { account: Account }) {
       </button>
     </StepPage>
   );
+}
+
+function statusWords(status: string) {
+  return status === "waiting" ? "waiting for approval" : status === "approved" ? "approved" : status === "declined" ? "not approved" : status;
 }
 
 /* ---------- 3. Waiting for the church's admins ---------- */
@@ -358,7 +387,7 @@ export function detailsSkipped() {
 }
 export function MissingDetails({ account: me, onDone }: { account: Account; onDone: () => void }) {
   const user = useCurrentUser();
-  const [details, setDetails] = useState<MemberDetails>({ fullName: user?.displayName ?? "", nation: "", phone: "", address: "" });
+  const [details, setDetails] = useState<MemberDetails>({ fullName: user?.displayName ?? "", phone: "", city: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -382,7 +411,7 @@ export function MissingDetails({ account: me, onDone }: { account: Account; onDo
   return (
     <StepPage title="A few details for your church" wide>
       <p className="pb-quiet" style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}>
-        {me.porchName} now keeps these details for each member. Only you and your church's admins can see your nation, phone and address. You can change them any time in Your account → My details.
+        {me.porchName} keeps these details for each member: full name, phone and city. Only you and {me.porchName}'s admins can see them. You can change them any time in Your account → My details.
       </p>
       <form className="pb-card ofc-form" onSubmit={save}>
         <DetailsFields details={details} onChange={setDetails} />

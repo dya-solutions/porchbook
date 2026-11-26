@@ -100,6 +100,13 @@ async function ensureServe(sql: Awaited<ReturnType<typeof getSql>>) {
       updated_at timestamptz not null default now()
     )
   `;
+  // N2: a Serve form belongs to the church it was filled in for. Forms filled in before take the
+  // person's church once; a form follows nobody to another church (leaving a church deletes it).
+  await sql`alter table serve_forms add column if not exists porch_id integer references porches (id) on delete cascade`;
+  await sql`
+    with done as (insert into porch_steps (step) values ('serve-forms-per-church-v1') on conflict (step) do nothing returning step)
+    update serve_forms s set porch_id = church_of(s.user_id) where s.porch_id is null and exists (select 1 from done)
+  `;
 }
 
 async function founderFlag(sql: Awaited<ReturnType<typeof getSql>>, userId: string) {
@@ -152,7 +159,7 @@ export const loadServe = createServerFn({ method: "POST" })
     }>(
       `select first_name, last_name, phone, email, gender, born_on, city, discipleship, how_long,
               department, serves_elsewhere, elsewhere, profession, skills, consent
-       from serve_forms where user_id = $1`,
+       from serve_forms where user_id = $1 and porch_id = my_porch($1)`,
       [context.userId],
     );
     const row = rows[0];
@@ -203,18 +210,21 @@ export const saveServe = createServerFn({ method: "POST" })
     const sql = await getSql();
     await touchProfile(sql, context.userId, data.seed);
     await ensureServe(sql);
+    const church = await sql.query<{ porch_id: number | null }>("select my_porch($1) as porch_id", [context.userId]);
+    if (!church[0]?.porch_id) return { ok: false as const, error: "Join your church first: the Serve form goes to your church." };
     const form = data.form;
     await sql`
       insert into serve_forms (
-        user_id, first_name, last_name, phone, email, gender, born_on, city, discipleship, how_long,
+        user_id, porch_id, first_name, last_name, phone, email, gender, born_on, city, discipleship, how_long,
         department, serves_elsewhere, elsewhere, profession, skills, consent, updated_at
       )
       values (
-        ${context.userId}, ${form.firstName}, ${form.lastName}, ${form.phone}, ${form.email}, ${form.gender},
+        ${context.userId}, ${church[0].porch_id}, ${form.firstName}, ${form.lastName}, ${form.phone}, ${form.email}, ${form.gender},
         ${form.bornOn}, ${form.city}, ${form.discipleship}, ${form.howLong}, ${form.department},
         ${form.servesElsewhere}, ${form.elsewhere}, ${form.profession}, ${form.skills}, ${form.consent}, now()
       )
       on conflict (user_id) do update set
+        porch_id = excluded.porch_id,
         first_name = excluded.first_name,
         last_name = excluded.last_name,
         phone = excluded.phone,
@@ -310,7 +320,7 @@ export const downloadServe = createServerFn({ method: "POST" })
               s.discipleship, s.how_long, s.department, s.serves_elsewhere, s.elsewhere, s.profession, s.skills
        from serve_forms s
        join profiles p on p.user_id = s.user_id
-       where p.porch_id = my_porch($1)
+       where s.porch_id = my_porch($1)
        order by lower(s.last_name), lower(s.first_name)`,
       [context.userId],
     );

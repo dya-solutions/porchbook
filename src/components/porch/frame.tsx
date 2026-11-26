@@ -15,6 +15,7 @@ import { NoteBell } from "@/components/porch/note-bell";
 import { WelcomeScreen } from "@/components/porch/welcome-screen";
 import { JoinChurch, MissingDetails, VerifyEmail, WaitingToJoin, detailsSkipped, useAccount } from "@/components/porch/account-screens";
 import { setUsername, usernameFree } from "@/lib/porch/membership";
+import { ActAsSheet, MinistryShell } from "@/components/porch/act-as";
 import { BrandLoading } from "@/components/porch/brand-logo";
 import { BottomNav, LookModeChoice, PbIcon, TopBar, usePorchLook } from "@/components/porch/pb-shell";
 import { NuggetLink } from "@/components/porch/nugget-bits";
@@ -713,6 +714,7 @@ export function AppFrame({
   const face = useMyFace(user?.id ?? "");
   // Stage 5c: the account (email confirmed? in a church? request waiting? details missing?).
   const account = useAccount(user?.id);
+  const [actSheet, setActSheet] = useState(false);
   const [detailsDone, setDetailsDone] = useState(false);
   // Keep today's devotional on the phone so it opens instantly.
   useEffect(() => {
@@ -1000,6 +1002,10 @@ export function AppFrame({
   // soon") is open to any confirmed account, and so are Start a porch, Help and the approval list.
   const openWithoutChurch = pathname === "/start" || pathname === "/porches-waiting" || (pathname === "/" && (search as { view?: string }).view === "public");
   if (account && !account.verified && pathname !== "/porches-waiting") return <VerifyEmail email={account.email} />;
+  // N3: acting as a ministry, the whole app is the ministry's own screen (Help stays reachable).
+  if (account?.acting && pathname !== "/faq") {
+    return <MinistryShell account={account} me={{ id: user.id, name: user.displayName ?? "", imageUrl: face ?? user.profileImageUrl ?? null }} />;
+  }
   if ((look?.member === false || (account && !account.member)) && !openWithoutChurch) {
     if (!account) return <ShellSkeleton />;
     if (account.waiting) return <WaitingToJoin account={account} />;
@@ -1040,6 +1046,15 @@ export function AppFrame({
             subtitle={screenName(pathname)}
             me={{ id: user.id, name: user.displayName ?? "", imageUrl: face ?? user.profileImageUrl ?? null }}
             bell={<NoteBell userId={user.id} seed={{ displayName: user.displayName ?? "", email: user.primaryEmail, imageUrl: user.profileImageUrl }} />}
+            onSwitch={account?.ministries.length ? () => setActSheet(true) : undefined}
+          />
+        ) : null}
+        {actSheet && account ? (
+          <ActAsSheet
+            account={account}
+            me={{ id: user.id, name: user.displayName ?? "", imageUrl: face ?? user.profileImageUrl ?? null }}
+            churchName={account.porchName}
+            onClose={() => setActSheet(false)}
           />
         ) : null}
         <IncomingCall />
@@ -1237,8 +1252,15 @@ export function AccountCard({ user }: { user: AppUser }) {
         <Link to="/my-details">
           <Users className="size-5" aria-hidden="true" />
           My details
-          <small>Name, nation, phone, address, username</small>
+          <small>Name, phone, city, username</small>
         </Link>
+        {accountLook?.member ? (
+          <Link to="/my-details" hash="leave">
+            <Users className="size-5" aria-hidden="true" />
+            Leave this church
+            <small>Your posts stay; your details go</small>
+          </Link>
+        ) : null}
         {admin ? (
           <Link to="/waiting-to-join">
             <Users className="size-5" aria-hidden="true" />

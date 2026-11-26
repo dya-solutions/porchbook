@@ -568,6 +568,10 @@ export const createPost = createServerFn({ method: "POST" })
       }
     }
     await touchProfile(sql, context.userId, data.seed);
+    // A post always belongs to the church porch it's written in. With none (not in a church, or
+    // acting as a ministry: N3), there's nowhere to post until the public porch (Stage 6).
+    const church = await sql<{ porch_id: number | null }>`select my_porch(${context.userId}) as porch_id`;
+    if (!church[0]?.porch_id) return { ok: false as const, error: "Posts go to your church's porch. Continue as yourself in your church to post." };
     if (data.askedTo) {
       const owner = await sql<{ user_id: string }>`select user_id from profiles where user_id = ${data.askedTo} and same_porch(user_id, ${context.userId})`;
       if (!owner.length) return { ok: false as const, error: "That person isn't on Porchbook." };

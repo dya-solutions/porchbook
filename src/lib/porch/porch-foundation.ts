@@ -180,13 +180,15 @@ const SETUP: string[] = [
   `update profiles p set porch_id = (select m.porch_id from porch_members m where m.user_id = p.user_id order by m.joined_at, m.porch_id limit 1)
     where (p.porch_id is null or not exists (select 1 from porch_members m where m.user_id = p.user_id and m.porch_id = p.porch_id))
       and exists (select 1 from porch_members m where m.user_id = p.user_id)`,
+  // N3 (decision 43): someone who runs a ministry can act as it ("Continue as [ministry]").
+  `alter table profiles add column if not exists acting_porch_id integer references porches (id) on delete set null`,
   /** An admin of the porch this person has switched to (each screen works on that porch). */
   `create or replace function is_porch_admin(uid text) returns boolean language sql stable as $$
      select exists (
        select 1 from porch_admins a
        join profiles p on p.user_id = a.user_id and p.porch_id = a.porch_id
        join porch_members m on m.user_id = a.user_id and m.porch_id = a.porch_id
-       where a.user_id = uid
+       where a.user_id = uid and p.acting_porch_id is null
      )
    $$`,
   /** An admin (and member) of one particular porch, whichever porch the person has switched to. */
@@ -199,13 +201,26 @@ const SETUP: string[] = [
   `create or replace function is_platform_owner(uid text) returns boolean language sql stable as $$
      select exists (select 1 from platform_owners where user_id = uid)
    $$`,
+  /** The person's church (null when none). It only counts while they're still a member there. */
+  `create or replace function church_of(uid text) returns integer language sql stable as $$
+     select p.porch_id from profiles p
+      where p.user_id = uid and exists (select 1 from porch_members m where m.user_id = uid and m.porch_id = p.porch_id)
+   $$`,
   /**
-   * The porch a person has switched to (null when none). It only counts while they're still a
-   * member there, so leaving a porch (or being removed) closes it at once, on every screen.
+   * The church porch every screen works on: the person's church, but NONE while they act as a
+   * ministry. So acting as a ministry closes the church's private porch until they're "me" again.
    */
   `create or replace function my_porch(uid text) returns integer language sql stable as $$
      select p.porch_id from profiles p
-      where p.user_id = uid and exists (select 1 from porch_members m where m.user_id = uid and m.porch_id = p.porch_id)
+      where p.user_id = uid and p.acting_porch_id is null
+        and exists (select 1 from porch_members m where m.user_id = uid and m.porch_id = p.porch_id)
+   $$`,
+  /** An admin of that ministry (decision 42: church members can run ministries). */
+  `create or replace function runs_ministry(uid text, pid integer) returns boolean language sql stable as $$
+     select exists (
+       select 1 from porch_admins a join porches c on c.id = a.porch_id
+        where a.user_id = uid and a.porch_id = pid and c.kind = 'ministry' and c.status <> 'declined'
+     )
    $$`,
   /** Two people who share at least one porch (decision 33; used for profiles, chat and calls). */
   `create or replace function same_porch(a text, b text) returns boolean language sql stable as $$

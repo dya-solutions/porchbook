@@ -193,12 +193,12 @@ try {
   const checkA = await ann.call("lib/porch/porch-join.ts", "checkInvite", { code: codeA });
   record("sanity", "joining", "An invite code shows which church it belongs to", checkA?.ok === true && checkA?.name === "Porch A");
   const cara = await person("Cara New", "cara@two-church.test");
-  const caraUnverified = await cara.call("lib/porch/membership.ts", "requestToJoin", { code: codeB, fullName: "Cara New", nation: "Uganda", phone: "+256700000010", address: "Plot 1, Gulu" });
+  const caraUnverified = await cara.call("lib/porch/membership.ts", "requestToJoin", { code: codeB, fullName: "Cara New", phone: "+256700000010", city: "Gulu" });
   record("sanity", "joining", "Someone who hasn't confirmed their email can't send a join request", caraUnverified?.ok === false);
   const caraWrong = await cara.call("lib/porch/membership.ts", "verifyEmailCode", { code: "000000" });
   const caraVerified = await verify(cara);
   record("sanity", "joining", "A wrong email code is refused; the right one confirms the email", caraWrong?.ok === false && caraVerified?.ok === true);
-  const caraAsks = await cara.call("lib/porch/membership.ts", "requestToJoin", { code: codeB, fullName: "Cara New", nation: "Uganda", phone: "+256700000010", address: "Plot 1, Gulu" });
+  const caraAsks = await cara.call("lib/porch/membership.ts", "requestToJoin", { code: codeB, fullName: "Cara New", phone: "+256700000010", city: "Gulu" });
   const caraBefore = await helper("person", { email: cara.email });
   record("sanity", "joining", "Cara's request to Porch B doesn't let her in by itself", caraAsks?.ok === true && (caraBefore.porch_id === null || caraBefore.porch_id === undefined));
   const benWaiting = await ben.call("lib/porch/membership.ts", "waitingToJoin");
@@ -288,9 +288,11 @@ try {
   const fayeState0 = await faye.call("lib/porch/membership.ts", "accountState");
   record("sanity", "joining", "A new account starts unconfirmed and in no church", fayeState0?.verified === false && fayeState0?.member === false);
   await verify(faye);
-  const fayeBad = await faye.call("lib/porch/membership.ts", "requestToJoin", { code: codeA, fullName: "Faye", nation: "", phone: "abc", address: "" });
-  record("sanity", "joining", "A join request needs full name, nation, phone and address", fayeBad?.ok === false);
-  const fayeAsks = await faye.call("lib/porch/membership.ts", "requestToJoin", { code: codeA, fullName: "Faye Joiner", nation: "Kenya", phone: "+254711000001", address: "Secret Lane 7, Kisumu" });
+  const fayeBad = await faye.call("lib/porch/membership.ts", "requestToJoin", { code: codeA, fullName: "Faye", phone: "abc", city: "" });
+  const fayeNoCity = await faye.call("lib/porch/membership.ts", "requestToJoin", { code: codeA, fullName: "Faye Joiner", phone: "+254711000001", city: "" });
+  record("sanity", "joining", "A join request needs full name, phone and city (N2)", fayeBad?.ok === false && fayeNoCity?.ok === false);
+  // Nation and address are sent too (as an old phone might), and must never be kept.
+  const fayeAsks = await faye.call("lib/porch/membership.ts", "requestToJoin", { code: codeA, fullName: "Faye Joiner", phone: "+254711000001", city: "Kisumu", nation: "Kenya", address: "Secret Lane 7" });
   const fayeState1 = await faye.call("lib/porch/membership.ts", "accountState");
   record("sanity", "joining", "Faye's request to Porch A waits; she isn't a member yet", fayeAsks?.ok === true && fayeState1?.waiting?.porchName === "Porch A" && fayeState1?.member === false);
   const fayeFeed = await faye.call("lib/porch/api.ts", "getFeed", { filter: "all" });
@@ -299,8 +301,9 @@ try {
   const benWaiting2 = await ben.call("lib/porch/membership.ts", "waitingToJoin");
   const abeWaiting = await abe.call("lib/porch/membership.ts", "waitingToJoin");
   const fayeRequest = (annWaiting?.people ?? []).find((p) => p.fullName === "Faye Joiner");
-  record("sanity", "joining", "Ann (A's admin) sees Faye's request with her details", Boolean(fayeRequest) && fayeRequest?.phone === "+254711000001");
-  record("isolation", "joining", "A request to Porch A never shows in Porch B's waiting list", benWaiting2?.ok === true && !has(benWaiting2, "Faye Joiner") && !has(benWaiting2, "Secret Lane"));
+  record("sanity", "joining", "Ann (A's admin) sees Faye's request with her phone and city", Boolean(fayeRequest) && fayeRequest?.phone === "+254711000001" && fayeRequest?.city === "Kisumu");
+  record("sanity", "joining", "Nation and address are never kept, even when a phone still sends them", !has(annWaiting, "Kenya") && !has(annWaiting, "Secret Lane"));
+  record("isolation", "joining", "A request to Porch A never shows in Porch B's waiting list", benWaiting2?.ok === true && !has(benWaiting2, "Faye Joiner") && !has(benWaiting2, "Kisumu"));
   record("isolation", "joining", "A member who isn't an admin (Abe) can't see the waiting list", abeWaiting?.ok === false && !has(abeWaiting, "Faye Joiner"));
   const benDecides = await ben.call("lib/porch/membership.ts", "decideJoinRequest", { id: fayeRequest?.id, letIn: true });
   const fayeStill = await helper("person", { email: faye.email });
@@ -309,18 +312,18 @@ try {
   const fayeNow = await helper("person", { email: faye.email });
   record("sanity", "joining", "Ann lets Faye in: she's a member of Porch A", annLetsIn?.ok === true && fayeNow.porch_id === porchA);
   const annSeesFaye = await ann.call("lib/porch/membership.ts", "memberDetailsOf", { userId: faye.userId });
-  record("sanity", "details", "Ann (A's admin) can see Faye's member details", annSeesFaye?.ok === true && annSeesFaye?.details?.address === "Secret Lane 7, Kisumu");
+  record("sanity", "details", "Ann (A's admin) can see Faye's member details (full name, phone, city)", annSeesFaye?.ok === true && annSeesFaye?.details?.fullName === "Faye Joiner" && annSeesFaye?.details?.city === "Kisumu" && !has(annSeesFaye, "Secret Lane"));
   const benSeesFaye = await ben.call("lib/porch/membership.ts", "memberDetailsOf", { userId: faye.userId });
-  record("isolation", "details", "Porch B's admins can never see Porch A's member details", benSeesFaye?.ok === false && !has(benSeesFaye, "Secret Lane") && !has(benSeesFaye, "+254711000001"));
+  record("isolation", "details", "Porch B's admins can never see Porch A's member details", benSeesFaye?.ok === false && !has(benSeesFaye, "Kisumu") && !has(benSeesFaye, "+254711000001"));
   const abeSeesFaye = await abe.call("lib/porch/membership.ts", "memberDetailsOf", { userId: faye.userId });
-  record("isolation", "details", "A member who isn't an admin (Abe) can't see other members' details", abeSeesFaye?.ok === false && !has(abeSeesFaye, "Secret Lane"));
+  record("isolation", "details", "A member who isn't an admin (Abe) can't see other members' details", abeSeesFaye?.ok === false && !has(abeSeesFaye, "Kisumu"));
   const fayeOwn = await faye.call("lib/porch/membership.ts", "myDetails");
-  const fayeFix = await faye.call("lib/porch/membership.ts", "saveMyDetails", { fullName: "Faye Joiner", nation: "Kenya", phone: "+254711000002", address: "New Road 3, Kisumu" });
+  const fayeFix = await faye.call("lib/porch/membership.ts", "saveMyDetails", { fullName: "Faye Joiner", phone: "+254711000002", city: "Eldoret" });
   const fayeOwnAfter = await faye.call("lib/porch/membership.ts", "myDetails");
-  record("sanity", "details", "Faye sees and corrects her own details", fayeOwn?.details?.phone === "+254711000001" && fayeFix?.ok === true && fayeOwnAfter?.details?.address === "New Road 3, Kisumu");
+  record("sanity", "details", "Faye sees and corrects her own details", fayeOwn?.details?.phone === "+254711000001" && fayeFix?.ok === true && fayeOwnAfter?.details?.city === "Eldoret");
   const gus = await person("Gus Declined", "gus@two-church.test");
   await verify(gus);
-  await gus.call("lib/porch/membership.ts", "requestToJoin", { code: benReset?.code, fullName: "Gus Declined", nation: "Uganda", phone: "+256700000020", address: "Kololo, Kampala" });
+  await gus.call("lib/porch/membership.ts", "requestToJoin", { code: benReset?.code, fullName: "Gus Declined", phone: "+256700000020", city: "Kampala" });
   const gusRequest = ((await ben.call("lib/porch/membership.ts", "waitingToJoin"))?.people ?? []).find((p) => p.fullName === "Gus Declined");
   await ben.call("lib/porch/membership.ts", "decideJoinRequest", { id: gusRequest?.id, letIn: false });
   const gusState = await gus.call("lib/porch/membership.ts", "accountState");
@@ -334,7 +337,7 @@ try {
   const cassHide = await cara.call("lib/porch/membership.ts", "accountState");
   record("isolation", "accounts", "\"Hide my church\" is each person's own switch", fayeHide?.hideChurch === true && cassHide?.hideChurch === false);
   const abeAsked = await abe.call("lib/porch/membership.ts", "accountState");
-  await abe.call("lib/porch/membership.ts", "saveMyDetails", { fullName: "Abe Member", nation: "Uganda", phone: "+256700000030", address: "Mbarara" });
+  await abe.call("lib/porch/membership.ts", "saveMyDetails", { fullName: "Abe Member", phone: "+256700000030", city: "Mbarara" });
   const abeAskedAfter = await abe.call("lib/porch/membership.ts", "accountState");
   record("sanity", "details", "An existing member with details missing is asked for them, until they're given", (abeAsked?.missing ?? []).length > 0 && (abeAskedAfter?.missing ?? []).length === 0);
 
@@ -679,6 +682,9 @@ try {
   record("sanity", "serve", "Ann (A's admin) gets Abe in the volunteer list", pdfText(annServe).includes("Servant"));
   const benServe = await ben.call("lib/porch/serve.ts", "downloadServe");
   record("isolation", "serve", "Ben's volunteer list has no Porch A volunteers", benServe?.ok === true && !pdfText(benServe).includes("Servant"));
+  const abeServeForm = await abe.call("lib/porch/serve.ts", "loadServe");
+  const benServeForm = await ben.call("lib/porch/serve.ts", "loadServe");
+  record("isolation", "serve", "A Serve form belongs to its church: Abe sees his A form; Ben (B) has none", abeServeForm?.sent === true && abeServeForm?.form?.lastName === "Servant" && benServeForm?.sent === false);
 
   // ---- Transport ----
   const annStage = await ann.call("lib/porch/transport.ts", "saveTransportStage", { place: "Kakoba", stage: "Kakoba stage A" });
@@ -807,7 +813,7 @@ try {
   const caraSecond = await helper("addMember", { email: cara.email, porchId: porchA });
   const caraOne = await helper("person", { email: cara.email });
   record("isolation", "joining", "Nobody can be in two churches, even straight in the database (Cara stays in B only)", caraSecond?.ok === false && caraOne.porch_id === porchB && (caraOne.porches ?? []).length === 1);
-  const caraAsksA = await cara.call("lib/porch/membership.ts", "requestToJoin", { code: codeA, fullName: "Cara New", nation: "Uganda", phone: "+256700000010", address: "Plot 1, Gulu" });
+  const caraAsksA = await cara.call("lib/porch/membership.ts", "requestToJoin", { code: codeA, fullName: "Cara New", phone: "+256700000010", city: "Gulu" });
   record("isolation", "joining", "A member of Porch B can't send a join request to Porch A", caraAsksA?.ok === false);
   const caraToA = await cara.call("lib/porch/porch-join.ts", "switchPorch", { porchId: porchA });
   const caraFeed = await cara.call("lib/porch/api.ts", "getFeed", { filter: "all" });
@@ -827,7 +833,48 @@ try {
   const abeAfter = await abe.call("lib/porch/api.ts", "getFeed", { filter: "all" });
   record("isolation", "feed", "What Cara posts stays in B", caraPostsB?.ok === true && !has(abeAfter, "Cara's post in B"));
   const annSeesCara = await ann.call("lib/porch/membership.ts", "memberDetailsOf", { userId: cara.userId });
-  record("isolation", "details", "A's admin can't see the details Cara gave Porch B", annSeesCara?.ok === false && !has(annSeesCara, "+256700000010") && !has(annSeesCara, "Plot 1, Gulu"));
+  record("isolation", "details", "A's admin can't see the details Cara gave Porch B", annSeesCara?.ok === false && !has(annSeesCara, "+256700000010") && !has(annSeesCara, "Gulu"));
+
+  // ---------------- N3: "Continue as [ministry]" ----------------
+  console.log("\nActing as a ministry (N3)");
+  const abeBefore = await abe.call("lib/porch/membership.ts", "accountState");
+  record("sanity", "accounts", "Abe's account lists the ministry he runs", (abeBefore?.ministries ?? []).some((m) => m.name === "Abe Ministry" && m.typeName === "Music") && abeBefore?.acting === null);
+  const annActs = await ann.call("lib/porch/porch-join.ts", "actAs", { porchId: ministry?.id });
+  const annActState = await ann.call("lib/porch/membership.ts", "accountState");
+  record("isolation", "accounts", "Ann can't act as Abe's ministry (she isn't one of its admins)", annActs?.ok === false && annActState?.acting === null);
+  const abeActs = await abe.call("lib/porch/porch-join.ts", "actAs", { porchId: ministry?.id });
+  const abeActing = await abe.call("lib/porch/membership.ts", "accountState");
+  const abeHome = await abe.call("lib/porch/porch-join.ts", "ministryHome");
+  record("sanity", "accounts", "Abe continues as Abe Ministry: its own screen shows its description and admins", abeActs?.ok === true && abeActing?.acting?.name === "Abe Ministry" && abeHome?.ok === true && abeHome?.description === ABE_WHAT && (abeHome?.admins ?? []).some((a) => a.userId === abe.userId));
+  const actingFeed = await abe.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  const actingServe = await abe.call("lib/porch/serve.ts", "loadServe");
+  record("isolation", "feed", "While acting as the ministry, Abe's church porch is closed (no A posts, no A Serve form)", !has(actingFeed, "A private post in Porch A") && actingServe?.sent === false);
+  const actingPost = await abe.call("lib/porch/api.ts", "createPost", { room: "proclaim", body: "Posted while acting as the ministry" });
+  const annFeedNow = await ann.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  record("isolation", "feed", "A post written while acting as the ministry is refused (it never lands in Porch A)", actingPost?.ok === false && !has(annFeedNow, "Posted while acting as the ministry"));
+  const abeBack = await abe.call("lib/porch/porch-join.ts", "actAs", { porchId: 0 });
+  const abeFeedBack = await abe.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  record("sanity", "feed", "Continue as me: Abe is back in Porch A and sees its posts", abeBack?.ok === true && has(abeFeedBack, "A private post in Porch A"));
+
+  // ---------------- N3: Leave this church ----------------
+  console.log("\nLeaving a church (N3)");
+  await faye.call("lib/porch/api.ts", "createPost", { room: "proclaim", body: "Faye's post in A" });
+  const fayeForm = { ...form, firstName: "Faye", lastName: "Volunteer", email: "faye@two-church.test" };
+  const fayeServe = await faye.call("lib/porch/serve.ts", "saveServe", { form: fayeForm });
+  const annLeaves = await ann.call("lib/porch/membership.ts", "leaveChurch");
+  record("sanity", "joining", "Porch A's only admin can't leave while it has other members", annLeaves?.ok === false);
+  const fayeLeaves = await faye.call("lib/porch/membership.ts", "leaveChurch");
+  const fayeAfter = await faye.call("lib/porch/membership.ts", "accountState");
+  const fayeFeedAfter = await faye.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  record("sanity", "joining", "Faye leaves Porch A: she's in no church, and A's porch is closed to her", fayeServe?.ok === true && fayeLeaves?.ok === true && fayeAfter?.member === false && !has(fayeFeedAfter, "A private post in Porch A"));
+  const annFeedAfter = await ann.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  record("sanity", "feed", "Faye's posts stay in Porch A after she leaves", has(annFeedAfter, "Faye's post in A"));
+  const annSeesFayeAfter = await ann.call("lib/porch/membership.ts", "memberDetailsOf", { userId: faye.userId });
+  const annServeAfter = await ann.call("lib/porch/serve.ts", "downloadServe");
+  const fayeServeAfter = await faye.call("lib/porch/serve.ts", "loadServe");
+  record("isolation", "details", "Her details and her Serve form are gone from Porch A", annSeesFayeAfter?.ok === false && !has(annSeesFayeAfter, "Eldoret") && !pdfText(annServeAfter).includes("Volunteer") && fayeServeAfter?.sent === false);
+  const fayeRejoin = await faye.call("lib/porch/membership.ts", "requestToJoin", { code: codeA, fullName: "Faye Joiner", phone: "+254711000002", city: "Eldoret" });
+  record("sanity", "joining", "After leaving she can ask to join a church again (it waits for the admins)", fayeRejoin?.ok === true);
 
   // ---------------- Summary ----------------
   const failed = results.filter((r) => !r.pass && (r.kind !== "isolation" || AREAS_DONE.includes(r.area)));

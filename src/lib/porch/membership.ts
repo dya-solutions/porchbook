@@ -1,25 +1,26 @@
 // Stage 5c: accounts and join requests (BUILD-BRIEF.md decisions 14-17).
 // - A Porchbook account: full name, an email verified by a 6-digit code, an optional unique
 //   username. An account alone can use the public porch but belongs to no private porch.
-// - Membership of one church, by request only: full name, nation, phone and address. The
-//   church's admins let the person in or decline. An invite code only opens the request.
-// - Member details are seen by the member and by their church's admins only (admin levels
-//   come in Stage 5d), and are deleted when someone leaves (Stage 5b).
+// - Membership of one church, by request only: full name, phone and city (N2, decisions 27 and
+//   35). The church's admins let the person in or decline. An invite code only opens the request.
+// - The details live in the membership list (porch_members), one row for the person's church.
+//   They're seen by the member and that church's admins only (admin levels come in Stage 5d),
+//   and are deleted when someone leaves the church (N3: leaveChurch).
 import { createServerFn } from "@tanstack/react-start";
 import { getSql, type Sql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { noteAttempt } from "@/lib/porch/guard.server";
 import { touchProfile } from "@/lib/porch/api";
+import { ministryTypeName } from "@/lib/porch/porch-kinds";
 
 /** What the church asks for, and the one line that says why (decision 17). */
 export const DETAIL_FIELDS = [
-  { key: "fullName", label: "Full name", why: "So your church family knows who you are. It's the name your posts and messages show." },
-  { key: "nation", label: "Nation", why: "So your church knows where its members come from and can welcome you well." },
-  { key: "phone", label: "Phone number", why: "So the church can reach you for care, visits and urgent news." },
-  { key: "address", label: "Address", why: "So the church can visit you and link you with a group near you." },
+  { key: "fullName", label: "Full name", why: "So your church family knows who you are. It's the name your posts and messages show in your church." },
+  { key: "phone", label: "Phone number", why: "So your church can reach you for care, visits and urgent news." },
+  { key: "city", label: "City or town", why: "So your church knows where you live and can link you with a group near you." },
 ] as const;
 
-export type MemberDetails = { fullName: string; nation: string; phone: string; address: string };
+export type MemberDetails = { fullName: string; phone: string; city: string };
 
 function asRecord(input: unknown): Record<string, unknown> {
   return input && typeof input === "object" ? (input as Record<string, unknown>) : {};
@@ -37,9 +38,8 @@ const seedOf = (raw: Record<string, unknown>) => ({
 function parseDetails(raw: Record<string, unknown>): MemberDetails {
   return {
     fullName: text(raw.fullName, 80),
-    nation: text(raw.nation, 60),
     phone: text(raw.phone, 30),
-    address: text(raw.address, 200),
+    city: text(raw.city, 60),
   };
 }
 function missingIn(details: MemberDetails) {
@@ -88,6 +88,15 @@ function ensure(sql: Sql) {
     )`);
     await sql.query("create index if not exists join_requests_porch_idx on join_requests (porch_id, status)");
     await sql.query("create unique index if not exists join_requests_one_waiting on join_requests (user_id) where status = 'waiting'");
+    // N2: a join request asks for the city (nation and address are no longer asked).
+    await sql.query("alter table join_requests add column if not exists city text not null default ''");
+    // N2, once (decision 35): the nation and address people already gave are deleted. The phone
+    // numbers were copied to the membership list in M2, so the old details table is emptied.
+    await sql.query(
+      `with done as (insert into porch_steps (step) values ('nation-address-deleted-v1') on conflict (step) do nothing returning step)
+       update join_requests set nation = '', address = '' where (nation <> '' or address <> '') and exists (select 1 from done)`,
+    );
+    await sql.query("delete from member_details");
     // M2, once: the phone number a member already gave moves to their row in the membership list.
     await sql.query(
       `with done as (insert into porch_steps (step) values ('porch-members-phone-v1') on conflict (step) do nothing returning step)
@@ -129,16 +138,16 @@ export const accountState = createServerFn({ method: "POST" })
       hide_church: unknown;
       porch_id: number | null;
       porch_name: string | null;
-      starter: unknown;
-      nation: string | null;
+      full_name: string | null;
       phone: string | null;
-      address: string | null;
+      city: string | null;
+      acting: number | null;
     }>(
-      `select p.display_name, p.email_verified_at::text as verified, p.username, p.hide_church, my_porch(p.user_id) as porch_id, c.name as porch_name, (c.created_by = p.user_id) as starter,
-              d.nation, d.phone, d.address
+      `select p.display_name, p.email_verified_at::text as verified, p.username, p.hide_church, church_of(p.user_id) as porch_id, c.name as porch_name,
+              m.full_name, m.phone, m.city, p.acting_porch_id as acting
          from profiles p
-         left join porches c on c.id = my_porch(p.user_id)
-         left join member_details d on d.user_id = p.user_id and d.porch_id = my_porch(p.user_id)
+         left join porches c on c.id = church_of(p.user_id)
+         left join porch_members m on m.user_id = p.user_id and m.porch_id = church_of(p.user_id)
         where p.user_id = $1`,
       [context.userId],
     );
@@ -154,8 +163,18 @@ export const accountState = createServerFn({ method: "POST" })
         where r.user_id = $1 and r.status = 'declined' order by r.decided_at desc limit 1`,
       [context.userId],
     );
-    const details: MemberDetails = { fullName: row?.display_name ?? "", nation: row?.nation ?? "", phone: row?.phone ?? "", address: row?.address ?? "" };
+    const details: MemberDetails = { fullName: row?.full_name || row?.display_name || "", phone: row?.phone ?? "", city: row?.city ?? "" };
     const { email } = await accountEmail(sql, context.userId);
+    // N3: the ministries this person runs, and the one they're acting as (if any).
+    const ministries = await sql.query<{ id: number; name: string; status: string; ministry_type: string; ministry_other: string; accent: string | null }>(
+      `select c.id, c.name, c.status, c.ministry_type, c.ministry_other, s.accent
+         from porch_admins a join porches c on c.id = a.porch_id left join porch_settings s on s.porch_id = c.id
+        where a.user_id = $1 and c.kind = 'ministry' and c.status <> 'declined'
+        order by c.created_at`,
+      [context.userId],
+    );
+    const runs = ministries.map((m) => ({ id: m.id, name: m.name, status: m.status, typeName: ministryTypeName(m.ministry_type, m.ministry_other), accent: m.accent ?? "gold" }));
+    const acting = runs.find((m) => m.id === row?.acting) ?? null;
     return {
       email,
       verified: Boolean(row?.verified),
@@ -163,11 +182,14 @@ export const accountState = createServerFn({ method: "POST" })
       hideChurch: yes(row?.hide_church),
       member: row?.porch_id !== null && row?.porch_id !== undefined,
       porchName: row?.porch_name ?? "",
+      fullName: details.fullName,
+      ministries: runs,
+      acting,
       waiting: waiting[0] ? { id: waiting[0].id, porchName: waiting[0].porch_name, since: waiting[0].created_at } : null,
       lastDeclined: declined[0]?.porch_name ?? "",
-      // A member with details missing is asked for them the next time they open the app.
-      // (Not for the person who started the porch: the new join details come with M4.)
-      missing: row?.porch_id && !yes(row?.starter) ? missingIn(details) : [],
+      // A member with details missing (for example the city, new in N2) is asked for them once,
+      // the next time they open the app.
+      missing: row?.porch_id ? missingIn(details) : [],
     };
   });
 
@@ -303,11 +325,11 @@ export const requestToJoin = createServerFn({ method: "POST" })
     const porch = porches[0];
     if (!porch) return { ok: false as const, error: "That invite code isn't right. Check it with your church." };
     const me = await sql.query<{ porch_id: number | null }>("select my_porch($1) as porch_id", [context.userId]);
-    if (me[0]?.porch_id) return { ok: false as const, error: "You're already a member of a church. Moving church comes soon." };
+    if (me[0]?.porch_id) return { ok: false as const, error: "You're already a member of a church. A person belongs to one church: leave yours first (Your account → Leave this church)." };
     await sql.query("update join_requests set status = 'cancelled' where user_id = $1 and status = 'waiting'", [context.userId]);
     await sql.query(
-      "insert into join_requests (porch_id, user_id, full_name, nation, phone, address) values ($1, $2, $3, $4, $5, $6)",
-      [porch.id, context.userId, data.details.fullName, data.details.nation, data.details.phone, data.details.address],
+      "insert into join_requests (porch_id, user_id, full_name, nation, phone, address, city) values ($1, $2, $3, '', $4, '', $5)",
+      [porch.id, context.userId, data.details.fullName, data.details.phone, data.details.city],
     );
     await sql.query("update profiles set display_name = $2 where user_id = $1", [context.userId, data.details.fullName]);
     // Tell the church's admins.
@@ -339,7 +361,7 @@ async function isAdmin(sql: Sql, userId: string) {
   return yes(rows[0]?.admin);
 }
 
-export type WaitingPerson = { id: number; userId: string; fullName: string; nation: string; phone: string; address: string; email: string; since: string };
+export type WaitingPerson = { id: number; userId: string; fullName: string; phone: string; city: string; email: string; since: string };
 
 /** Admins: the people waiting to join their own church. */
 export const waitingToJoin = createServerFn({ method: "POST" })
@@ -348,8 +370,8 @@ export const waitingToJoin = createServerFn({ method: "POST" })
     const sql = await getSql();
     await ensure(sql);
     if (!(await isAdmin(sql, context.userId))) return { ok: false as const, error: "Only your church's admins see this list.", people: [] as WaitingPerson[] };
-    const rows = await sql.query<{ id: number; user_id: string; full_name: string; nation: string; phone: string; address: string; email: string | null; created_at: string }>(
-      `select r.id, r.user_id, r.full_name, r.nation, r.phone, r.address, u.email,
+    const rows = await sql.query<{ id: number; user_id: string; full_name: string; phone: string; city: string; email: string | null; created_at: string }>(
+      `select r.id, r.user_id, r.full_name, r.phone, r.city, u.email,
               to_char(r.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
          from join_requests r left join "user" u on u.id = r.user_id
         where r.porch_id = my_porch($1) and r.status = 'waiting'
@@ -358,7 +380,7 @@ export const waitingToJoin = createServerFn({ method: "POST" })
     );
     return {
       ok: true as const,
-      people: rows.map((row) => ({ id: row.id, userId: row.user_id, fullName: row.full_name, nation: row.nation, phone: row.phone, address: row.address, email: row.email ?? "", since: row.created_at })),
+      people: rows.map((row) => ({ id: row.id, userId: row.user_id, fullName: row.full_name, phone: row.phone, city: row.city, email: row.email ?? "", since: row.created_at })),
     };
   });
 
@@ -372,8 +394,8 @@ export const decideJoinRequest = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     await ensure(sql);
-    const rows = await sql.query<{ id: number; porch_id: number; user_id: string; full_name: string; nation: string; phone: string; address: string; porch_name: string }>(
-      `select r.id, r.porch_id, r.user_id, r.full_name, r.nation, r.phone, r.address, c.name as porch_name
+    const rows = await sql.query<{ id: number; porch_id: number; user_id: string; full_name: string; phone: string; city: string; porch_name: string }>(
+      `select r.id, r.porch_id, r.user_id, r.full_name, r.phone, r.city, c.name as porch_name
          from join_requests r join porches c on c.id = r.porch_id
         where r.id = $1 and r.status = 'waiting' and r.porch_id = my_porch($2)`,
       [data.id, context.userId],
@@ -402,13 +424,8 @@ export const decideJoinRequest = createServerFn({ method: "POST" })
       await sql.query("update join_requests set status = 'cancelled', decided_by = $2, decided_at = now() where id = $1", [request.id, context.userId]);
       return { ok: false as const, error: "That person has already joined a church." };
     }
-    await sql.query(
-      `insert into member_details (user_id, porch_id, nation, phone, address, updated_at) values ($1, $2, $3, $4, $5, now())
-       on conflict (user_id) do update set porch_id = excluded.porch_id, nation = excluded.nation, phone = excluded.phone, address = excluded.address, updated_at = now()`,
-      [request.user_id, request.porch_id, request.nation, request.phone, request.address],
-    );
     const { addMember } = await import("@/lib/porch/porch-join");
-    await addMember(sql, request.porch_id, request.user_id, { fullName: request.full_name, phone: request.phone });
+    await addMember(sql, request.porch_id, request.user_id, { fullName: request.full_name, phone: request.phone, city: request.city });
     await sql.query("update join_requests set status = 'let-in', decided_by = $2, decided_at = now() where id = $1", [request.id, context.userId]);
     try {
       const { notifyPeople } = await import("@/lib/porch/push.server");
@@ -425,16 +442,19 @@ export const myDetails = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const sql = await getSql();
     await ensure(sql);
-    const rows = await sql.query<{ display_name: string; nation: string | null; phone: string | null; address: string | null; porch_id: number | null; username: string | null; hide_church: unknown }>(
-      `select p.display_name, d.nation, d.phone, d.address, my_porch(p.user_id) as porch_id, p.username, p.hide_church
-         from profiles p left join member_details d on d.user_id = p.user_id and d.porch_id = my_porch(p.user_id)
+    const rows = await sql.query<{ display_name: string; full_name: string | null; phone: string | null; city: string | null; porch_id: number | null; porch_name: string | null; username: string | null; hide_church: unknown }>(
+      `select p.display_name, m.full_name, m.phone, m.city, church_of(p.user_id) as porch_id, c.name as porch_name, p.username, p.hide_church
+         from profiles p
+         left join porch_members m on m.user_id = p.user_id and m.porch_id = church_of(p.user_id)
+         left join porches c on c.id = church_of(p.user_id)
         where p.user_id = $1`,
       [context.userId],
     );
     const row = rows[0];
     return {
       member: Boolean(row?.porch_id),
-      details: { fullName: row?.display_name ?? "", nation: row?.nation ?? "", phone: row?.phone ?? "", address: row?.address ?? "" } satisfies MemberDetails,
+      porchName: row?.porch_name ?? "",
+      details: { fullName: row?.full_name || row?.display_name || "", phone: row?.phone ?? "", city: row?.city ?? "" } satisfies MemberDetails,
       username: row?.username ?? "",
       hideChurch: yes(row?.hide_church),
     };
@@ -453,11 +473,13 @@ export const saveMyDetails = createServerFn({ method: "POST" })
     const problem = checkDetails(data);
     if (problem) return { ok: false as const, error: problem };
     await sql.query("update profiles set display_name = $2 where user_id = $1", [context.userId, data.fullName]);
-    await sql.query(
-      `insert into member_details (user_id, porch_id, nation, phone, address, updated_at) values ($1, $2, $3, $4, $5, now())
-       on conflict (user_id) do update set porch_id = excluded.porch_id, nation = excluded.nation, phone = excluded.phone, address = excluded.address, updated_at = now()`,
-      [context.userId, porch, data.nation, data.phone, data.address],
-    );
+    await sql.query("update porch_members set full_name = $3, phone = $4, city = $5, shared_at = coalesce(shared_at, now()) where user_id = $1 and porch_id = $2", [
+      context.userId,
+      porch,
+      data.fullName,
+      data.phone,
+      data.city,
+    ]);
     return { ok: true as const };
   });
 
@@ -472,12 +494,12 @@ export const memberDetailsOf = createServerFn({ method: "POST" })
       noteAttempt(context.userId, "member-details", "Tried to see a member's details.");
       return { ok: false as const, error: "Only your church's admins can see member details." };
     }
-    const rows = await sql.query<{ display_name: string; nation: string | null; phone: string | null; address: string | null; email: string | null }>(
-      `select p.display_name, d.nation, d.phone, d.address, u.email
+    const rows = await sql.query<{ display_name: string; full_name: string | null; phone: string | null; city: string | null; email: string | null }>(
+      `select p.display_name, m.full_name, m.phone, m.city, u.email
          from profiles p
-         left join member_details d on d.user_id = p.user_id and d.porch_id = my_porch($2)
+         join porch_members m on m.user_id = p.user_id and m.porch_id = my_porch($2)
          left join "user" u on u.id = p.user_id
-        where p.user_id = $1 and in_porch(p.user_id, my_porch($2))`,
+        where p.user_id = $1`,
       [data.userId, context.userId],
     );
     const row = rows[0];
@@ -487,7 +509,45 @@ export const memberDetailsOf = createServerFn({ method: "POST" })
     }
     return {
       ok: true as const,
-      details: { fullName: row.display_name, nation: row.nation ?? "", phone: row.phone ?? "", address: row.address ?? "" } satisfies MemberDetails,
+      details: { fullName: row.full_name || row.display_name, phone: row.phone ?? "", city: row.city ?? "" } satisfies MemberDetails,
       email: row.email ?? "",
     };
+  });
+
+/**
+ * Leave your church (N3, decision 34). Your posts, comments and messages stay in the church's
+ * porch under your name. The details you gave the church (full name, phone, city), your Serve
+ * form, and any role there (admin, office head) go. You can then join another church.
+ * The last admin of a church that still has other members can't leave (it would have no admin).
+ */
+export const leaveChurch = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await getSql();
+    await ensure(sql);
+    const me = await sql.query<{ porch_id: number | null; name: string | null; admin: unknown; other_admins: number; others: number }>(
+      `select c.id as porch_id, c.name,
+              exists (select 1 from porch_admins a where a.porch_id = c.id and a.user_id = $1) as admin,
+              (select count(*)::int from porch_admins a join porch_members m on m.user_id = a.user_id and m.porch_id = a.porch_id where a.porch_id = c.id and a.user_id <> $1) as other_admins,
+              (select count(*)::int from porch_members m where m.porch_id = c.id and m.user_id <> $1) as others
+         from porches c where c.id = church_of($1)`,
+      [context.userId],
+    );
+    const church = me[0];
+    if (!church?.porch_id) return { ok: false as const, error: "You're not a member of a church." };
+    if (yes(church.admin) && Number(church.other_admins) === 0 && Number(church.others) > 0) {
+      return { ok: false as const, error: `You're the only admin of ${church.name}. It needs another admin before you can leave. Ask Porchbook to name one.` };
+    }
+    const porchId = church.porch_id;
+    await sql.query("delete from porch_members where user_id = $1 and porch_id = $2", [context.userId, porchId]);
+    await sql.query("delete from porch_admins where user_id = $1 and porch_id = $2", [context.userId, porchId]);
+    await sql.query("update profiles set porch_id = null where user_id = $1 and porch_id = $2", [context.userId, porchId]);
+    // Their Serve form and any office they head belong to the church: those go too.
+    for (const statement of [
+      "delete from serve_forms where user_id = $1 and porch_id = $2",
+      "update offices set head_user_id = null where head_user_id = $1 and porch_id = $2",
+    ]) {
+      await sql.query(statement, [context.userId, porchId]).catch(() => undefined);
+    }
+    return { ok: true as const, name: church.name ?? "" };
   });
