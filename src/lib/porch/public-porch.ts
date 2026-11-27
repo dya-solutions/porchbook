@@ -50,6 +50,8 @@ export function ensurePublic(sql: Sql) {
     )`);
     // A private church post can point to a public post it shares (as a link, nothing more).
     await sql.query("alter table posts add column if not exists shared_public_post_id integer references public_posts (id) on delete set null");
+    // Branches name their main church (Stage 5a adds this too; it may not be there yet on a new database).
+    await sql.query("alter table porches add column if not exists main_porch_id integer references porches (id)");
     // The porches a person follows: the ones they chose, plus their own church and its main church.
     await sql.query(`create or replace function follows_porch(uid text, pid integer) returns boolean language sql stable as $$
       select exists (select 1 from porch_follows f where f.user_id = uid and f.porch_id = pid)

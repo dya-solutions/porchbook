@@ -432,6 +432,10 @@ export async function setupPorches(sql: Sql): Promise<void> {
     own: ["bible_sites"],
     key: [["devotion_translations", "link, lang"], ["item_sizes", "place, item"], ["app_flags", "key"]],
   });
+  // Stage 6: the public porch's own tables exist from the start (public-porch.ts makes them).
+  // Imported here only when setting up, so the two files never load each other at start.
+  const { ensurePublic } = await import("@/lib/porch/public-porch");
+  await ensurePublic(sql);
   await applyLocalSetup(sql);
 }
 
