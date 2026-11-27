@@ -15,6 +15,7 @@ import { NoteBell } from "@/components/porch/note-bell";
 import { WelcomeScreen } from "@/components/porch/welcome-screen";
 import { JoinChurch, MissingDetails, VerifyEmail, WaitingToJoin, detailsSkipped, useAccount } from "@/components/porch/account-screens";
 import { setUsername, usernameFree, waitingJoinCount } from "@/lib/porch/membership";
+import { myAdminLevel } from "@/lib/porch/admin-levels";
 import { ActAsSheet, MinistryShell } from "@/components/porch/act-as";
 import { BrandLoading } from "@/components/porch/brand-logo";
 import { BottomNav, LookModeChoice, PbIcon, TopBar, usePorchLook } from "@/components/porch/pb-shell";
@@ -1196,16 +1197,23 @@ export function AccountCard({ user }: { user: AppUser }) {
   const [alertNote, setAlertNote] = useState("");
   const [admin, setAdmin] = useState(false);
   const [waitingCount, setWaitingCount] = useState(0);
+  // Stage 5d: what this admin's level allows (Lead admins can do everything).
+  const [powers, setPowers] = useState<{ level: string | null; membership: boolean; moderator: boolean }>({ level: null, membership: false, moderator: false });
   const [leaving, setLeaving] = useState(false);
   const accountLook = usePorchLook();
   const navigate = useNavigate();
   const seed = { displayName: user.displayName ?? "", email: user.primaryEmail ?? null, imageUrl: user.profileImageUrl ?? null };
   useEffect(() => {
     setAlerts(alertPermission());
+    myAdminLevel()
+      .then((result) => {
+        setPowers({ level: result.level, membership: result.membership, moderator: result.moderator });
+        if (result.membership) void waitingJoinCount().then((r) => setWaitingCount(r.count)).catch(() => undefined);
+      })
+      .catch(() => undefined);
     founderDesk({ data: seed })
       .then((result) => {
         setAdmin(result.isFounder);
-        if (result.isFounder) void waitingJoinCount().then((r) => setWaitingCount(r.count)).catch(() => undefined);
       })
       .catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1274,11 +1282,21 @@ export function AccountCard({ user }: { user: AppUser }) {
             <small>Your posts stay; your details go</small>
           </Link>
         ) : null}
-        {admin ? (
+        {powers.membership ? (
           <Link to="/waiting-to-join">
             <Users className="size-5" aria-hidden="true" />
             People waiting to join
             <small>{waitingCount ? `${waitingCount} waiting · let in or decline` : "Let in or decline join requests"}</small>
+          </Link>
+        ) : null}
+        {powers.level ? (
+          <Link to="/porch-admins">
+            <Landmark className="size-5" aria-hidden="true" />
+            Admins
+            <small>
+              You're {powers.level === "lead" ? "a Lead admin" : powers.level === "membership" ? "a Membership admin" : powers.level === "moderator" ? "a Moderator" : "a Public page editor"}
+              {powers.level === "lead" ? " · add, change, remove" : ""}
+            </small>
           </Link>
         ) : null}
         <Link to="/faq">
@@ -1310,7 +1328,7 @@ export function AccountCard({ user }: { user: AppUser }) {
             <small>Message everyone, the roll, sounds</small>
           </button>
         ) : null}
-        {admin ? (
+        {powers.moderator ? (
           <button type="button" onClick={() => window.dispatchEvent(new Event(COMPLAINTS_EVENT))}>
             <MessageCircle className="size-5" aria-hidden="true" />
             User's complaints

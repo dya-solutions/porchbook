@@ -1158,3 +1158,27 @@ button.pb-me { border: 0; padding: 0; cursor: pointer; font: inherit; font-weigh
 /* A long name wraps; the "approved" tick stays right after the last word. */
 .pp-hero-name { display: block; text-align: center; }
 .pp-hero-name .pp-verified { display: inline-flex; vertical-align: 0.15em; margin-left: 8px; }
+
+/* ---- Stage 5d: Admins ---- */
+.adm-list { display: flex; flex-direction: column; }
+.adm-row { padding: 12px 14px; border-top: 1px solid var(--pb-line-2); display: flex; flex-direction: column; gap: 10px; }
+.adm-row:first-child { border-top: 0; }
+.adm-main { display: flex; align-items: center; gap: 10px; }
+.adm-main .ofc-words { flex: 1; }
+.adm-edit { display: flex; flex-direction: column; gap: 8px; }
+.adm-levels { display: flex; flex-direction: column; gap: 8px; }
+.adm-level {
+  text-align: left;
+  font: inherit;
+  color: var(--pb-text);
+  background: var(--pb-card, #fff);
+  border: 1px solid var(--pb-line-2);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+.adm-level small { color: var(--pb-quiet); font-size: 13px; }
+.adm-level.is-on { border-color: var(--pb-main); box-shadow: 0 0 0 1px var(--pb-main); }

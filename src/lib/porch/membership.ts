@@ -351,7 +351,7 @@ export const requestToJoin = createServerFn({ method: "POST" })
     // Tell the church's admins.
     try {
       const admins = await sql.query<{ user_id: string }>(
-        "select a.user_id from porch_admins a join porch_members m on m.user_id = a.user_id and m.porch_id = a.porch_id where a.porch_id = $1",
+        "select a.user_id from porch_admins a join porch_members m on m.user_id = a.user_id and m.porch_id = a.porch_id where a.porch_id = $1 and a.level in ('lead', 'membership')",
         [porch.id],
       );
       const { notifyPeople } = await import("@/lib/porch/push.server");
@@ -372,9 +372,24 @@ export const cancelJoinRequest = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** Stage 5d: membership work (join requests, member details, removing members): Lead and Membership admins. */
 async function isAdmin(sql: Sql, userId: string) {
-  const rows = await sql.query<{ admin: unknown }>("select is_porch_admin($1) as admin", [userId]);
+  const rows = await sql.query<{ admin: unknown }>("select has_admin_level($1, array['membership']) as admin", [userId]);
   return yes(rows[0]?.admin);
+}
+
+/** Stage 5d: an office head may see the details of a member who contacted their office (only that). */
+async function contactedMyOffice(sql: Sql, headId: string, memberId: string) {
+  try {
+    const rows = await sql.query(
+      `select 1 from offices o join office_threads t on t.office_key = o.key and t.porch_id = o.porch_id
+        where o.head_user_id = $1 and o.porch_id = my_porch($1) and o.removed_at is null and t.member_id = $2 limit 1`,
+      [headId, memberId],
+    );
+    return rows.length > 0;
+  } catch {
+    return false; // offices aren't set up yet
+  }
 }
 
 export type WaitingPerson = { id: number; userId: string; fullName: string; phone: string; city: string; email: string; since: string };
@@ -499,14 +514,17 @@ export const saveMyDetails = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-/** Admins only: a member of their own church's details. (Admin levels refine this in Stage 5d.) */
+/**
+ * A member's details (full name, phone, city): only Lead and Membership admins of their church,
+ * and an office head for a member who contacted their office (Stage 5d).
+ */
 export const memberDetailsOf = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => ({ userId: text(asRecord(input).userId, 80) }))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     await ensure(sql);
-    if (!(await isAdmin(sql, context.userId))) {
+    if (!(await isAdmin(sql, context.userId)) && !(await contactedMyOffice(sql, context.userId, data.userId))) {
       noteAttempt(context.userId, "member-details", "Tried to see a member's details.");
       return { ok: false as const, error: "Only your church's admins can see member details." };
     }
@@ -543,8 +561,9 @@ export const leaveChurch = createServerFn({ method: "POST" })
     await ensure(sql);
     const me = await sql.query<{ porch_id: number | null; name: string | null; admin: unknown; other_admins: number; others: number }>(
       `select c.id as porch_id, c.name,
-              exists (select 1 from porch_admins a where a.porch_id = c.id and a.user_id = $1) as admin,
-              (select count(*)::int from porch_admins a join porch_members m on m.user_id = a.user_id and m.porch_id = a.porch_id where a.porch_id = c.id and a.user_id <> $1) as other_admins,
+              exists (select 1 from porch_admins a where a.porch_id = c.id and a.user_id = $1 and a.level = 'lead') as admin,
+              (select count(*)::int from porch_admins a join porch_members m on m.user_id = a.user_id and m.porch_id = a.porch_id
+                where a.porch_id = c.id and a.user_id <> $1 and a.level = 'lead') as other_admins,
               (select count(*)::int from porch_members m where m.porch_id = c.id and m.user_id <> $1) as others
          from porches c where c.id = church_of($1)`,
       [context.userId],
@@ -552,7 +571,11 @@ export const leaveChurch = createServerFn({ method: "POST" })
     const church = me[0];
     if (!church?.porch_id) return { ok: false as const, error: "You're not a member of a church." };
     if (yes(church.admin) && Number(church.other_admins) === 0 && Number(church.others) > 0) {
-      return { ok: false as const, error: `You're the only admin of ${church.name}. It needs another admin before you can leave. Ask Porchbook to name one.` };
+      // Stage 5d: the last Lead admin hands over Lead first (Porch settings → Admins → Make Lead admin).
+      return {
+        ok: false as const,
+        error: `You're the only Lead admin of ${church.name}. Hand over Lead first: Porch settings → Admins, choose someone, and make them Lead admin. Then you can leave.`,
+      };
     }
     const porchId = church.porch_id;
     await sql.query("delete from porch_members where user_id = $1 and porch_id = $2", [context.userId, porchId]);
@@ -571,7 +594,7 @@ export const leaveChurch = createServerFn({ method: "POST" })
 /** Admins: how many people are waiting to join their church (0 for anyone else). */
 export async function waitingCountFor(sql: Sql, userId: string): Promise<number> {
   const rows = await sql.query<{ n: number }>(
-    "select case when is_porch_admin($1) then (select count(*)::int from join_requests where porch_id = my_porch($1) and status = 'waiting') else 0 end as n",
+    "select case when has_admin_level($1, array['membership']) then (select count(*)::int from join_requests where porch_id = my_porch($1) and status = 'waiting') else 0 end as n",
     [userId],
   );
   return Number(rows[0]?.n ?? 0);

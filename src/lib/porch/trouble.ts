@@ -48,7 +48,8 @@ async function ready(sql: Awaited<ReturnType<typeof getSql>>) {
 }
 async function founder(userId: string) {
   const sql = await getSql();
-  const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [userId]);
+  // Stage 5d: complaints are moderation work: Lead admins and Moderators.
+  const me = await sql.query<{ is_founder: boolean }>("select has_admin_level($1, array['moderator']) as is_founder", [userId]);
   return boolish(me[0]?.is_founder);
 }
 

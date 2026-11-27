@@ -253,6 +253,8 @@ function FollowButton({ porch, onChange }: { porch: PorchCard; onChange?: (follo
   const [busy, setBusy] = useState(false);
   useEffect(() => setFollowing(porch.following), [porch.following]);
   if (porch.ownChurch) return <span className="pb-tag is-green pp-own">Your church</span>;
+  // Fix 3: anyone who runs a porch always follows it while they're its admin.
+  if (porch.adminHere) return <span className="pb-tag is-green pp-own">You run it · following</span>;
   return (
     <button
       type="button"

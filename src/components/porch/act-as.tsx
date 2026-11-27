@@ -10,6 +10,7 @@ import { initialsOf } from "@/components/porch/pb-shell";
 import type { Account } from "@/components/porch/account-screens";
 import { BrandLogo } from "@/components/porch/brand-logo";
 import { PorchPublicDesk } from "@/components/porch/public-views";
+import { AdminsPanel } from "@/components/porch/admins-panel";
 
 async function switchTo(porchId: number) {
   const result = await actAs({ data: { porchId } }).catch(() => null);
@@ -134,16 +135,22 @@ export function MinistryShell({ account, me }: { account: Account; me: { id: str
           country={home?.country ?? ""}
           onDescription={(description) => setHome((current) => (current ? { ...current, description } : current))}
         />
-        <div className="pb-card welcome-card">
-          <p className="ofc-lbl" style={{ margin: 0 }}>The admin team</p>
-          <p className="pb-quiet" style={{ margin: 0, fontSize: 13 }}>On the public side, admins show by their usernames.</p>
-          {(home?.admins ?? []).map((admin) => (
-            <p key={admin.userId} style={{ margin: 0, fontSize: 15 }}>
-              {admin.username ? `@${admin.username}` : admin.name}
-              {admin.userId === me.id ? <span className="pb-quiet"> (you)</span> : null}
-            </p>
-          ))}
-        </div>
+        {/* Stage 5d: a ministry's admins and their levels (Lead admin, Public page editor). A church's
+            admins are managed under Porch settings → Admins, as yourself. */}
+        {ministry.kind === "ministry" ? (
+          <AdminsPanel compact />
+        ) : (
+          <div className="pb-card welcome-card">
+            <p className="ofc-lbl" style={{ margin: 0 }}>The admin team</p>
+            <p className="pb-quiet" style={{ margin: 0, fontSize: 13 }}>Change the church's admins as yourself: Your account → Admins.</p>
+            {(home?.admins ?? []).map((admin) => (
+              <p key={admin.userId} style={{ margin: 0, fontSize: 15 }}>
+                {admin.username ? `@${admin.username}` : admin.name}
+                {admin.userId === me.id ? <span className="pb-quiet"> (you)</span> : null}
+              </p>
+            ))}
+          </div>
+        )}
         <TeamMessages ministryName={ministry.name} />
         <button type="button" className="pb-btn2" onClick={() => void switchTo(0)}>
           Continue as me

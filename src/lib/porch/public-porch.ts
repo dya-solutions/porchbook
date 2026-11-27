@@ -52,11 +52,14 @@ export function ensurePublic(sql: Sql) {
     await sql.query("alter table posts add column if not exists shared_public_post_id integer references public_posts (id) on delete set null");
     // Branches name their main church (Stage 5a adds this too; it may not be there yet on a new database).
     await sql.query("alter table porches add column if not exists main_porch_id integer references porches (id)");
-    // The porches a person follows: the ones they chose, plus their own church and its main church.
+    // The porches a person follows: the ones they chose, plus their own church and its main church,
+    // plus every porch they run (any admin level), which they can't unfollow while they're its admin.
     await sql.query(`create or replace function follows_porch(uid text, pid integer) returns boolean language sql stable as $$
       select exists (select 1 from porch_follows f where f.user_id = uid and f.porch_id = pid)
           or pid = church_of(uid)
           or pid = (select main_porch_id from porches where id = church_of(uid))
+          or exists (select 1 from porch_admins a join porches c on c.id = a.porch_id
+                      where a.user_id = uid and a.porch_id = pid and (c.kind = 'ministry' or in_porch(uid, pid)))
     $$`);
   })().catch((error) => {
     ready = null;
@@ -235,6 +238,8 @@ export type PorchCard = {
   following: boolean;
   /** Your own church (or its main church): always followed. */
   ownChurch: boolean;
+  /** You are one of its admins (any level): always followed while you are. */
+  adminHere: boolean;
   /** You could ask to join it (a church, and you're in no church yet). */
   canAskToJoin: boolean;
   /** You run it (you can "Continue as" it). */
@@ -248,6 +253,7 @@ const CARD_SELECT = `
                 and not exists (select 1 from porch_follows f2 where f2.porch_id = c.id and f2.user_id = m.user_id)) as followers,
          follows_porch($1, c.id) as following,
          (c.id = church_of($1) or c.id = (select main_porch_id from porches where id = church_of($1))) as own_church,
+         exists (select 1 from porch_admins a where a.user_id = $1 and a.porch_id = c.id and (c.kind = 'ministry' or in_porch($1, c.id))) as admin_here,
          (c.kind = 'church' and church_of($1) is null) as can_ask,
          can_act_as($1, c.id) as runs
     from porches c left join porch_settings s on s.porch_id = c.id`;
@@ -266,6 +272,7 @@ type CardRow = {
   followers: number;
   following: unknown;
   own_church: unknown;
+  admin_here: unknown;
   can_ask: unknown;
   runs: unknown;
 };
@@ -283,6 +290,7 @@ function toCard(row: CardRow): PorchCard {
     followers: Number(row.followers ?? 0),
     following: yes(row.following),
     ownChurch: yes(row.own_church),
+    adminHere: yes(row.admin_here),
     canAskToJoin: yes(row.can_ask),
     runs: yes(row.runs),
   };
@@ -334,12 +342,13 @@ export const setFollow = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     await ensurePublic(sql);
-    const porch = await sql.query<{ id: number; own: unknown }>(
-      "select c.id, (c.id = church_of($1) or c.id = (select main_porch_id from porches where id = church_of($1))) as own from porches c where c.id = $2 and c.status = 'approved'",
+    const porch = await sql.query<{ id: number; own: unknown; runs: unknown }>(
+      "select c.id, (c.id = church_of($1) or c.id = (select main_porch_id from porches where id = church_of($1))) as own, exists (select 1 from porch_admins a where a.user_id = $1 and a.porch_id = c.id and (c.kind = 'ministry' or in_porch($1, c.id))) as runs from porches c where c.id = $2 and c.status = 'approved'",
       [context.userId, data.porchId],
     );
     if (!porch[0]) return { ok: false as const, error: "That porch isn't on the public porch." };
     if (!data.follow && yes(porch[0].own)) return { ok: false as const, error: "You always follow your own church." };
+    if (!data.follow && yes(porch[0].runs)) return { ok: false as const, error: "You always follow a porch you're an admin of." };
     if (data.follow) await sql.query("insert into porch_follows (user_id, porch_id) values ($1, $2) on conflict do nothing", [context.userId, data.porchId]);
     else await sql.query("delete from porch_follows where user_id = $1 and porch_id = $2", [context.userId, data.porchId]);
     return { ok: true as const, following: data.follow };

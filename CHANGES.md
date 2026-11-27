@@ -936,6 +936,50 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
   6. the public porch for a member;
   7. a public post shared into the church.
 
+### 20. Fix 3 (porch admins always follow their porch) and Stage 5d: admin levels (27 Nov 2026)
+- **About fixes 1 and 2** (scrolling on phones; join requests easy for admins to see): these were done and put live on 26 November, in entry 18 above, upload "Fix: pages didn't scroll on phones…". They're still in place. Today's phone-size check (25 screens with finger swipes) again found every screen scrolling to its end. The only exception is the Calls dialler, which is meant to fill exactly one screen.
+- **Fix 3: anyone who runs a porch follows it automatically**, at any admin level, and can't unfollow it while they're its admin. Find porches and the porch page show "You run it · following" instead of a Follow button. For a church, only real admins count (members of it), not an old stray record.
+- **Stage 5d: admin levels** (BUILD-BRIEF.md decision 18):
+  - **Lead admin:** everything, including choosing admins and their levels.
+  - **Membership admin:** join requests (the waiting card, the bell's number, the list, letting in), member details, the roll and removing members.
+  - **Moderator:** posts and complaints. They can remove anyone's post in their church ("Remove (moderator)", with "are you sure"), and see User's complaints. **No member details.**
+  - **Public page editor:** "Continue as [church]" to post on the public porch for it. Nothing else.
+  - **Office head:** set on each office, as before. Sees the details of members who contacted their office, and nobody else's.
+  - **Ministries:** Lead admins and Public page editors only.
+  - Every admin before today is a **Lead admin**, so nothing changed for anyone already running a porch. Whoever starts a porch is its Lead admin.
+  - In the code, "admin" now means Lead admin. Each other level opens only its own area, and the server checks every one.
+- **Admins screen** (Porch settings → Admins, and Your account → Admins for every admin; on a ministry's own screen for ministries):
+  - each admin and their level;
+  - a Lead admin can **Add** (a church member, found by name; for a ministry, any account by username), **Change level** and **Remove**;
+  - **a porch always keeps a Lead admin**: the last one can't step down or be removed, but **can hand over Lead** by making someone else Lead admin.
+  - Leaving a church now only stops its last *Lead* admin, and tells them how to hand over Lead (no more "ask Porchbook").
+- **Your account** shows each admin what their level allows: People waiting to join (Lead, Membership), User's complaints (Lead, Moderator), Admins (everyone, saying their level). Join-request notifications go to Lead and Membership admins only.
+- **Files changed:**
+  - new: `admin-levels.ts`, `admins-panel.tsx`, `routes/porch-admins.tsx`
+  - `porch-foundation.ts` (level, has_admin_level, is_porch_admin = Lead, can_act_as), `membership.ts`, `roll.ts`, `trouble.ts`, `notes.ts`, `api.ts` (moderators remove posts), `public-porch.ts` (fix 3), `public-views.tsx`, `act-as.tsx`, `porch-settings.tsx`, `frame.tsx`, `feed-view.tsx`, `pb.css`
+  - `scripts/two-church-test.mjs`
+- **Checked:**
+  - The type check and the build pass.
+  - **The two-church test: 289 passed, 0 failed** (20 new checks):
+    - a plain member can't name admins, and only church members can be admins;
+    - **a Moderator can't see phone numbers** or join requests, handles complaints, removes posts in their church but never in another;
+    - a Membership admin sees details and requests, but can't remove posts, post publicly or name admins;
+    - **a Public page editor posts publicly but can't let people in** or see details;
+    - an office head sees only people who contacted their office;
+    - the last Lead admin can't step down; Lead can be handed over and back;
+    - a ministry offers only Lead and Public page editor;
+    - running a porch means following it, with no unfollow.
+- **Pictures:** `../after-stage5d/`:
+  1. the Admins screen;
+  2. changing a level;
+  3. adding an admin;
+  4. Porch settings with Admins;
+  5. a Moderator's Your account;
+  6. a Moderator seeing "Remove (moderator)".
+  
+  Also the phone scroll check, in `../after-scroll-fix/after-5d/`.
+- **Test data on this computer:** the local "scan check" account scan308484 was let into Phaneroo and made a Moderator, for the pictures.
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).

@@ -636,6 +636,14 @@ export const deletePost = createServerFn({ method: "POST" })
       delete from posts where id = ${id} and author_id = ${context.userId} returning id
     `;
     if (!rows.length) {
+      // Stage 5d: a Moderator (or Lead admin) may remove any post in their own church.
+      const { canModerate } = await import("@/lib/porch/admin-levels");
+      if (await canModerate(sql, context.userId)) {
+        const moderated = await sql<{ id: number }>`
+          delete from posts where id = ${id} and porch_id = my_porch(${context.userId}) returning id
+        `;
+        if (moderated.length) return { ok: true as const };
+      }
       noteAttempt(context.userId, "remove-post", "Tried to remove a post that is not theirs.");
       return { ok: false as const, error: "You can only remove your own posts." };
     }

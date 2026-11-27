@@ -37,8 +37,9 @@ async function ensureRoll(sql: Awaited<ReturnType<typeof getSql>>) {
   `;
 }
 
+/** Stage 5d: the roll and removing members are membership work: Lead and Membership admins. */
 async function founderFlag(sql: Awaited<ReturnType<typeof getSql>>, userId: string): Promise<boolean> {
-  const me = await sql.query<{ is_founder: boolean }>("select is_porch_admin($1) as is_founder", [userId]);
+  const me = await sql.query<{ is_founder: boolean }>("select has_admin_level($1, array['membership']) as is_founder", [userId]);
   return boolish(me[0]?.is_founder);
 }
 

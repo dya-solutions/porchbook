@@ -109,6 +109,15 @@ export function PorchSettings() {
         </p>
       </div>
 
+      {/* Stage 5d: the porch's admins and their levels. */}
+      <Link to="/porch-admins" className="pb-card ofc-row" style={{ padding: "14px 16px", textDecoration: "none" }}>
+        <span className="ofc-words">
+          <span className="ofc-name">Admins</span>
+          <span className="ofc-hint">Who the admins are and their levels. Add, change, remove, or hand over Lead.</span>
+        </span>
+        <span aria-hidden="true">›</span>
+      </Link>
+
       <section>
         <p className="ofc-sec">Accent colour</p>
         <p className="pb-quiet" style={{ margin: "0 4px 10px", fontSize: 14 }}>

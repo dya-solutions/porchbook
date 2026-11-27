@@ -71,6 +71,18 @@ const SETUP: string[] = [
      primary key (porch_id, user_id)
    )`,
   `create index if not exists porch_admins_user_idx on porch_admins (user_id)`,
+  // Stage 5d (decision 18): each admin has a level. Everyone who was an admin before is a Lead admin.
+  //   lead: everything, including choosing admins and their levels
+  //   membership: join requests, member details, removing members
+  //   moderator: posts and complaints, no member details
+  //   public_editor: posts on the public porch for the porch
+  // (Office heads are set per office, as before.) Ministries use lead and public_editor only.
+  `alter table porch_admins add column if not exists level text not null default 'lead'`,
+  `do $$ begin
+     if not exists (select 1 from pg_constraint where conname = 'porch_admins_level_chk') then
+       alter table porch_admins add constraint porch_admins_level_chk check (level in ('lead', 'membership', 'moderator', 'public_editor'));
+     end if;
+   end $$`,
   `create table if not exists platform_owners (
      user_id text primary key references profiles (user_id) on delete cascade,
      added_at timestamptz not null default now()
@@ -188,7 +200,20 @@ const SETUP: string[] = [
        select 1 from porch_admins a
        join profiles p on p.user_id = a.user_id and p.porch_id = a.porch_id
        join porch_members m on m.user_id = a.user_id and m.porch_id = a.porch_id
-       where a.user_id = uid and p.acting_porch_id is null
+       where a.user_id = uid and p.acting_porch_id is null and a.level = 'lead'
+     )
+   $$`,
+  /**
+   * Stage 5d: an admin of the church this person is in (as themselves) at one of these levels.
+   * A Lead admin always counts. Used for membership (join requests, details, removing members)
+   * and moderation (posts, complaints). Plain is_porch_admin above now means Lead admin.
+   */
+  `create or replace function has_admin_level(uid text, levels text[]) returns boolean language sql stable as $$
+     select exists (
+       select 1 from porch_admins a
+       join profiles p on p.user_id = a.user_id and p.porch_id = a.porch_id
+       join porch_members m on m.user_id = a.user_id and m.porch_id = a.porch_id
+       where a.user_id = uid and p.acting_porch_id is null and (a.level = 'lead' or a.level = any(levels))
      )
    $$`,
   /** An admin (and member) of one particular porch, whichever porch the person has switched to. */
@@ -243,6 +268,7 @@ const SETUP: string[] = [
      select exists (
        select 1 from porch_admins a join porches c on c.id = a.porch_id
         where a.user_id = uid and a.porch_id = pid and c.status <> 'declined'
+          and a.level in ('lead', 'public_editor')
           and (c.kind = 'ministry' or exists (select 1 from porch_members m where m.user_id = uid and m.porch_id = pid))
      )
    $$`,

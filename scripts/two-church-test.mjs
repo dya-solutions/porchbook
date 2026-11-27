@@ -961,6 +961,99 @@ try {
   record("sanity", "feed", "Abe shares a public post into Porch A as a link", abeShares?.ok === true && (annPrivate?.posts ?? []).some((p) => p.sharedPublicPostId === aPostId));
   record("isolation", "feed", "A share into Porch A stays in Porch A (Ben's church never sees it)", !(benPrivate?.posts ?? []).some((p) => p.sharedPublicPostId === aPostId));
 
+  // ---------------- Stage 5d: admin levels ----------------
+  console.log("\nAdmin levels");
+  const LV = "lib/porch/admin-levels.ts";
+  const MB = "lib/porch/membership.ts";
+  const mo = await person("Mo Membership", "mo@two-church.test");
+  const mia = await person("Mia Moderator", "mia@two-church.test");
+  const pat = await person("Pat Publisher", "pat@two-church.test");
+  for (const p of [mo, mia, pat]) {
+    await verify(p);
+    await helper("joinPorch", { email: p.email, porchId: porchA });
+  }
+  const abeAdds = await abe.call(LV, "addAdmin", { userId: mo.userId, level: "membership" });
+  record("isolation", "admins", "A plain member (Abe) can't name admins", abeAdds?.ok === false);
+  const added = await Promise.all([
+    ann.call(LV, "addAdmin", { userId: mo.userId, level: "membership" }),
+    ann.call(LV, "addAdmin", { userId: mia.userId, level: "moderator" }),
+    ann.call(LV, "addAdmin", { userId: pat.userId, level: "public_editor" }),
+  ]);
+  const listA = await ann.call(LV, "listAdmins");
+  const levelOf = (id) => (listA?.admins ?? []).find((a) => a.userId === id)?.level;
+  record("sanity", "admins", "Ann (Lead admin) names a Membership admin, a Moderator and a Public page editor", added.every((r) => r?.ok === true) && levelOf(ann.userId) === "lead" && levelOf(mo.userId) === "membership" && levelOf(mia.userId) === "moderator" && levelOf(pat.userId) === "public_editor");
+  const outsider = await ann.call(LV, "addAdmin", { userId: ben.userId, level: "moderator" });
+  record("isolation", "admins", "Only a member of the church can be one of its admins (Ben, in B, can't be made A's admin)", outsider?.ok === false);
+  // Abe asks to join nothing; Faye's request to A is waiting (she asked again after leaving).
+  const abePost = await abe.call("lib/porch/api.ts", "createPost", { room: "proclaim", body: "Abe's post for the moderator test" });
+  const abePostId = ((await ann.call("lib/porch/api.ts", "getFeed", { filter: "all" }))?.posts ?? []).find((p) => p.body === "Abe's post for the moderator test")?.id;
+  // Moderator: posts and complaints; no member details, no join requests, no public posting.
+  const miaDetails = await mia.call(MB, "memberDetailsOf", { userId: abe.userId });
+  const miaWaiting = await mia.call(MB, "waitingToJoin");
+  const miaCount = await mia.call(MB, "waitingJoinCount");
+  record("isolation", "details", "A Moderator can't see member details (no phone numbers)", miaDetails?.ok === false && !has(miaDetails, "+256700000030"));
+  record("isolation", "joining", "A Moderator can't see or decide join requests", miaWaiting?.ok === false && miaCount?.count === 0);
+  const miaComplaints = await mia.call("lib/porch/trouble.ts", "loadTrouble", { reports: true });
+  record("sanity", "feedback", "A Moderator handles complaints", miaComplaints?.founder === true);
+  const miaRemoves = await mia.call("lib/porch/api.ts", "deletePost", { id: abePostId });
+  const afterRemove = await ann.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  record("sanity", "feed", "A Moderator can remove someone else's post in the church", abePost?.ok === true && miaRemoves?.ok === true && !has(afterRemove, "Abe's post for the moderator test"));
+  const miaRemovesB = await mia.call("lib/porch/api.ts", "deletePost", { id: ((await ben.call("lib/porch/api.ts", "getFeed", { filter: "all" }))?.posts ?? [])[0]?.id });
+  record("isolation", "feed", "…but never a post in another church", miaRemovesB?.ok === false);
+  const miaActs = await mia.call("lib/porch/porch-join.ts", "actAs", { porchId: porchA });
+  record("isolation", "admins", "A Moderator can't post on the public porch for the church", miaActs?.ok === false);
+  // Membership admin: join requests and member details; no moderating, no public posting.
+  const moDetails = await mo.call(MB, "memberDetailsOf", { userId: abe.userId });
+  const moWaiting = await mo.call(MB, "waitingToJoin");
+  record("sanity", "details", "A Membership admin sees member details and the join requests", moDetails?.ok === true && moDetails?.details?.phone === "+256700000030" && moWaiting?.ok === true && has(moWaiting, "Faye Joiner"));
+  const abePost2 = await abe.call("lib/porch/api.ts", "createPost", { room: "proclaim", body: "Abe's second post" });
+  const abePost2Id = ((await ann.call("lib/porch/api.ts", "getFeed", { filter: "all" }))?.posts ?? []).find((p) => p.body === "Abe's second post")?.id;
+  const moRemoves = await mo.call("lib/porch/api.ts", "deletePost", { id: abePost2Id });
+  const moActs = await mo.call("lib/porch/porch-join.ts", "actAs", { porchId: porchA });
+  const moAdds = await mo.call(LV, "addAdmin", { userId: abe.userId, level: "moderator" });
+  record("isolation", "admins", "A Membership admin can't remove posts, post publicly, or name admins", abePost2?.ok === true && moRemoves?.ok === false && moActs?.ok === false && moAdds?.ok === false);
+  // Public page editor: posts publicly for the church; can't let people in or see details.
+  const patActs = await pat.call("lib/porch/porch-join.ts", "actAs", { porchId: porchA });
+  const patPosts = await pat.call("lib/porch/public-porch.ts", "createPublicPost", { body: "Posted by A's public page editor" });
+  await pat.call("lib/porch/porch-join.ts", "actAs", { porchId: 0 });
+  record("sanity", "admins", "A Public page editor continues as the church and posts on the public porch", patActs?.ok === true && patPosts?.ok === true);
+  const fayeReq = ((await mo.call(MB, "waitingToJoin"))?.people ?? []).find((p) => p.fullName === "Faye Joiner");
+  const patLetsIn = await pat.call(MB, "decideJoinRequest", { id: fayeReq?.id, letIn: true });
+  const patDetails = await pat.call(MB, "memberDetailsOf", { userId: abe.userId });
+  const fayeStillOut = await helper("person", { email: faye.email });
+  record("isolation", "joining", "A Public page editor can't let people in or see member details", patLetsIn?.ok === false && patDetails?.ok === false && (fayeStillOut.porch_id === null || fayeStillOut.porch_id === undefined));
+  // Office head: sees the details of people who contacted their office, and nobody else's.
+  await ann.call("lib/porch/offices.ts", "setOfficeHead", { key: "pastor", userId: pat.userId });
+  const headSeesAbe = await pat.call(MB, "memberDetailsOf", { userId: abe.userId });
+  const headSeesMo = await pat.call(MB, "memberDetailsOf", { userId: mo.userId });
+  record("sanity", "details", "An office head sees the details of a member who contacted their office (Abe wrote to the pastor's office)", headSeesAbe?.ok === true);
+  record("isolation", "details", "…but not of someone who didn't contact it", headSeesMo?.ok === false);
+  await ann.call("lib/porch/offices.ts", "setOfficeHead", { key: "pastor", userId: ann.userId });
+  // A porch always keeps a Lead admin; Lead can be handed over.
+  const annDemotes = await ann.call(LV, "setAdminLevel", { userId: ann.userId, level: "moderator" });
+  const annRemoves = await ann.call(LV, "removeAdmin", { userId: ann.userId });
+  record("sanity", "admins", "The last Lead admin can't step down or be removed", annDemotes?.ok === false && annRemoves?.ok === false);
+  const handOver = await ann.call(LV, "setAdminLevel", { userId: mo.userId, level: "lead" });
+  const annSteps = await ann.call(LV, "setAdminLevel", { userId: ann.userId, level: "moderator" });
+  const annNowAdds = await ann.call(LV, "addAdmin", { userId: abe.userId, level: "moderator" });
+  record("sanity", "admins", "Ann hands Lead to Mo, steps down to Moderator, and can no longer name admins", handOver?.ok === true && annSteps?.ok === true && annNowAdds?.ok === false);
+  const moRestores = await mo.call(LV, "setAdminLevel", { userId: ann.userId, level: "lead" });
+  record("sanity", "admins", "The new Lead admin (Mo) can make Ann Lead admin again", moRestores?.ok === true);
+  // Ministries: Lead admins and Public page editors only.
+  await verify(ben);
+  await ben.call(MB, "setUsername", { username: "ben.b" });
+  await abe.call("lib/porch/porch-join.ts", "actAs", { porchId: ministry?.id });
+  const ministryModerator = await abe.call(LV, "addAdmin", { userId: ben.userId, level: "moderator" });
+  const ministryEditor = await abe.call(LV, "addAdmin", { userId: ben.userId, level: "public_editor" });
+  const ministryList = await abe.call(LV, "listAdmins");
+  await abe.call("lib/porch/porch-join.ts", "actAs", { porchId: 0 });
+  record("sanity", "admins", "A ministry has Lead admins and Public page editors only (Ben added as editor, by username)", ministryModerator?.ok === false && ministryEditor?.ok === true && (ministryList?.levels ?? []).length === 2 && (ministryList?.admins ?? []).some((a) => a.name === "@ben.b" && a.level === "public_editor"));
+  // Fix 3: anyone who runs a porch follows it, and can't unfollow it while they're its admin.
+  await olive.call("lib/porch/porch-join.ts", "decidePorch", { id: ministry?.id, approve: true });
+  const benFollows = await ben.call("lib/porch/public-porch.ts", "findPorches", { query: "Abe Ministry" });
+  const benUnfollows = await ben.call("lib/porch/public-porch.ts", "setFollow", { porchId: ministry?.id, follow: false });
+  record("sanity", "feed", "Running a porch means following it, and you can't unfollow it while you're its admin", (benFollows ?? []).some((p) => p.name === "Abe Ministry" && p.following && p.adminHere) && benUnfollows?.ok === false);
+
   // ---------------- Summary ----------------
   const failed = results.filter((r) => !r.pass && (r.kind !== "isolation" || AREAS_DONE.includes(r.area)));
   const notYet = results.filter((r) => !r.pass && r.kind === "isolation" && !AREAS_DONE.includes(r.area));

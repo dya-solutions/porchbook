@@ -878,6 +878,24 @@ function AskSomeone({ seed, chosen, onChoose }: { seed: Seed; chosen: { id: stri
   );
 }
 
+/** Stage 5d: asked once per visit: may this person moderate posts (Moderator or Lead admin)? */
+let moderateAsk: Promise<boolean> | null = null;
+function useCanModerate() {
+  const [can, setCan] = useState(false);
+  useEffect(() => {
+    moderateAsk ??= import("@/lib/porch/admin-levels")
+      .then(({ myAdminLevel }) => myAdminLevel())
+      .then((result) => result.moderator)
+      .catch(() => false);
+    let live = true;
+    void moderateAsk.then((value) => live && setCan(value));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return can;
+}
+
 export function PostCard({
   post,
   userId,
@@ -892,6 +910,9 @@ export function PostCard({
   compact?: boolean;
 }) {
   const mine = post.authorId === userId;
+  // Stage 5d: Moderators (and Lead admins) can remove anyone's post in their church.
+  const moderate = useCanModerate();
+  const [moderating, setModerating] = useState(false);
   const owner = post.askedTo?.id === userId;
   const waiting = Boolean(post.askedTo) && !post.answered;
   const closedToMe = waiting && !owner;
@@ -1232,6 +1253,23 @@ export function PostCard({
         </ul>
       ) : null}
       <div className="pb-post-actions">
+        {!mine && moderate ? (
+          moderating ? (
+            <span style={{ fontSize: 14 }}>
+              Remove this post for everyone?{" "}
+              <button type="button" className="welcome-link" style={{ minHeight: 0, color: "var(--pb-danger, #b3261e)" }} onClick={() => void remove()} disabled={busy}>
+                Yes, remove
+              </button>{" "}
+              <button type="button" className="welcome-link" style={{ minHeight: 0, color: "var(--pb-quiet)" }} onClick={() => setModerating(false)}>
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <button type="button" className="pb-link" onClick={() => setModerating(true)}>
+              Remove (moderator)
+            </button>
+          )
+        ) : null}
         {post.locked || closedToMe ? null : (
           <button type="button" className="pb-link" onClick={openReply}>
             {waiting && owner ? "Answer" : `Reply${others.length > 0 ? ` · ${others.length}` : ""}`}

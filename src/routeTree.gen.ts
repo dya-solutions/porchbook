@@ -22,6 +22,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManualRouteImport } from './routes/manual'
 import { Route as MyDetailsRouteImport } from './routes/my-details'
 import { Route as NextRouteImport } from './routes/next'
+import { Route as PorchAdminsRouteImport } from './routes/porch-admins'
 import { Route as PorchSettingsRouteImport } from './routes/porch-settings'
 import { Route as PorchesWaitingRouteImport } from './routes/porches-waiting'
 import { Route as PorchguyRouteImport } from './routes/porchguy'
@@ -135,6 +136,11 @@ const MyDetailsRoute = MyDetailsRouteImport.update({
 const NextRoute = NextRouteImport.update({
   id: '/next',
   path: '/next',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PorchAdminsRoute = PorchAdminsRouteImport.update({
+  id: '/porch-admins',
+  path: '/porch-admins',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PorchSettingsRoute = PorchSettingsRouteImport.update({
@@ -397,6 +403,7 @@ export interface FileRoutesByFullPath {
   '/manual': typeof ManualRoute
   '/my-details': typeof MyDetailsRoute
   '/next': typeof NextRoute
+  '/porch-admins': typeof PorchAdminsRoute
   '/porch-settings': typeof PorchSettingsRoute
   '/porches-waiting': typeof PorchesWaitingRoute
   '/porchguy': typeof PorchguyRoute
@@ -461,6 +468,7 @@ export interface FileRoutesByTo {
   '/manual': typeof ManualRoute
   '/my-details': typeof MyDetailsRoute
   '/next': typeof NextRoute
+  '/porch-admins': typeof PorchAdminsRoute
   '/porch-settings': typeof PorchSettingsRoute
   '/porches-waiting': typeof PorchesWaitingRoute
   '/porchguy': typeof PorchguyRoute
@@ -526,6 +534,7 @@ export interface FileRoutesById {
   '/manual': typeof ManualRoute
   '/my-details': typeof MyDetailsRoute
   '/next': typeof NextRoute
+  '/porch-admins': typeof PorchAdminsRoute
   '/porch-settings': typeof PorchSettingsRoute
   '/porches-waiting': typeof PorchesWaitingRoute
   '/porchguy': typeof PorchguyRoute
@@ -592,6 +601,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/my-details'
     | '/next'
+    | '/porch-admins'
     | '/porch-settings'
     | '/porches-waiting'
     | '/porchguy'
@@ -656,6 +666,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/my-details'
     | '/next'
+    | '/porch-admins'
     | '/porch-settings'
     | '/porches-waiting'
     | '/porchguy'
@@ -720,6 +731,7 @@ export interface FileRouteTypes {
     | '/manual'
     | '/my-details'
     | '/next'
+    | '/porch-admins'
     | '/porch-settings'
     | '/porches-waiting'
     | '/porchguy'
@@ -785,6 +797,7 @@ export interface RootRouteChildren {
   ManualRoute: typeof ManualRoute
   MyDetailsRoute: typeof MyDetailsRoute
   NextRoute: typeof NextRoute
+  PorchAdminsRoute: typeof PorchAdminsRoute
   PorchSettingsRoute: typeof PorchSettingsRoute
   PorchesWaitingRoute: typeof PorchesWaitingRoute
   PorchguyRoute: typeof PorchguyRoute
@@ -927,6 +940,13 @@ declare module '@tanstack/react-router' {
       path: '/next'
       fullPath: '/next'
       preLoaderRoute: typeof NextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/porch-admins': {
+      id: '/porch-admins'
+      path: '/porch-admins'
+      fullPath: '/porch-admins'
+      preLoaderRoute: typeof PorchAdminsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/porch-settings': {
@@ -1289,6 +1309,7 @@ const rootRouteChildren: RootRouteChildren = {
   ManualRoute: ManualRoute,
   MyDetailsRoute: MyDetailsRoute,
   NextRoute: NextRoute,
+  PorchAdminsRoute: PorchAdminsRoute,
   PorchSettingsRoute: PorchSettingsRoute,
   PorchesWaitingRoute: PorchesWaitingRoute,
   PorchguyRoute: PorchguyRoute,
