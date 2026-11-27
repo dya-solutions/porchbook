@@ -1000,7 +1000,14 @@ export function AppFrame({
   // Stage 5c: the account steps. Confirm the email first; then, not in a church yet: join one by
   // request (an invite code only finds the church), or start a porch. The public porch ("coming
   // soon") is open to any confirmed account, and so are Start a porch, Help and the approval list.
-  const openWithoutChurch = pathname === "/start" || pathname === "/porches-waiting" || (pathname === "/" && (search as { view?: string }).view === "public");
+  // Stage 6: the public side (the public porch, Find porches, porch pages, shared posts) is open too.
+  const openWithoutChurch =
+    pathname === "/start" ||
+    pathname === "/porches-waiting" ||
+    pathname === "/find" ||
+    pathname.startsWith("/porch/") ||
+    pathname.startsWith("/public/") ||
+    (pathname === "/" && (search as { view?: string }).view === "public");
   if (account && !account.verified && pathname !== "/porches-waiting") return <VerifyEmail email={account.email} />;
   // N3: acting as a ministry, the whole app is the ministry's own screen (Help stays reachable).
   if (account?.acting && pathname !== "/faq") {

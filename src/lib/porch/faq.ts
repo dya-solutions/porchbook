@@ -44,7 +44,9 @@ const START: { section: string; items: [question: string, answer: string, check?
   {
     section: "Public porch",
     items: [
-      ["What is the public porch?", "A feed of posts from the churches and ministries you follow. It is coming soon.", true],
+      ["What is the public porch?", "Posts from the churches and ministries you follow, newest first. Only porches post there (their admins post for them); everyone reacts with Love, Like, Touching or Deep, shown by your username. There are no comments. You always follow your own church.", true],
+      ["How do I follow a church or a ministry?", "Open the public porch and tap Find porches. Search by name, type or country, then tap Follow. Its public posts then show on your public porch. Tap Following to unfollow (your own church can't be unfollowed)."],
+      ["Can I post on the public porch?", "Only porches post publicly, and only once Porchbook has approved them. If you're an admin of your church or of a ministry, tap your picture, choose Continue as [your porch], and post there. Nothing from your church's private porch ever goes public by itself."],
       ["How do I follow a porch?", "On the public porch, tap Find porches, search by name, town or type, and tap Follow. You always follow your own church, and its main church if it is a branch.", true],
       ["Why can't I post there?", "Only porches post on the public porch, through their admins, and only once Porchbook has approved them. Members follow and react, but don't post or comment, so it stays calm and safe."],
     ],
@@ -158,6 +160,30 @@ function ensure(sql: Sql) {
       for (const [question, answer] of NEW_26NOV) {
         const there = await sql.query("select 1 from faq_items where question = $1", [question]);
         if (!there.length) await sql.query("insert into faq_items (section, question, answer, sort, needs_check) values ('For ministries', $1, $2, $3, false)", [question, answer, sort]);
+        sort += 1;
+      }
+    }
+    // Stage 6: the public porch is here (only where JT hasn't edited the answer), and two new questions.
+    const stage6 = await sql.query<{ step: string }>("insert into porch_steps (step) values ('faq-stage6-v1') on conflict do nothing returning step");
+    if (stage6.length) {
+      const start = START.flatMap((block) => block.items.map(([question, answer]) => ({ section: block.section, question, answer })));
+      const publicNow = start.find((item) => item.question === "What is the public porch?");
+      if (publicNow) {
+        await sql.query("update faq_items set answer = $2, updated_at = now() where question = $1 and answer like '%coming soon%'", [publicNow.question, publicNow.answer]);
+      }
+      const last = await sql.query<{ sort: number | null }>("select max(sort) as sort from faq_items where question = 'What is the public porch?'");
+      let sort = Number(last[0]?.sort ?? 500) + 1;
+      for (const item of start.filter((i) => i.question === "How do I follow a church or a ministry?" || i.question === "Can I post on the public porch?")) {
+        const there = await sql.query("select section from faq_items where question = 'What is the public porch?' limit 1");
+        const exists = await sql.query("select 1 from faq_items where question = $1", [item.question]);
+        if (!exists.length) {
+          await sql.query("insert into faq_items (section, question, answer, sort, needs_check) values ($1, $2, $3, $4, false)", [
+            (there[0] as { section?: string } | undefined)?.section ?? item.section,
+            item.question,
+            item.answer,
+            sort,
+          ]);
+        }
         sort += 1;
       }
     }

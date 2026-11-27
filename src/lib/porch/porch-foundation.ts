@@ -236,6 +236,17 @@ const SETUP: string[] = [
      )
    $$`,
   /**
+   * Stage 6: who may "Continue as" a porch (and post publicly for it): an admin of a ministry, or an
+   * admin of a church who is also one of its members. Declined porches never.
+   */
+  `create or replace function can_act_as(uid text, pid integer) returns boolean language sql stable as $$
+     select exists (
+       select 1 from porch_admins a join porches c on c.id = a.porch_id
+        where a.user_id = uid and a.porch_id = pid and c.status <> 'declined'
+          and (c.kind = 'ministry' or exists (select 1 from porch_members m where m.user_id = uid and m.porch_id = pid))
+     )
+   $$`,
+  /**
    * N7 (decision 46): two members of the same church, both there as themselves (not acting as a
    * ministry). Used for profiles, private messages and calls: nobody can message or call across
    * churches, and a one-to-one chat goes quiet (read-only) once the two no longer share a church.

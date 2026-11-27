@@ -887,6 +887,55 @@ Each entry says what changed, why, and which rules changed. Since 19 November 20
   - every screen at phone size after scrolling to its end (in `after/`).
 - **Test data on this computer:** two of the "scan check" accounts asked to join Phaneroo, for the pictures.
 
+### 19. N5 + Stage 6: the public porch, Find porches and porch pages (27 Nov 2026)
+- **The public porch** (Porch → Public porch, following design-reference/Public.dc.html):
+  - **only posts from porches you follow**, newest first, under "From the N porches you follow", with a **Find porches** button;
+  - **every member follows their own church** (and its main church, if it's a branch) automatically, and can't unfollow it.
+- **Only approved porches post publicly**, and only through their admins:
+  - an admin taps their picture or the porch badge → **Continue as [porch]**, which is **now also offered to church admins**, not just ministries;
+  - acting as the porch, they post publicly, see its public posts (with "Take down"), write its description, and open its public page;
+  - a porch still waiting for approval is told it can post once approved;
+  - **people never post there as themselves**, and there are no comments.
+- **Reactions:** anyone with an account reacts (Love, Like, Touching, Deep). Under each post: who reacted, by **username**, plus their **church** for members, unless they've switched "show my church" off.
+- **Find porches** (new screen):
+  - search by name, filter by type (Churches, Ministries, Music, Teaching, Other ministries) and, optionally, by country from the country list;
+  - each result can be **Followed or Unfollowed**;
+  - churches get **Ask to join** for someone with no church, which opens that church's join form (full name, phone, city), so no invite code is needed;
+  - only approved porches appear.
+- **Each porch's public page** (design-reference/PorchPage.dc.html): its badge, name and approval tick, type, country, description, **Follow**, **Share** (sends or copies the page's link), **Ask to join** (churches), its branches, and its public posts.
+- **Sharing into your church:** members see "Share to my church" under a public post. It posts a short note in their church's porch (Inform) with an **"Open on the public porch"** link. The public post never moves. Nothing from a private church porch ever goes public by itself: public posts live in their own tables (`public_posts`, `public_reactions`, `porch_follows`), as the brief requires.
+- **People with no church:** their home now leads with **The public porch** (Open the public porch, Find porches), then Join your church (a code, or find it by name), Porches you run, Start a porch, and Help.
+- **FAQ:**
+  - "What is the public porch?" is updated (no longer "coming soon");
+  - new: "How do I follow a church or a ministry?" and "Can I post on the public porch?";
+  - answers JT has edited himself are left alone.
+- **Test data:** the test-data script has a new `posts` command, which adds a few made-up public posts (each starts "(Test post)") to Alpha, Bravo and Alpha Worship Team. They belong to the test porches, so the one-go removal takes them out too.
+- **Files changed:**
+  - new: `public-porch.ts`, `public-views.tsx`, `routes/find.tsx`, `routes/porch/$porchId.tsx`, `routes/public/$postId.tsx`
+  - `porch-foundation.ts` (can_act_as), `porch-join.ts`, `membership.ts`, `act-as.tsx`, `account-screens.tsx`, `frame.tsx`, `routes/index.tsx`, `feed-view.tsx`, `api.ts`, `model.ts`, `pb-shell.tsx`, `pb.css`, `faq.ts`
+  - `scripts/online-test-data.mjs`, `scripts/two-church-test.mjs`
+- **Checked:**
+  - The type check and the build pass.
+  - **The two-church test: 269 passed, 0 failed** (16 new checks):
+    - people can't post publicly as themselves;
+    - a church's admin can continue as the church, and someone who isn't its admin can't;
+    - **a porch that isn't approved can't post publicly**;
+    - **nothing from a private porch appears publicly**;
+    - **you only see porches you follow**, members see their own church, and can't unfollow it;
+    - Find porches shows approved porches only;
+    - follow and unfollow change the feed;
+    - **anyone can react, and people can only react, not post**;
+    - reactions show usernames and churches;
+    - a share is a link that stays inside its church.
+- **Pictures:** `../after-stage6/`, at phone size:
+  1. a church admin posting for the church;
+  2. the home for someone with no church;
+  3. Find porches;
+  4. a porch's public page;
+  5. the public porch for someone with no church;
+  6. the public porch for a member;
+  7. a public post shared into the church.
+
 ## Approved for the redesign stage
 
 These were approved by the owner on 2026-11-18. Both went against `public/porchbook-state.md` (BUILD-BRIEF.md now wins).

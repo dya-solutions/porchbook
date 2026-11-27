@@ -447,7 +447,7 @@ export const actAs = createServerFn({ method: "POST" })
       return { ok: true as const, name: "" };
     }
     const rows = await sql.query<{ name: string }>(
-      "update profiles set acting_porch_id = $2 where user_id = $1 and runs_ministry($1, $2) returning (select name from porches where id = $2) as name",
+      "update profiles set acting_porch_id = $2 where user_id = $1 and can_act_as($1, $2) returning (select name from porches where id = $2) as name",
       [context.userId, data.porchId],
     );
     if (!rows[0]) {
@@ -467,7 +467,7 @@ export const ministryHome = createServerFn({ method: "POST" })
       `select c.id, c.name, c.status, c.country, c.ministry_type, c.ministry_other, c.description,
               to_char(c.created_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
          from profiles p join porches c on c.id = p.acting_porch_id
-        where p.user_id = $1 and runs_ministry($1, c.id)`,
+        where p.user_id = $1 and can_act_as($1, c.id)`,
       [context.userId],
     );
     const ministry = rows[0];
@@ -493,7 +493,7 @@ export const ministryHome = createServerFn({ method: "POST" })
 /** N7: the ministry's team messages (only its admins, while acting as it). */
 async function actingMinistry(sql: Sql, userId: string): Promise<number> {
   const rows = await sql.query<{ id: number | null }>(
-    "select p.acting_porch_id as id from profiles p where p.user_id = $1 and runs_ministry($1, p.acting_porch_id)",
+    "select p.acting_porch_id as id from profiles p where p.user_id = $1 and can_act_as($1, p.acting_porch_id)",
     [userId],
   );
   return Number(rows[0]?.id ?? 0) || 0;

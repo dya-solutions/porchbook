@@ -905,6 +905,62 @@ try {
   const fayeRejoin = await faye.call("lib/porch/membership.ts", "requestToJoin", { code: codeA, fullName: "Faye Joiner", phone: "+254711000002", city: "Eldoret" });
   record("sanity", "joining", "After leaving she can ask to join a church again (it waits for the admins)", fayeRejoin?.ok === true);
 
+  // ---------------- Stage 6 + N5: the public porch ----------------
+  console.log("\nThe public porch");
+  const PUB = "lib/porch/public-porch.ts";
+  // People never post publicly as themselves.
+  const annAsHerself = await ann.call(PUB, "createPublicPost", { body: "Ann posting as herself" });
+  const abeAsHimself = await abe.call(PUB, "createPublicPost", { body: "Abe posting as himself" });
+  record("isolation", "feed", "People can't post on the public porch as themselves (only porches post)", annAsHerself?.ok === false && abeAsHimself?.ok === false);
+  // A church's admin can continue as the church (and someone who isn't its admin can't).
+  const annState6 = await ann.call("lib/porch/membership.ts", "accountState");
+  record("sanity", "accounts", "Ann (A's admin) can continue as Porch A, not just ministries", (annState6?.ministries ?? []).some((m) => m.id === porchA && m.kind === "church"));
+  const benActsA = await ben.call("lib/porch/porch-join.ts", "actAs", { porchId: porchA });
+  record("isolation", "accounts", "Ben can't continue as Porch A (he isn't one of its admins)", benActsA?.ok === false);
+  // Unapproved porches can't post publicly (Abe Ministry is still waiting).
+  await abe.call("lib/porch/porch-join.ts", "actAs", { porchId: ministry?.id });
+  const waitingPost = await abe.call(PUB, "createPublicPost", { body: "From a porch that isn't approved" });
+  await abe.call("lib/porch/porch-join.ts", "actAs", { porchId: 0 });
+  record("isolation", "feed", "A porch that isn't approved can't post publicly", waitingPost?.ok === false);
+  // Ann posts publicly for Porch A.
+  await ann.call("lib/porch/porch-join.ts", "actAs", { porchId: porchA });
+  const aPublic = await ann.call(PUB, "createPublicPost", { body: "Porch A says hello to everyone" });
+  await ann.call("lib/porch/porch-join.ts", "actAs", { porchId: 0 });
+  record("sanity", "feed", "Ann, continuing as Porch A, posts on the public porch for it", aPublic?.ok === true);
+  // Private posts never appear publicly.
+  const benPublic0 = await ben.call(PUB, "publicFeed");
+  const aPage = await ben.call(PUB, "porchPage", { porchId: porchA });
+  const everything = JSON.stringify([benPublic0, aPage, await abe.call(PUB, "publicFeed")]);
+  record("isolation", "feed", "Nothing from a church's private porch ever appears publicly", !everything.includes("A private post in Porch A") && !everything.includes("Private chat inside Porch A") && !everything.includes("Cara's post in B"));
+  // You only see porches you follow; members follow their own church and can't unfollow it.
+  record("isolation", "feed", "Ben doesn't see Porch A's public post (he doesn't follow A)", !has(benPublic0, "Porch A says hello"));
+  const abePublic = await abe.call(PUB, "publicFeed");
+  record("sanity", "feed", "Abe (a member of A) sees it: everyone follows their own church", has(abePublic, "Porch A says hello"));
+  const abeUnfollow = await abe.call(PUB, "setFollow", { porchId: porchA, follow: false });
+  record("sanity", "feed", "A member can't unfollow their own church", abeUnfollow?.ok === false);
+  const benFind = await ben.call(PUB, "findPorches", { query: "Porch", type: "church" });
+  const found = (benFind ?? []).map((p) => p.name);
+  record("sanity", "feed", "Find porches finds approved churches only (Porch A, not the declined Porch E or the waiting ministry)", found.includes("Porch A") && !found.includes("Porch E") && !found.includes("Abe Ministry"));
+  await ben.call(PUB, "setFollow", { porchId: porchA, follow: true });
+  const benPublic1 = await ben.call(PUB, "publicFeed");
+  record("sanity", "feed", "Ben follows Porch A: now he sees its public post (and still none of its private posts)", has(benPublic1, "Porch A says hello") && !has(benPublic1, "A private post in Porch A"));
+  // Everyone can react, by username (plus church unless they hide it); nobody can comment.
+  const aPostId = (benPublic1?.posts ?? []).find((p) => p.body === "Porch A says hello to everyone")?.id;
+  const benReacts = await ben.call(PUB, "reactPublic", { postId: aPostId, kind: "care" });
+  const fayeReacts = await faye.call(PUB, "reactPublic", { postId: aPostId, kind: "thanks" });
+  const seen = (await abe.call(PUB, "publicFeed"))?.posts?.find((p) => p.id === aPostId);
+  record("sanity", "feed", "Anyone with an account can react on a public post (Ben in B, Faye in no church)", benReacts?.ok === true && fayeReacts?.ok === true && seen?.reactions?.find((r) => r.kind === "care")?.count === 1);
+  record("sanity", "people", "Public reactions show usernames, plus the church for members", (seen?.reactors ?? []).some((r) => r.church === "Porch B") && !(seen?.reactors ?? []).some((r) => r.name === "Ben Other"));
+  const benUnfollow = await ben.call(PUB, "setFollow", { porchId: porchA, follow: false });
+  const benPublic2 = await ben.call(PUB, "publicFeed");
+  record("sanity", "feed", "Ben unfollows Porch A: its posts leave his public porch", benUnfollow?.ok === true && !has(benPublic2, "Porch A says hello"));
+  // Sharing a public post into a church is a link, inside that church only.
+  const abeShares = await abe.call(PUB, "sharePublicPost", { postId: aPostId });
+  const annPrivate = await ann.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  const benPrivate = await ben.call("lib/porch/api.ts", "getFeed", { filter: "all" });
+  record("sanity", "feed", "Abe shares a public post into Porch A as a link", abeShares?.ok === true && (annPrivate?.posts ?? []).some((p) => p.sharedPublicPostId === aPostId));
+  record("isolation", "feed", "A share into Porch A stays in Porch A (Ben's church never sees it)", !(benPrivate?.posts ?? []).some((p) => p.sharedPublicPostId === aPostId));
+
   // ---------------- Summary ----------------
   const failed = results.filter((r) => !r.pass && (r.kind !== "isolation" || AREAS_DONE.includes(r.area)));
   const notYet = results.filter((r) => !r.pass && r.kind === "isolation" && !AREAS_DONE.includes(r.area));

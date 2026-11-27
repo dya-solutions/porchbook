@@ -220,6 +220,7 @@ type PostRow = {
   asked_to: string | null;
   asked_name: string | null;
   answered: unknown;
+  shared_public: number | null;
 };
 
 type CommentRow = {
@@ -382,6 +383,7 @@ async function hydratePosts(sql: Sql, rows: PostRow[], userId: string): Promise<
       comments: commentsByPost.get(id) ?? [],
       askedTo: row.asked_to ? { id: row.asked_to, name: row.asked_name || "Teammate" } : null,
       answered: boolish(row.answered),
+      sharedPublicPostId: row.shared_public ? Number(row.shared_public) : null,
     };
   });
 }
@@ -397,7 +399,8 @@ const POST_SELECT = `
          a.team as author_team,
          nullif(p.asked_to, '') as asked_to,
          q.display_name as asked_name,
-         (p.asked_to <> '' and exists (select 1 from comments c where c.post_id = p.id and c.author_id = p.asked_to)) as answered
+         (p.asked_to <> '' and exists (select 1 from comments c where c.post_id = p.id and c.author_id = p.asked_to)) as answered,
+         (to_jsonb(p) ->> 'shared_public_post_id')::int as shared_public
   from posts p
   join profiles a on a.user_id = p.author_id
   left join profiles q on q.user_id = p.asked_to

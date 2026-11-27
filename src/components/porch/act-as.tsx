@@ -9,6 +9,7 @@ import { formatWhen } from "@/lib/porch/model";
 import { initialsOf } from "@/components/porch/pb-shell";
 import type { Account } from "@/components/porch/account-screens";
 import { BrandLogo } from "@/components/porch/brand-logo";
+import { PorchPublicDesk } from "@/components/porch/public-views";
 
 async function switchTo(porchId: number) {
   const result = await actAs({ data: { porchId } }).catch(() => null);
@@ -64,7 +65,7 @@ export function ActAsSheet({
             <span className="pb-as-words">
               <strong>{ministry.name}</strong>
               <small>
-                Ministry · {ministry.typeName}
+                {ministry.kind === "church" ? "Church · post on the public porch for it" : `Ministry · ${ministry.typeName}`}
                 {ministry.status === "waiting" ? " · waiting for approval" : ""}
               </small>
             </span>
@@ -117,25 +118,25 @@ export function MinistryShell({ account, me }: { account: Account; me: { id: str
         </button>
         <div className="pb-top-name">
           <p className="pb-ttl">{ministry.name}</p>
-          <p>Ministry · {ministry.typeName}</p>
+          <p>{ministry.kind === "church" ? "Church · its public side" : `Ministry · ${ministry.typeName}`}</p>
         </div>
         <button type="button" className="pb-me is-acting" aria-label="Switch who you're acting as" onClick={() => setSheet(true)}>
           {me.imageUrl ? <img src={me.imageUrl} alt="" /> : initialsOf(me.name)}
         </button>
       </header>
       <div className="welcome-in" style={{ gap: 14, paddingTop: 8 }}>
-        <div className="pb-card welcome-card">
-          <p className="ofc-lbl" style={{ margin: 0 }}>What {ministry.name} does</p>
-          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
-            {home ? home.description || "No description yet. Porches started before 26 November didn't have one." : "…"}
-          </p>
-          <p className="pb-quiet" style={{ margin: 0, fontSize: 14 }}>
-            {[home?.country, ministry.status === "waiting" ? "Waiting for approval" : ministry.status === "approved" ? "Approved" : ""].filter(Boolean).join(" · ")}
-          </p>
-        </div>
+        {/* Stage 6: post on the public porch for this porch, its posts, and its description. */}
+        <PorchPublicDesk
+          porchId={ministry.id}
+          porchName={ministry.name}
+          approved={ministry.status === "approved"}
+          description={home?.description ?? ""}
+          country={home?.country ?? ""}
+          onDescription={(description) => setHome((current) => (current ? { ...current, description } : current))}
+        />
         <div className="pb-card welcome-card">
           <p className="ofc-lbl" style={{ margin: 0 }}>The admin team</p>
-          <p className="pb-quiet" style={{ margin: 0, fontSize: 13 }}>A ministry is public, so its admins show by their usernames.</p>
+          <p className="pb-quiet" style={{ margin: 0, fontSize: 13 }}>On the public side, admins show by their usernames.</p>
           {(home?.admins ?? []).map((admin) => (
             <p key={admin.userId} style={{ margin: 0, fontSize: 15 }}>
               {admin.username ? `@${admin.username}` : admin.name}
@@ -144,12 +145,6 @@ export function MinistryShell({ account, me }: { account: Account; me: { id: str
           ))}
         </div>
         <TeamMessages ministryName={ministry.name} />
-        <div className="pb-card welcome-card">
-          <p className="ofc-lbl" style={{ margin: 0 }}>Coming with the public porch</p>
-          <p className="pb-quiet" style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>
-            Posting for {ministry.name}, and seeing who follows it. A ministry has no members or private porch: its admins post on the public porch for it.
-          </p>
-        </div>
         <button type="button" className="pb-btn2" onClick={() => void switchTo(0)}>
           Continue as me
         </button>

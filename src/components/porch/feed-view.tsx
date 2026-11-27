@@ -1135,6 +1135,16 @@ export function PostCard({
         <div className="cursor-pointer" onClick={() => setDetails((open) => !open)}>
           <PostBody text={post.body.trim()} green={post.room === "ask"} />
           {post.photo ? <KeptPhoto src={post.photo} compact={compact} title={post.authorName} /> : null}
+          {post.sharedPublicPostId ? (
+            <Link
+              to="/public/$postId"
+              params={{ postId: String(post.sharedPublicPostId) }}
+              className="pp-shared-link"
+              onClick={(event) => event.stopPropagation()}
+            >
+              Open on the public porch →
+            </Link>
+          ) : null}
         </div>
       )}
       {post.askedTo ? (

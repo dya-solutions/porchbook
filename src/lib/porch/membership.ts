@@ -165,15 +165,23 @@ export const accountState = createServerFn({ method: "POST" })
     );
     const details: MemberDetails = { fullName: row?.full_name || row?.display_name || "", phone: row?.phone ?? "", city: row?.city ?? "" };
     const { email } = await accountEmail(sql, context.userId);
-    // N3: the ministries this person runs, and the one they're acting as (if any).
-    const ministries = await sql.query<{ id: number; name: string; status: string; ministry_type: string; ministry_other: string; accent: string | null }>(
-      `select c.id, c.name, c.status, c.ministry_type, c.ministry_other, s.accent
+    // N3 + Stage 6: the porches this person can "Continue as" (ministries they run, and a church
+    // they're an admin of), and the one they're acting as (if any). The church comes first.
+    const ministries = await sql.query<{ id: number; name: string; kind: string; status: string; ministry_type: string; ministry_other: string; accent: string | null }>(
+      `select c.id, c.name, c.kind, c.status, c.ministry_type, c.ministry_other, s.accent
          from porch_admins a join porches c on c.id = a.porch_id left join porch_settings s on s.porch_id = c.id
-        where a.user_id = $1 and c.kind = 'ministry' and c.status <> 'declined'
-        order by c.created_at`,
+        where a.user_id = $1 and can_act_as($1, c.id)
+        order by (c.kind = 'church') desc, c.created_at`,
       [context.userId],
     );
-    const runs = ministries.map((m) => ({ id: m.id, name: m.name, status: m.status, typeName: ministryTypeName(m.ministry_type, m.ministry_other), accent: m.accent ?? "gold" }));
+    const runs = ministries.map((m) => ({
+      id: m.id,
+      name: m.name,
+      kind: m.kind,
+      status: m.status,
+      typeName: m.kind === "church" ? "Church" : ministryTypeName(m.ministry_type, m.ministry_other),
+      accent: m.accent ?? "gold",
+    }));
     const acting = runs.find((m) => m.id === row?.acting) ?? null;
     return {
       email,
@@ -309,7 +317,13 @@ export const requestToJoin = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
     const raw = asRecord(input);
-    return { code: typeof raw.code === "string" ? raw.code.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 32) : "", details: parseDetails(raw), seed: seedOf(raw) };
+    return {
+      code: typeof raw.code === "string" ? raw.code.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 32) : "",
+      // N5: "Ask to join" from Find porches names the church instead of a code (approved churches only).
+      porchId: Number(raw.porchId) || 0,
+      details: parseDetails(raw),
+      seed: seedOf(raw),
+    };
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
@@ -318,13 +332,15 @@ export const requestToJoin = createServerFn({ method: "POST" })
     if (!(await isVerified(sql, context.userId))) return { ok: false as const, error: "Confirm your email first." };
     const problem = checkDetails(data.details);
     if (problem) return { ok: false as const, error: problem };
-    const porches = await sql.query<{ id: number; name: string }>(
-      "select id, name from porches where upper(invite_code) = $1 and kind = 'church' and status in ('approved', 'waiting')",
-      [data.code],
-    );
+    const porches = data.code
+      ? await sql.query<{ id: number; name: string }>(
+          "select id, name from porches where upper(invite_code) = $1 and kind = 'church' and status in ('approved', 'waiting')",
+          [data.code],
+        )
+      : await sql.query<{ id: number; name: string }>("select id, name from porches where id = $1 and kind = 'church' and status = 'approved'", [data.porchId]);
     const porch = porches[0];
-    if (!porch) return { ok: false as const, error: "That invite code isn't right. Check it with your church." };
-    const me = await sql.query<{ porch_id: number | null }>("select my_porch($1) as porch_id", [context.userId]);
+    if (!porch) return { ok: false as const, error: data.code ? "That invite code isn't right. Check it with your church." : "That church isn't on Porchbook." };
+    const me = await sql.query<{ porch_id: number | null }>("select church_of($1) as porch_id", [context.userId]);
     if (me[0]?.porch_id) return { ok: false as const, error: "You're already a member of a church. A person belongs to one church: leave yours first (Your account → Leave this church)." };
     await sql.query("update join_requests set status = 'cancelled' where user_id = $1 and status = 'waiting'", [context.userId]);
     await sql.query(

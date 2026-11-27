@@ -23,6 +23,8 @@ import {
 import { BrandLogo } from "@/components/porch/brand-logo";
 import { reloadPorchLook, usePorchLook } from "@/components/porch/pb-shell";
 import { keepJoinCode, keptJoinCode } from "@/components/porch/welcome-screen";
+import { keepJoinPorch, keptJoinPorch } from "@/components/porch/public-views";
+import { churchToJoin } from "@/lib/porch/public-porch";
 
 export type Account = Awaited<ReturnType<typeof accountState>>;
 
@@ -184,7 +186,7 @@ function DetailsFields({ details, onChange, only }: { details: MemberDetails; on
 export function JoinChurch({ account: me }: { account: Account }) {
   const user = useCurrentUser();
   const [code, setCode] = useState("");
-  const [church, setChurch] = useState<{ code: string; name: string; place: string } | null>(null);
+  const [church, setChurch] = useState<{ code: string; porchId?: number; name: string; place: string } | null>(null);
   const [details, setDetails] = useState<MemberDetails>({ fullName: me.fullName && me.fullName !== me.username ? me.fullName : "", phone: "", city: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -199,7 +201,20 @@ export function JoinChurch({ account: me }: { account: Account }) {
   // A code from an invite link (or typed before making the account) is used straight away.
   useEffect(() => {
     const kept = keptJoinCode();
-    if (kept) void check(kept, true);
+    if (kept) {
+      void check(kept, true);
+      return;
+    }
+    // N5: "Ask to join" on a church found in Find porches opens its join form here.
+    const asked = keptJoinPorch();
+    if (asked) {
+      void churchToJoin({ data: { porchId: asked } })
+        .then((result) => {
+          if (result.ok) setChurch({ code: "", porchId: result.id, name: result.name, place: result.place });
+          else keepJoinPorch(0);
+        })
+        .catch(() => undefined);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -224,7 +239,7 @@ export function JoinChurch({ account: me }: { account: Account }) {
     setBusy(true);
     setError("");
     const result = await requestToJoin({
-      data: { code: church.code, ...details, displayName: user?.displayName ?? "", email: user?.primaryEmail ?? null },
+      data: { code: church.code, porchId: church.porchId ?? 0, ...details, displayName: user?.displayName ?? "", email: user?.primaryEmail ?? null },
     }).catch(() => null);
     setBusy(false);
     if (!result?.ok) {
@@ -232,6 +247,7 @@ export function JoinChurch({ account: me }: { account: Account }) {
       return;
     }
     keepJoinCode("");
+    keepJoinPorch(0);
     reloadAccount();
   }
 
@@ -241,11 +257,24 @@ export function JoinChurch({ account: me }: { account: Account }) {
     return (
       <StepPage title={me.username ? `Welcome, @${me.username}` : "Welcome to Porchbook"}>
         <p className="pb-quiet" style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}>
-          Porchbook is your church on your phone: its posts, offices and chat, in one private porch. Find your church to join it, or start a porch of your own.
+          Follow churches and ministries on the public porch, join your church's private porch, or start a porch of your own.
         </p>
         {me.lastDeclined ? (
           <p className="acct-note">Your request to join {me.lastDeclined} wasn't accepted. You can ask your church about it, or try another church.</p>
         ) : null}
+        {/* Stage 6: the public porch and Find porches come first for someone with no church. */}
+        <div className="pb-card welcome-card pp-home">
+          <p className="ofc-lbl" style={{ margin: 0, fontSize: 17 }}>The public porch</p>
+          <p className="pb-quiet" style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>
+            Posts from the churches and ministries you follow. React with Love, Like, Touching or Deep.
+          </p>
+          <Link to="/" search={{ room: "all", view: "public" } as never} className="pb-btn" style={{ textDecoration: "none" }}>
+            Open the public porch
+          </Link>
+          <Link to="/find" className="pb-btn2" style={{ textDecoration: "none" }}>
+            Find porches
+          </Link>
+        </div>
         <form
           className="pb-card welcome-card"
           onSubmit={(event) => {
@@ -254,9 +283,9 @@ export function JoinChurch({ account: me }: { account: Account }) {
             if (typed) void check(cleanCode(typed.includes("/join/") ? typed.split("/join/")[1] ?? "" : typed));
           }}
         >
-          <p className="ofc-lbl" style={{ margin: 0, fontSize: 17 }}>Find your church</p>
+          <p className="ofc-lbl" style={{ margin: 0, fontSize: 17 }}>Join your church</p>
           <p className="pb-quiet" style={{ margin: 0, fontSize: 14, lineHeight: 1.45 }}>
-            Type the invite code, or paste the invite link, your church gave you. Its admins look at your request and let you in. Searching for churches by name comes soon.
+            Type the invite code, or paste the invite link, your church gave you. Or find it by name in <Link to="/find" className="welcome-link" style={{ minHeight: 0 }}>Find porches</Link> and tap Ask to join. Its admins look at your request and let you in.
           </p>
           <label className="sr-only" htmlFor="join-code">Invite code or link</label>
           <input id="join-code" className="ofc-input" value={code} placeholder="e.g. K7QM-4XPA" autoCapitalize="characters" autoComplete="off" spellCheck={false} onChange={(event) => setCode(event.target.value)} />
@@ -301,9 +330,6 @@ export function JoinChurch({ account: me }: { account: Account }) {
           </p>
           <Link to="/faq" className="pb-btn2" style={{ textDecoration: "none" }}>Help and FAQ</Link>
         </div>
-        <Link to="/" search={{ room: "all", view: "public" } as never} className="pb-link" style={{ alignSelf: "center", color: "var(--pb-main)" }}>
-          The public porch (coming soon)
-        </Link>
       </StepPage>
     );
   }
@@ -328,11 +354,12 @@ export function JoinChurch({ account: me }: { account: Account }) {
         style={{ alignSelf: "center" }}
         onClick={() => {
           keepJoinCode("");
+          keepJoinPorch(0);
           setChurch(null);
           setCode("");
         }}
       >
-        Use a different code
+        Choose another church
       </button>
     </StepPage>
   );

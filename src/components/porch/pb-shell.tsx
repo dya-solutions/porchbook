@@ -178,6 +178,12 @@ export function PbIcon({ name, size = 24 }: { name: string; size?: number }) {
       </>
     ),
     heart: <path d="M12 20s-7-4.5-9-9a4.5 4.5 0 0 1 9-2 4.5 4.5 0 0 1 9 2c-2 4.5-9 9-9 9z" />,
+    search: (
+      <>
+        <circle cx="11" cy="11" r="7" />
+        <path d="M20 20l-4-4" />
+      </>
+    ),
     back: <path d="M15 5l-7 7 7 7" />,
     phone: <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />,
     person: (

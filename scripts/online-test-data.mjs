@@ -278,11 +278,61 @@ async function remove(really) {
   }
 }
 
+/**
+ * Stage 6: a few made-up public posts for the test porches, so the public porch isn't empty.
+ * They belong to the test porches, so "remove --yes" takes them out with everything else.
+ * Only added once (a porch that already has public posts gets none).
+ */
+const PUBLIC_POSTS = {
+  "Alpha Test Church (TEST)": [
+    "(Test post) Welcome to Alpha Test Church on the public porch! Join us this Sunday at 10am for worship and the Word.",
+    "(Test post) Youth night this Friday at 6pm. Bring a friend. Snacks provided.",
+  ],
+  "Bravo Test Church (TEST)": ["(Test post) Bravo Test Church is praying for every family in Mocktown this week. Send us your prayer requests."],
+  "Alpha Worship Team (TEST)": [
+    "(Test post) New song rehearsal on Saturday at 4pm. Singers and players welcome.",
+    "(Test post) Thank you for a beautiful night of worship. Recordings coming soon.",
+  ],
+};
+async function addPublicPosts(client) {
+  const ready = await client.query("select to_regclass('public_posts') is not null as ok");
+  if (!ready.rows[0]?.ok) throw new Error("The online site doesn't have the public porch yet. Open porchbook.app once after the update, then run this again.");
+  let added = 0;
+  for (const [name, bodies] of Object.entries(PUBLIC_POSTS)) {
+    const porch = await client.query(
+      `select p.id, (select a.user_id from porch_admins a where a.porch_id = p.id order by a.added_at limit 1) as admin,
+              exists (select 1 from public_posts pp where pp.porch_id = p.id) as has_posts
+         from porches p join porch_test_data t on t.porch_id = p.id where p.name = $1`,
+      [name],
+    );
+    const row = porch.rows[0];
+    if (!row || row.has_posts) continue;
+    let minutes = bodies.length * 90;
+    for (const body of bodies) {
+      await client.query("insert into public_posts (porch_id, author_id, body, created_at) values ($1, $2, $3, now() - ($4 || ' minutes')::interval)", [row.id, row.admin, body, String(minutes)]);
+      minutes -= 90;
+      added += 1;
+    }
+  }
+  return added;
+}
+async function posts() {
+  const client = await pool.connect();
+  try {
+    if (!(await upToDate(client))) throw new Error(WRONG_DB);
+    const added = await addPublicPosts(client);
+    console.log(`Added ${added} made-up public posts to the test porches.`);
+  } finally {
+    client.release();
+  }
+}
+
 try {
   if (command === "show") await show();
   else if (command === "add") await add(arg);
+  else if (command === "posts") await posts();
   else if (command === "remove") await remove(arg === "--yes");
-  else console.log("Use: show | add <passwords-file> | remove [--yes]");
+  else console.log("Use: show | add <passwords-file> | posts | remove [--yes]");
 } catch (error) {
   console.error("Stopped:", error instanceof Error ? error.message : String(error));
   process.exitCode = 1;

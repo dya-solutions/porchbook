@@ -1121,3 +1121,40 @@ button.pb-me { border: 0; padding: 0; cursor: pointer; font: inherit; font-weigh
 .note-waiting span:first-child { flex: 1; display: flex; flex-direction: column; }
 .note-waiting small { font-size: 13px; opacity: 0.75; }
 .note-waiting-go { font-weight: 700; }
+
+/* ---- Stage 6: the public porch (design-reference/Public.dc.html, PorchPage.dc.html) ---- */
+.pp-feed { display: flex; flex-direction: column; gap: 12px; }
+.pp-follow-row { display: flex; align-items: center; gap: 10px; padding: 2px 2px 0; }
+.pp-follow-row p { flex: 1; margin: 0; font-size: 15px; color: var(--pb-quiet); }
+.pp-follow-row strong { color: var(--pb-text); }
+.pp-find { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; white-space: nowrap; }
+.pp-badge { display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; flex: none; letter-spacing: 0.02em; }
+.pp-who { display: flex; align-items: center; gap: 12px; min-width: 0; text-decoration: none; color: inherit; flex: 1; }
+.pp-who-words { display: flex; flex-direction: column; min-width: 0; }
+.pp-name { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 16px; line-height: 1.25; }
+.pp-meta { font-size: 13px; color: var(--pb-quiet); }
+.pp-verified { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 9px; background: var(--pb-main); color: #fff; flex: none; }
+.pp-body { margin: 10px 0 12px; font-size: 16px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pp-reactors { margin: 8px 0 0; font-size: 13px; color: var(--pb-quiet); line-height: 1.4; }
+.pp-share { margin-top: 8px; font-size: 14px; }
+.pp-note { margin: 4px 8px 8px; text-align: center; font-size: 13px; color: var(--pb-quiet); line-height: 1.45; }
+.pp-note a { color: var(--pb-main); font-weight: 700; }
+.pp-empty { padding: 18px; display: flex; flex-direction: column; }
+.pp-types { display: flex; flex-wrap: wrap; gap: 8px; }
+.pp-country { display: flex; flex-direction: column; gap: 4px; }
+.pp-result { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.pp-desc { margin: 0; font-size: 14px; line-height: 1.45; color: var(--pb-quiet); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pp-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pp-follow { width: auto !important; min-width: 112px; height: 42px; padding: 0 18px; }
+.pp-own { padding: 6px 12px; }
+.pp-hero { padding: 22px 18px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.pp-hero-name { display: inline-flex; align-items: center; gap: 8px; font-size: 24px; margin: 6px 0 0; }
+.pp-hero-desc { margin: 4px 0 6px; font-size: 15px; line-height: 1.5; max-width: 34em; white-space: pre-wrap; }
+.pp-page section { display: flex; flex-direction: column; gap: 10px; }
+.pp-mine { padding: 10px 0; border-top: 1px solid var(--pb-line-2); }
+.pp-mine:first-of-type { border-top: 0; padding-top: 0; }
+.pp-shared-link { display: inline-block; margin-top: 8px; font-weight: 700; font-size: 14px; color: var(--pb-main); text-decoration: none; }
+.pp-home .pb-btn, .pp-home .pb-btn2 { text-align: center; }
+/* A long name wraps; the "approved" tick stays right after the last word. */
+.pp-hero-name { display: block; text-align: center; }
+.pp-hero-name .pp-verified { display: inline-flex; vertical-align: 0.15em; margin-left: 8px; }

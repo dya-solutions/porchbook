@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAccount } from "@/components/porch/account-screens";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
-import { BrandLogo } from "@/components/porch/brand-logo";
+import { PublicFeed } from "@/components/porch/public-views";
 import { useCallback, useEffect, useState } from "react";
 import { waitingJoinCount } from "@/lib/porch/membership";
 import { AppFrame } from "@/components/porch/frame";
@@ -45,26 +45,15 @@ function Home() {
   );
 }
 
-/** The Public porch arrives in Stage 6. */
+/** Stage 6: the Public porch (design-reference/Public.dc.html): posts from the porches you follow. */
 function PublicSoon() {
   const user = useCurrentUser();
   const account = useAccount(user?.id);
   // Decision 44: someone with no church can start a porch from here.
   const noChurch = account ? !account.member : false;
   return (
-    <div className="pb-body">
-      <div className="pb-card" style={{ padding: "28px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-        {/* Stage 4e: the Public porch header carries the Porchbook circle of people. */}
-        <span style={{ color: "var(--pb-main)", display: "flex" }}>
-          <BrandLogo kind="mark" height={44} />
-        </span>
-        <h2 className="pb-ttl" style={{ fontSize: 22 }}>
-          The Public porch is coming soon
-        </h2>
-        <p className="pb-quiet" style={{ margin: 0, fontSize: 15, lineHeight: 1.45, maxWidth: 320 }}>
-          Here you&apos;ll see posts from the churches and ministries you follow, and react to them.
-        </p>
-      </div>
+    <div>
+      <PublicFeed member={Boolean(account?.member)} />
       {noChurch ? (
         <div className="pb-card" style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
           <p style={{ margin: 0, fontWeight: 700, fontSize: 16 }}>Lead a church or a ministry?</p>

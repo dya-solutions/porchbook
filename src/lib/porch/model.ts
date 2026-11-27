@@ -63,6 +63,8 @@ export type Post = {
   // Inquire, asked of one person: only they answer, then everyone can join in.
   askedTo: { id: string; name: string } | null;
   answered: boolean;
+  /** Stage 6: a public post this private post shares, as a link (never its content going public). */
+  sharedPublicPostId?: number | null;
 };
 
 export type FeedPage = {

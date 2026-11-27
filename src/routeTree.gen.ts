@@ -16,6 +16,7 @@ import { Route as CallsRouteImport } from './routes/calls'
 import { Route as CityRouteImport } from './routes/city'
 import { Route as ControlRoomRouteImport } from './routes/control-room'
 import { Route as FaqRouteImport } from './routes/faq'
+import { Route as FindRouteImport } from './routes/find'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManualRouteImport } from './routes/manual'
@@ -65,6 +66,8 @@ import { Route as OfficesIndexRouteImport } from './routes/offices/index'
 import { Route as OfficesOfficeKeyRouteImport } from './routes/offices/$officeKey'
 import { Route as PeopleIndexRouteImport } from './routes/people/index'
 import { Route as PeopleUserIdRouteImport } from './routes/people/$userId'
+import { Route as PorchPorchIdRouteImport } from './routes/porch/$porchId'
+import { Route as PublicPostIdRouteImport } from './routes/public/$postId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiCallingIceConfigRouteImport } from './routes/api/calling/ice-config'
 import { Route as ApiFaceUserIdRouteImport } from './routes/api/face.$userId'
@@ -102,6 +105,11 @@ const ControlRoomRoute = ControlRoomRouteImport.update({
 const FaqRoute = FaqRouteImport.update({
   id: '/faq',
   path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FindRoute = FindRouteImport.update({
+  id: '/find',
+  path: '/find',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InviteRoute = InviteRouteImport.update({
@@ -349,6 +357,16 @@ const PeopleUserIdRoute = PeopleUserIdRouteImport.update({
   path: '/people/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PorchPorchIdRoute = PorchPorchIdRouteImport.update({
+  id: '/porch/$porchId',
+  path: '/porch/$porchId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PublicPostIdRoute = PublicPostIdRouteImport.update({
+  id: '/public/$postId',
+  path: '/public/$postId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -373,6 +391,7 @@ export interface FileRoutesByFullPath {
   '/city': typeof CityRoute
   '/control-room': typeof ControlRoomRoute
   '/faq': typeof FaqRoute
+  '/find': typeof FindRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
@@ -418,6 +437,8 @@ export interface FileRoutesByFullPath {
   '/messages/$userId': typeof MessagesUserIdRoute
   '/offices/$officeKey': typeof OfficesOfficeKeyRoute
   '/people/$userId': typeof PeopleUserIdRoute
+  '/porch/$porchId': typeof PorchPorchIdRoute
+  '/public/$postId': typeof PublicPostIdRoute
   '/groups/': typeof GroupsIndexRoute
   '/messages/': typeof MessagesIndexRoute
   '/offices/': typeof OfficesIndexRoute
@@ -434,6 +455,7 @@ export interface FileRoutesByTo {
   '/city': typeof CityRoute
   '/control-room': typeof ControlRoomRoute
   '/faq': typeof FaqRoute
+  '/find': typeof FindRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
@@ -479,6 +501,8 @@ export interface FileRoutesByTo {
   '/messages/$userId': typeof MessagesUserIdRoute
   '/offices/$officeKey': typeof OfficesOfficeKeyRoute
   '/people/$userId': typeof PeopleUserIdRoute
+  '/porch/$porchId': typeof PorchPorchIdRoute
+  '/public/$postId': typeof PublicPostIdRoute
   '/groups': typeof GroupsIndexRoute
   '/messages': typeof MessagesIndexRoute
   '/offices': typeof OfficesIndexRoute
@@ -496,6 +520,7 @@ export interface FileRoutesById {
   '/city': typeof CityRoute
   '/control-room': typeof ControlRoomRoute
   '/faq': typeof FaqRoute
+  '/find': typeof FindRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/manual': typeof ManualRoute
@@ -541,6 +566,8 @@ export interface FileRoutesById {
   '/messages/$userId': typeof MessagesUserIdRoute
   '/offices/$officeKey': typeof OfficesOfficeKeyRoute
   '/people/$userId': typeof PeopleUserIdRoute
+  '/porch/$porchId': typeof PorchPorchIdRoute
+  '/public/$postId': typeof PublicPostIdRoute
   '/groups/': typeof GroupsIndexRoute
   '/messages/': typeof MessagesIndexRoute
   '/offices/': typeof OfficesIndexRoute
@@ -559,6 +586,7 @@ export interface FileRouteTypes {
     | '/city'
     | '/control-room'
     | '/faq'
+    | '/find'
     | '/invite'
     | '/login'
     | '/manual'
@@ -604,6 +632,8 @@ export interface FileRouteTypes {
     | '/messages/$userId'
     | '/offices/$officeKey'
     | '/people/$userId'
+    | '/porch/$porchId'
+    | '/public/$postId'
     | '/groups/'
     | '/messages/'
     | '/offices/'
@@ -620,6 +650,7 @@ export interface FileRouteTypes {
     | '/city'
     | '/control-room'
     | '/faq'
+    | '/find'
     | '/invite'
     | '/login'
     | '/manual'
@@ -665,6 +696,8 @@ export interface FileRouteTypes {
     | '/messages/$userId'
     | '/offices/$officeKey'
     | '/people/$userId'
+    | '/porch/$porchId'
+    | '/public/$postId'
     | '/groups'
     | '/messages'
     | '/offices'
@@ -681,6 +714,7 @@ export interface FileRouteTypes {
     | '/city'
     | '/control-room'
     | '/faq'
+    | '/find'
     | '/invite'
     | '/login'
     | '/manual'
@@ -726,6 +760,8 @@ export interface FileRouteTypes {
     | '/messages/$userId'
     | '/offices/$officeKey'
     | '/people/$userId'
+    | '/porch/$porchId'
+    | '/public/$postId'
     | '/groups/'
     | '/messages/'
     | '/offices/'
@@ -743,6 +779,7 @@ export interface RootRouteChildren {
   CityRoute: typeof CityRoute
   ControlRoomRoute: typeof ControlRoomRoute
   FaqRoute: typeof FaqRoute
+  FindRoute: typeof FindRoute
   InviteRoute: typeof InviteRoute
   LoginRoute: typeof LoginRoute
   ManualRoute: typeof ManualRoute
@@ -788,6 +825,8 @@ export interface RootRouteChildren {
   MessagesUserIdRoute: typeof MessagesUserIdRoute
   OfficesOfficeKeyRoute: typeof OfficesOfficeKeyRoute
   PeopleUserIdRoute: typeof PeopleUserIdRoute
+  PorchPorchIdRoute: typeof PorchPorchIdRoute
+  PublicPostIdRoute: typeof PublicPostIdRoute
   GroupsIndexRoute: typeof GroupsIndexRoute
   MessagesIndexRoute: typeof MessagesIndexRoute
   OfficesIndexRoute: typeof OfficesIndexRoute
@@ -846,6 +885,13 @@ declare module '@tanstack/react-router' {
       path: '/faq'
       fullPath: '/faq'
       preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/find': {
+      id: '/find'
+      path: '/find'
+      fullPath: '/find'
+      preLoaderRoute: typeof FindRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invite': {
@@ -1191,6 +1237,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PeopleUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/porch/$porchId': {
+      id: '/porch/$porchId'
+      path: '/porch/$porchId'
+      fullPath: '/porch/$porchId'
+      preLoaderRoute: typeof PorchPorchIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/public/$postId': {
+      id: '/public/$postId'
+      path: '/public/$postId'
+      fullPath: '/public/$postId'
+      preLoaderRoute: typeof PublicPostIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -1223,6 +1283,7 @@ const rootRouteChildren: RootRouteChildren = {
   CityRoute: CityRoute,
   ControlRoomRoute: ControlRoomRoute,
   FaqRoute: FaqRoute,
+  FindRoute: FindRoute,
   InviteRoute: InviteRoute,
   LoginRoute: LoginRoute,
   ManualRoute: ManualRoute,
@@ -1268,6 +1329,8 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesUserIdRoute: MessagesUserIdRoute,
   OfficesOfficeKeyRoute: OfficesOfficeKeyRoute,
   PeopleUserIdRoute: PeopleUserIdRoute,
+  PorchPorchIdRoute: PorchPorchIdRoute,
+  PublicPostIdRoute: PublicPostIdRoute,
   GroupsIndexRoute: GroupsIndexRoute,
   MessagesIndexRoute: MessagesIndexRoute,
   OfficesIndexRoute: OfficesIndexRoute,
